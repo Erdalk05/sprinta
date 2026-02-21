@@ -1,0 +1,25 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@sprinta/shared": [
+        "../../packages/shared/src"
+      ],
+      "@sprinta/api": [
+        "../../packages/api-client/src"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.d.ts",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ]
+}
