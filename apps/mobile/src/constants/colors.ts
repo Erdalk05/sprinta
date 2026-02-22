@@ -1,24 +1,13 @@
-export const colors = {
-  primary: '#6C3EE8',
-  primaryLight: '#8B5CF6',
-  primaryDark: '#5B21B6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#0EA5E9',
-  background: '#FFFFFF',
-  surface: '#F9FAFB',
-  surfaceSecondary: '#F3F4F6',
-  border: '#E5E7EB',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  white: '#FFFFFF',
-} as const
+// Backward compat — yeni import: src/theme/colors
+export { colors } from '../theme/colors'
 
 export const moduleColors: Record<string, string> = {
-  speed_control:      '#6C3EE8',
-  deep_comprehension: '#059669',
-  attention_power:    '#D97706',
-  mental_reset:       '#0EA5E9',
+  speed_control:      '#25D366',
+  deep_comprehension: '#667781',
+  attention_power:    '#F39C12',
+  mental_reset:       '#8E44AD',
+  eye_training:       '#16A085',
+  vocabulary:         '#E67E22',
+  strategy:           '#2980B9',
+  exam_simulation:    '#C0392B',
 }
