@@ -1,6 +1,6 @@
 # SPRINTA — Geliştirme Durumu
 
-Son Güncelleme: 2026-02-21 (08 AI Coach tamamlandı)
+Son Güncelleme: 2026-02-22 (13 İçerik Kütüphanesi tamamlandı)
 
 ## Tamamlanan Adımlar
 
@@ -16,6 +16,7 @@ Son Güncelleme: 2026-02-21 (08 AI Coach tamamlandı)
 - [x] 10 — B2B Admin Panel
 - [x] 11 — Super Admin Panel
 - [x] 12 — Deploy / CI-CD
+- [x] 13 — İçerik Kütüphanesi
 
 ## Notlar
 
@@ -157,6 +158,16 @@ Tamamlanan adımı `[x]` yap.
 - react-native-mmkv: v2 → v3.3.3 (JSI TurboModule, New Architecture native)
 - Podfile.properties.json: newArchEnabled=true, expo.jsEngine=hermes
 - iOS build: Build Succeeded ✅ (90 pods, 0 hata)
+
+## 13 — İçerik Kütüphanesi (Tamamlandı)
+- packages/shared/src/constants/content.ts — CONTENT_CATEGORIES, EXAM_CONTENT_WEIGHTS, DIFFICULTY_TEXT_PARAMS
+- packages/shared/src/utils/readabilityScorer.ts — calculateFleschScore(), getTargetWpm(), estimateDifficulty()
+- packages/api-client/src/services/contentService.ts — getAdaptiveContent(), getRecentlyUsedContentIds()
+- supabase/migrations/009_content_library.sql — source_type kolonu + GIN indeksler
+- supabase/seed/content.sql — 15 metin (5 güçlük × tüm sınav tipleri), tümü JSONB sorularla
+- apps/web/app/(admin)/content/new/page.tsx — Flesch/güçlük canlı hesaplayan admin içerik editörü
+- apps/web/app/api/admin/content/route.ts — POST: content_library'ye kayıt
+- supabase db reset ✅ | seed: 15 metin ✅ | TypeScript: 0 hata ✅ | Unit testler: 26/26 ✅
 
 ## 04 — Performance Engine (Tamamlandı)
 - packages/shared/src/types/engine.ts — SessionMetrics, PerformanceResult, CognitiveProfile, EXAM_ARP_TARGETS

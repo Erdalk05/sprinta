@@ -9,3 +9,6 @@ export * from './engine'
 
 // constants
 export * from './constants'
+
+// utils
+export * from './utils'
