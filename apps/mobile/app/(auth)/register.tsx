@@ -1,21 +1,26 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity,
-  ScrollView, StyleSheet, Alert,
+  View, Text, TouchableOpacity, StyleSheet,
+  Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { useAppTheme } from '../../src/theme/useAppTheme'
-import type { AppTheme } from '../../src/theme'
 import { useAuthStore } from '../../src/stores/authStore'
+import { Button } from '../../src/components/ui/Button'
+import { Input } from '../../src/components/ui/Input'
+import { colors } from '../../src/theme/colors'
+import { typography } from '../../src/theme/typography'
+import { shadows } from '../../src/theme/shadows'
+import { spacing } from '../../src/theme/spacing'
 
 const EXAM_OPTIONS = [
-  { value: 'lgs',   label: 'LGS (8. Sınıf)' },
-  { value: 'tyt',   label: 'TYT' },
-  { value: 'ayt',   label: 'AYT' },
-  { value: 'kpss',  label: 'KPSS' },
-  { value: 'ales',  label: 'ALES' },
-  { value: 'yds',   label: 'YDS' },
+  { value: 'lgs',  label: 'LGS' },
+  { value: 'tyt',  label: 'TYT' },
+  { value: 'ayt',  label: 'AYT' },
+  { value: 'kpss', label: 'KPSS' },
+  { value: 'ales', label: 'ALES' },
+  { value: 'yds',  label: 'YDS' },
 ]
 
 const GRADE_OPTIONS = [
@@ -25,37 +30,29 @@ const GRADE_OPTIONS = [
   { value: 'lise_11',    label: '11. Sınıf' },
   { value: 'lise_12',    label: '12. Sınıf' },
   { value: 'universite', label: 'Üniversite' },
-  { value: 'yetiskin',   label: 'Mezun / Yetişkin' },
+  { value: 'yetiskin',   label: 'Mezun' },
 ]
 
 export default function RegisterScreen() {
-  const t = useAppTheme()
-  const s = useMemo(() => ms(t), [t])
   const router = useRouter()
   const { register, isLoading } = useAuthStore()
 
   const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    examTarget: 'tyt',
-    gradeLevel: 'lise_11',
+    fullName:    '',
+    email:       '',
+    password:    '',
+    examTarget:  'tyt',
+    gradeLevel:  'lise_11',
   })
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
 
   function validate() {
-    const newErrors: Partial<Record<keyof typeof form, string>> = {}
-    if (form.fullName.trim().length < 2) {
-      newErrors.fullName = 'Ad soyad en az 2 karakter olmalı'
-    }
-    if (!form.email.includes('@')) {
-      newErrors.email = 'Geçerli bir email girin'
-    }
-    if (form.password.length < 8) {
-      newErrors.password = 'Şifre en az 8 karakter olmalı'
-    }
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    const e: Partial<Record<keyof typeof form, string>> = {}
+    if (form.fullName.trim().length < 2) e.fullName = 'Ad soyad en az 2 karakter olmalı'
+    if (!form.email.includes('@'))       e.email    = 'Geçerli bir email girin'
+    if (form.password.length < 8)        e.password = 'Şifre en az 8 karakter olmalı'
+    setErrors(e)
+    return Object.keys(e).length === 0
   }
 
   async function handleRegister() {
@@ -63,9 +60,7 @@ export default function RegisterScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
       return
     }
-
     const result = await register(form)
-
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       router.replace('/(onboarding)/welcome')
@@ -76,162 +71,160 @@ export default function RegisterScreen() {
   }
 
   return (
-    <ScrollView style={s.container} keyboardShouldPersistTaps="handled">
-      <Text style={s.title}>Hesap Oluştur</Text>
-      <Text style={s.subtitle}>Sınav başarın için ilk adım</Text>
-
-      <View style={s.field}>
-        <Text style={s.label}>Ad Soyad</Text>
-        <TextInput
-          style={[s.input, errors.fullName ? s.inputError : null]}
-          placeholder="Adın ve soyadın"
-          placeholderTextColor={t.colors.textHint}
-          value={form.fullName}
-          onChangeText={v => setForm(f => ({ ...f, fullName: v }))}
-          autoCapitalize="words"
-        />
-        {errors.fullName ? <Text style={s.error}>{errors.fullName}</Text> : null}
-      </View>
-
-      <View style={s.field}>
-        <Text style={s.label}>Email</Text>
-        <TextInput
-          style={[s.input, errors.email ? s.inputError : null]}
-          placeholder="ornek@email.com"
-          placeholderTextColor={t.colors.textHint}
-          value={form.email}
-          onChangeText={v => setForm(f => ({ ...f, email: v.toLowerCase() }))}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {errors.email ? <Text style={s.error}>{errors.email}</Text> : null}
-      </View>
-
-      <View style={s.field}>
-        <Text style={s.label}>Şifre</Text>
-        <TextInput
-          style={[s.input, errors.password ? s.inputError : null]}
-          placeholder="En az 8 karakter"
-          placeholderTextColor={t.colors.textHint}
-          value={form.password}
-          onChangeText={v => setForm(f => ({ ...f, password: v }))}
-          secureTextEntry
-        />
-        {errors.password ? <Text style={s.error}>{errors.password}</Text> : null}
-      </View>
-
-      <View style={s.field}>
-        <Text style={s.label}>Sınıf Seviyesi</Text>
-        <View style={s.optionGrid}>
-          {GRADE_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[
-                s.optionChip,
-                form.gradeLevel === opt.value ? s.optionChipSelected : null,
-              ]}
-              onPress={() => {
-                Haptics.selectionAsync()
-                setForm(f => ({ ...f, gradeLevel: opt.value }))
-              }}
-            >
-              <Text style={[
-                s.optionChipText,
-                form.gradeLevel === opt.value ? s.optionChipTextSelected : null,
-              ]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <View style={s.field}>
-        <Text style={s.label}>Hedef Sınav</Text>
-        <View style={s.optionGrid}>
-          {EXAM_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[
-                s.optionChip,
-                form.examTarget === opt.value ? s.optionChipSelected : null,
-              ]}
-              onPress={() => {
-                Haptics.selectionAsync()
-                setForm(f => ({ ...f, examTarget: opt.value }))
-              }}
-            >
-              <Text style={[
-                s.optionChipText,
-                form.examTarget === opt.value ? s.optionChipTextSelected : null,
-              ]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={[s.button, isLoading ? s.buttonDisabled : null]}
-        onPress={handleRegister}
-        disabled={isLoading}
+    <KeyboardAvoidingView
+      style={s.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={s.buttonText}>
-          {isLoading ? 'Kaydediliyor...' : 'Devam Et →'}
-        </Text>
-      </TouchableOpacity>
+        {/* Üst gradient alan */}
+        <LinearGradient
+          colors={[colors.primaryDarker, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.hero}
+        >
+          <Text style={s.logo}>SPRINTA</Text>
+          <Text style={s.tagline}>Sınav başarın için ilk adım</Text>
+        </LinearGradient>
 
-      <TouchableOpacity
-        style={s.loginLink}
-        onPress={() => router.push('/(auth)/login')}
-      >
-        <Text style={s.loginLinkText}>
-          Zaten hesabın var mı?{' '}
-          <Text style={s.loginLinkBold}>Giriş yap</Text>
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Kayıt kartı */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Hesap Oluştur 🚀</Text>
+          <Text style={s.cardSub}>Birkaç saniyede başla</Text>
+
+          <Input
+            label="Ad Soyad"
+            placeholder="Adın ve soyadın"
+            value={form.fullName}
+            onChangeText={v => setForm(f => ({ ...f, fullName: v }))}
+            autoCapitalize="words"
+            leftIcon="person-outline"
+            error={errors.fullName}
+          />
+
+          <Input
+            label="Email"
+            placeholder="ornek@mail.com"
+            value={form.email}
+            onChangeText={v => setForm(f => ({ ...f, email: v.toLowerCase() }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            leftIcon="mail-outline"
+            error={errors.email}
+          />
+
+          <Input
+            label="Şifre"
+            placeholder="En az 8 karakter"
+            value={form.password}
+            onChangeText={v => setForm(f => ({ ...f, password: v }))}
+            isPassword
+            leftIcon="lock-closed-outline"
+            error={errors.password}
+          />
+
+          {/* Sınıf seçimi */}
+          <Text style={s.sectionLabel}>Sınıf Seviyesi</Text>
+          <View style={s.chipGrid}>
+            {GRADE_OPTIONS.map(opt => {
+              const sel = form.gradeLevel === opt.value
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[s.chip, sel && s.chipSelected]}
+                  onPress={() => { Haptics.selectionAsync(); setForm(f => ({ ...f, gradeLevel: opt.value })) }}
+                >
+                  <Text style={[s.chipTxt, sel && s.chipTxtSelected]}>{opt.label}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          {/* Sınav seçimi */}
+          <Text style={s.sectionLabel}>Hedef Sınav</Text>
+          <View style={s.chipGrid}>
+            {EXAM_OPTIONS.map(opt => {
+              const sel = form.examTarget === opt.value
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[s.chip, sel && s.chipSelected]}
+                  onPress={() => { Haptics.selectionAsync(); setForm(f => ({ ...f, examTarget: opt.value })) }}
+                >
+                  <Text style={[s.chipTxt, sel && s.chipTxtSelected]}>{opt.label}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          <Button
+            title={isLoading ? 'Kaydediliyor...' : 'Kayıt Ol →'}
+            onPress={handleRegister}
+            loading={isLoading}
+            fullWidth
+            size="lg"
+            style={s.registerBtn}
+          />
+
+          <TouchableOpacity
+            style={s.loginRow}
+            onPress={() => router.push('/(auth)/login')}
+          >
+            <Text style={s.loginTxt}>
+              Zaten hesabın var mı?{' '}
+              <Text style={s.loginBold}>Giriş Yap</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
-function ms(t: AppTheme) {
-  return StyleSheet.create({
-    container: { flex: 1, backgroundColor: t.colors.background, padding: 24 },
-    title:    { fontSize: 28, fontWeight: '700', color: t.colors.text, marginTop: 48, marginBottom: 8 },
-    subtitle: { fontSize: 16, color: t.colors.textSub, marginBottom: 32 },
-    field:    { marginBottom: 20 },
-    label:    { fontSize: 14, fontWeight: '600', color: t.colors.textSub, marginBottom: 8 },
-    input: {
-      backgroundColor: t.colors.surface,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      borderRadius: 12,
-      padding: 14,
-      fontSize: 16,
-      color: t.colors.text,
-    },
-    inputError:            { borderColor: t.colors.error },
-    error:                 { color: t.colors.error, fontSize: 12, marginTop: 4 },
-    optionGrid:            { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    optionChip: {
-      paddingHorizontal: 12, paddingVertical: 8,
-      borderRadius: 8, borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.surface,
-    },
-    optionChipSelected:     { borderColor: t.colors.primary, backgroundColor: t.colors.primary + '25' },
-    optionChipText:         { color: t.colors.textSub, fontSize: 13 },
-    optionChipTextSelected: { color: t.colors.primary, fontWeight: '600' },
-    button: {
-      backgroundColor: t.colors.primary,
-      borderRadius: 12, padding: 16,
-      alignItems: 'center', marginTop: 8, marginBottom: 16,
-    },
-    buttonDisabled: { opacity: 0.6 },
-    buttonText:     { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    loginLink:      { alignItems: 'center', paddingBottom: 40 },
-    loginLinkText:  { color: t.colors.textSub, fontSize: 14 },
-    loginLinkBold:  { color: t.colors.primary, fontWeight: '600' },
-  })
-}
+const s = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: colors.background },
+  scroll: { flexGrow: 1, paddingBottom: spacing.xxl },
+
+  hero: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 32,
+  },
+  logo:    { fontSize: 36, fontWeight: '800', color: colors.white, letterSpacing: 4 },
+  tagline: { ...(typography.body as object), color: 'rgba(255,255,255,0.8)', marginTop: 8 },
+
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    marginHorizontal: spacing.md,
+    marginTop: -32,
+    padding: spacing.lg,
+    ...shadows.lg,
+  },
+  cardTitle:    { ...(typography.h2 as object), color: colors.textPrimary, marginBottom: 4 },
+  cardSub:      { ...(typography.body as object), color: colors.textSecondary, marginBottom: spacing.lg },
+
+  sectionLabel: { ...(typography.label as object), color: colors.textSecondary, marginBottom: 8, marginTop: 4 },
+
+  chipGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
+  chip: {
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 8, borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
+  chipTxt:         { ...(typography.label as object), color: colors.textSecondary },
+  chipTxtSelected: { color: colors.primary, fontWeight: '600' },
+
+  registerBtn: { marginTop: spacing.md, marginBottom: spacing.sm },
+
+  loginRow: { alignItems: 'center', paddingVertical: spacing.sm },
+  loginTxt: { ...(typography.label as object), color: colors.textSecondary },
+  loginBold:{ color: colors.primary, fontWeight: '600' },
+})
