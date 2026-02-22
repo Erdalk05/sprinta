@@ -2,45 +2,70 @@ import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/stores/authStore'
+import { useOnboardingStore } from '../src/features/onboarding/onboardingStore'
+import { initRewardEngine } from '../src/features/rewards/RewardEngine'
 
 export default function RootLayout() {
   const router = useRouter()
   const segments = useSegments()
   const { isAuthenticated, student } = useAuthStore()
+  const { completed: quizCompleted, loadFromStorage } = useOnboardingStore()
   const [mounted, setMounted] = useState(false)
+  const [quizLoaded, setQuizLoaded] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    initRewardEngine()
+    loadFromStorage().finally(() => {
+      setQuizLoaded(true)
+      setMounted(true)
+    })
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || !quizLoaded) return
 
-    const inAuthGroup = segments[0] === '(auth)'
-    const inOnboarding = segments[0] === '(onboarding)'
-    const inDiagnostic = segments[0] === 'diagnostic'
+    const inAuthGroup   = segments[0] === '(auth)'
+    const inOnboarding  = segments[0] === '(onboarding)'
+    const inDiagnostic  = segments[0] === 'diagnostic'
+    const inQuizOnboard = segments[0] === 'onboarding'
 
-    if (!isAuthenticated && !inAuthGroup) {
+    // 1. Henüz quiz tamamlanmadıysa → quiz onboarding
+    if (!quizCompleted && !inQuizOnboard) {
+      router.replace('/onboarding')
+      return
+    }
+
+    // 2. Quiz tamamlandı ama giriş yapılmamış → login
+    if (!isAuthenticated && !inAuthGroup && !inQuizOnboard) {
       router.replace('/(auth)/login')
-    } else if (
+      return
+    }
+
+    // 3. Giriş yapıldı ama diagnostic tamamlanmamış → mevcut onboarding flow
+    if (
       isAuthenticated &&
       !student?.hasCompletedDiagnostic &&
       !inOnboarding &&
       !inDiagnostic
     ) {
       router.replace('/(onboarding)/welcome')
-    } else if (
+      return
+    }
+
+    // 4. Her şey tamam → tabs
+    if (
       isAuthenticated &&
       student?.hasCompletedDiagnostic &&
-      (inAuthGroup || inOnboarding || inDiagnostic)
+      (inAuthGroup || inOnboarding || inDiagnostic || inQuizOnboard)
     ) {
       router.replace('/(tabs)')
     }
-  }, [mounted, isAuthenticated, student?.hasCompletedDiagnostic])
+  }, [mounted, quizLoaded, quizCompleted, isAuthenticated, student?.hasCompletedDiagnostic])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" />

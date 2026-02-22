@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useAuthStore } from '../../src/stores/authStore'
+import { useOnboardingStore } from '../../src/features/onboarding/onboardingStore'
+import { createClient } from '@supabase/supabase-js'
 import { Button } from '../../src/components/ui/Button'
 import { Input } from '../../src/components/ui/Input'
 import { colors } from '../../src/theme/colors'
@@ -14,9 +16,40 @@ import { typography } from '../../src/theme/typography'
 import { shadows } from '../../src/theme/shadows'
 import { spacing } from '../../src/theme/spacing'
 
+const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+async function saveQuizTelemetry(
+  userId: string,
+  quizResult: NonNullable<ReturnType<typeof useOnboardingStore.getState>['quizResult']>,
+  startedAt: number | null
+) {
+  try {
+    await supabase.from('students').update({
+      baseline_arp: quizResult.baseARP,
+      current_arp: quizResult.baseARP,
+    }).eq('id', userId)
+
+    await supabase.from('onboarding_telemetry').insert({
+      user_id: userId,
+      onboarding_duration_ms: startedAt ? Date.now() - startedAt : null,
+      quiz_accuracy: quizResult.accuracy,
+      avg_response_time_ms: quizResult.avgResponseTimeMs,
+      strong_topic: quizResult.strongTopic,
+      weak_topic: quizResult.weakTopic,
+      base_arp: quizResult.baseARP,
+    })
+  } catch {
+    // telemetri hatası uygulamayı durdurmasın
+  }
+}
+
 export default function LoginScreen() {
   const router = useRouter()
-  const { login, isLoading } = useAuthStore()
+  const { login, isLoading, student } = useAuthStore()
+  const { quizResult, startedAt, setCompleted, saveToStorage } = useOnboardingStore()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
 
@@ -29,6 +62,12 @@ export default function LoginScreen() {
     const result = await login({ email, password })
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      // Quiz sonucu varsa kaydet
+      if (quizResult && student?.id) {
+        await saveQuizTelemetry(student.id, quizResult, startedAt)
+      }
+      setCompleted(true)
+      await saveToStorage()
       router.replace('/(tabs)')
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)

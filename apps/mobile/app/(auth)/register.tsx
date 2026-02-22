@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useAuthStore } from '../../src/stores/authStore'
+import { useOnboardingStore } from '../../src/features/onboarding/onboardingStore'
+import { createClient } from '@supabase/supabase-js'
 import { Button } from '../../src/components/ui/Button'
 import { Input } from '../../src/components/ui/Input'
 import { colors } from '../../src/theme/colors'
@@ -33,9 +35,15 @@ const GRADE_OPTIONS = [
   { value: 'yetiskin',   label: 'Mezun' },
 ]
 
+const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export default function RegisterScreen() {
   const router = useRouter()
-  const { register, isLoading } = useAuthStore()
+  const { register, isLoading, student } = useAuthStore()
+  const { quizResult, startedAt, setCompleted, saveToStorage } = useOnboardingStore()
 
   const [form, setForm] = useState({
     fullName:    '',
@@ -63,6 +71,29 @@ export default function RegisterScreen() {
     const result = await register(form)
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      // Quiz sonucu varsa kaydet
+      if (quizResult && student?.id) {
+        try {
+          await supabase.from('students').update({
+            baseline_arp: quizResult.baseARP,
+            current_arp: quizResult.baseARP,
+          }).eq('id', student.id)
+
+          await supabase.from('onboarding_telemetry').insert({
+            user_id: student.id,
+            onboarding_duration_ms: startedAt ? Date.now() - startedAt : null,
+            quiz_accuracy: quizResult.accuracy,
+            avg_response_time_ms: quizResult.avgResponseTimeMs,
+            strong_topic: quizResult.strongTopic,
+            weak_topic: quizResult.weakTopic,
+            base_arp: quizResult.baseARP,
+          })
+        } catch {
+          // telemetri hatası uygulamayı durdurmasın
+        }
+      }
+      setCompleted(true)
+      await saveToStorage()
       router.replace('/(onboarding)/welcome')
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
