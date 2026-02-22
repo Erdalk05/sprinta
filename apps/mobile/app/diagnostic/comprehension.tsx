@@ -47,6 +47,7 @@ export default function DiagnosticComprehensionScreen() {
       {/* Soru */}
       {current && (
         <QuestionCard
+          key={questionIndex}
           question={current}
           questionNumber={questionIndex + 1}
           totalQuestions={questions.length}

@@ -177,6 +177,7 @@ export default function SessionScreen() {
             </Text>
           </View>
           <QuestionCard
+            key={questionIndex}
             question={exercise.questions[questionIndex]}
             questionNumber={questionIndex + 1}
             totalQuestions={exercise.questions.length}
