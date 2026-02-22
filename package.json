@@ -15,7 +15,8 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:health": "node scripts/db-health.js",
-    "db:seed": "supabase db seed"
+    "db:seed": "supabase db seed",
+    "test:user": "bash scripts/create-test-user.sh"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.43.0",
