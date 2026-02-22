@@ -14,37 +14,19 @@ export interface ConfettiOptions {
   colors?: string[]
 }
 
-const SPRINTA_COLORS = ['#25D366', '#128C7E', '#075E54', '#DCF8C6', '#FFFFFF']
+type FireFn = () => void
+let _fireFn: FireFn | null = null
 
-type ConfettiFireFn = (options: {
-  count: number
-  origin: { x: number; y: number }
-  colors: string[]
-  explosionSpeed?: number
-  fallSpeed?: number
-}) => void
-
-let _fireFn: ConfettiFireFn | null = null
-
-export function registerConfettiFn(fn: ConfettiFireFn): void {
+export function registerConfettiFn(fn: FireFn): void {
   _fireFn = fn
 }
 
 export function fireConfetti(
   _trigger: ConfettiTrigger,
-  options?: ConfettiOptions,
+  _options?: ConfettiOptions,
 ): void {
   const now = Date.now()
   if (now - lastConfettiAt < COOLDOWN_MS) return
-  if (!_fireFn) return
-
   lastConfettiAt = now
-
-  _fireFn({
-    count: options?.particleCount ?? 80,
-    origin: { x: 0.5, y: 0.3 },
-    colors: options?.colors ?? SPRINTA_COLORS,
-    explosionSpeed: 350,
-    fallSpeed: 3000,
-  })
+  _fireFn?.()
 }
