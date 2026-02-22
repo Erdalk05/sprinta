@@ -1,0 +1,11 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && pnpm run build --filter=web",
+  "installCommand": "cd ../.. && pnpm install",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase-prod-url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase-prod-anon-key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-role-key"
+  }
+}
