@@ -12,3 +12,6 @@ export * from './constants'
 
 // utils
 export * from './utils'
+
+// legal
+export * from './legal'

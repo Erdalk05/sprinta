@@ -1,6 +1,6 @@
 # SPRINTA — Geliştirme Durumu
 
-Son Güncelleme: 2026-02-22 (13 İçerik Kütüphanesi tamamlandı)
+Son Güncelleme: 2026-02-22 (14 KVKK & Hukuki Uyumluluk tamamlandı)
 
 ## Tamamlanan Adımlar
 
@@ -17,6 +17,7 @@ Son Güncelleme: 2026-02-22 (13 İçerik Kütüphanesi tamamlandı)
 - [x] 11 — Super Admin Panel
 - [x] 12 — Deploy / CI-CD
 - [x] 13 — İçerik Kütüphanesi
+- [x] 14 — KVKK & Hukuki Uyumluluk
 
 ## Notlar
 
@@ -158,6 +159,12 @@ Tamamlanan adımı `[x]` yap.
 - react-native-mmkv: v2 → v3.3.3 (JSI TurboModule, New Architecture native)
 - Podfile.properties.json: newArchEnabled=true, expo.jsEngine=hermes
 - iOS build: Build Succeeded ✅ (90 pods, 0 hata)
+
+## 14 — KVKK & Hukuki Uyumluluk (Tamamlandı)
+- packages/shared/src/legal/kvkk.ts — KVKK_AYDINLATMA_METNI, RIZA_METNI_B2C, RIZA_METNI_VELI
+- apps/mobile/app/(onboarding)/consent.tsx — Rıza akışı (13 yaş altı veli onayı, 13-18 özel koruma)
+- apps/web/app/api/account/delete/route.ts — B2C: CASCADE sil, B2B: anonimleştir + pasife al
+- TypeScript: 0 hata ✅
 
 ## 13 — İçerik Kütüphanesi (Tamamlandı)
 - packages/shared/src/constants/content.ts — CONTENT_CATEGORIES, EXAM_CONTENT_WEIGHTS, DIFFICULTY_TEXT_PARAMS
