@@ -9,7 +9,8 @@ import { useSessionStore } from '../../../src/stores/sessionStore'
 import { useAuthStore } from '../../../src/stores/authStore'
 import { useGamificationStore } from '../../../src/stores/gamificationStore'
 import { getLevelFromXP } from '../../../src/constants/levels'
-import { createBadgeService } from '@sprinta/api'
+import { createBadgeService, createPerformancePipeline } from '@sprinta/api'
+import { EventBus } from '../../../src/features/rewards/EventBus'
 import { BadgeAwardModal } from '../../../src/components/gamification/BadgeAwardModal'
 import { LevelUpModal } from '../../../src/components/gamification/LevelUpModal'
 import type { Badge } from '@sprinta/api'
@@ -19,6 +20,7 @@ const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 )
 const badgeService = createBadgeService(supabase)
+const pipeline = createPerformancePipeline(supabase)
 
 const FATIGUE_LABELS: Record<string, string> = {
   fresh: '💪 Zinde',
@@ -52,8 +54,59 @@ export default function ResultScreen() {
     if (!student) return
     const prevLevel = getLevelFromXP(student.totalXp)
 
+    // ── Session'ı Supabase'e kaydet (DB trigger → total_xp güncellenir) ──
+    const { exerciseId, lastMetrics: metrics, result: perf } = useSessionStore.getState()
+    if (metrics && perf && exerciseId) {
+      try {
+        const { error: sessionError } = await supabase.from('sessions').insert({
+          student_id: student.id,
+          exercise_id: exerciseId,
+          module_code: metrics.moduleCode,
+          session_type: 'exercise',
+          difficulty_level: metrics.difficultyLevel,
+          duration_seconds: metrics.durationSeconds,
+          is_completed: true,
+          metrics: {
+            wpm: metrics.wpm,
+            comprehension: metrics.comprehension,
+            accuracy: metrics.accuracy,
+            score: metrics.score,
+            errorsPerMinute: metrics.errorsPerMinute ?? 0,
+          },
+          rei: perf.rei,
+          csf: perf.csf,
+          arp: perf.arp,
+          fatigue_score: perf.fatigueScore,
+          xp_earned: perf.xpEarned,
+        })
+        if (!sessionError) {
+          const arpHistory = await pipeline.getArpHistory(student.id)
+          await pipeline.updateCognitiveProfile(student.id, metrics, perf.arp, arpHistory)
+          await pipeline.upsertDailyStats({
+            studentId: student.id,
+            xpEarned: perf.xpEarned,
+            durationSeconds: metrics.durationSeconds,
+            arp: perf.arp,
+          })
+        } else {
+          console.error('Session kaydedilemedi:', sessionError.message)
+        }
+      } catch (e) {
+        console.error('Session kayıt hatası:', e)
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     // Streak güncelle ve rozet kontrol et
     await badgeService.updateStreak(student.id)
+    EventBus.emit('STREAK_UPDATED', { days: 1 })
+
+    // SESSION_FINISHED + XP_UPDATED event'leri gönder
+    if (perf) {
+      EventBus.emit('SESSION_FINISHED', { xpEarned: perf.xpEarned, moduleType: metrics?.moduleCode ?? moduleCode })
+      EventBus.emit('XP_UPDATED', { total: (student.totalXp ?? 0) + perf.xpEarned, delta: perf.xpEarned })
+    }
+
     const stats = await badgeService.getStudentStats(student.id)
 
     if (stats) {

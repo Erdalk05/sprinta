@@ -1,16 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { colors, moduleColors } from '../../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
+import { getArticleById, type Article } from '../../../src/hooks/useArticles'
 import { useSessionStore } from '../../../src/stores/sessionStore'
 import { ChunkReader } from '../../../src/components/exercise/ChunkReader'
 import { TextReader } from '../../../src/components/exercise/TextReader'
 import { AttentionGrid } from '../../../src/components/exercise/AttentionGrid'
 import { BreathingCircle } from '../../../src/components/exercise/BreathingCircle'
 import { QuestionCard } from '../../../src/components/exercise/QuestionCard'
+import { SchulteExercise } from '../../../src/components/exercise/EyeTraining/SchulteExercise'
+import { ContextGuessExercise } from '../../../src/components/exercise/Vocabulary/ContextGuessExercise'
 import { formatTime } from '../../../src/hooks/useSessionTimer'
 import { processSession } from '@sprinta/shared'
 import type { CognitiveProfile } from '@sprinta/shared'
@@ -18,11 +21,25 @@ import { useAuthStore } from '../../../src/stores/authStore'
 
 type Phase = 'exercise' | 'questions' | 'done'
 
+// Supabase Article → SampleExercise benzeri format dönüşümü
+function articleToExercise(art: Article) {
+  return {
+    id: art.id,
+    moduleCode: art.subject_code,
+    title: art.title,
+    content: art.content_text,
+    wordCount: art.word_count,
+    difficulty: art.difficulty_level * 2, // 1-10 → 2-20 ölçeği normalize
+    questions: art.questions,
+  }
+}
+
 export default function SessionScreen() {
-  const { moduleCode, difficulty, exerciseId } = useLocalSearchParams<{
+  const { moduleCode, difficulty, exerciseId, articleId } = useLocalSearchParams<{
     moduleCode: string
     difficulty: string
     exerciseId: string
+    articleId?: string
   }>()
   const router = useRouter()
   const { student } = useAuthStore()
@@ -32,11 +49,24 @@ export default function SessionScreen() {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [readingWpm, setReadingWpm] = useState(0)
+  const [articleLoading, setArticleLoading] = useState(!!articleId)
+  const [remoteArticle, setRemoteArticle] = useState<ReturnType<typeof articleToExercise> | null>(null)
 
   const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
-  const exercise = SAMPLE_EXERCISES[moduleCode]
   const difficultyNum = parseInt(difficulty ?? '5', 10)
   const accentColor = moduleColors[moduleCode] ?? colors.primary
+
+  // articleId varsa önbellekten çek (useArticles hook'u zaten cache'ledi)
+  useEffect(() => {
+    if (!articleId) { setArticleLoading(false); return }
+    getArticleById(articleId).then((art) => {
+      if (art) setRemoteArticle(articleToExercise(art))
+      setArticleLoading(false)
+    })
+  }, [articleId])
+
+  // Kullanılacak exercise: remote → sample fallback
+  const exercise = remoteArticle ?? SAMPLE_EXERCISES[moduleCode]
 
   // Elapsed timer
   const elapsedRef = useRef(0)
@@ -120,6 +150,14 @@ export default function SessionScreen() {
     ])
   }
 
+  if (articleLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator style={{ flex: 1 }} size="large" color={accentColor} />
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -165,6 +203,43 @@ export default function SessionScreen() {
         <BreathingCircle
           onHalfway={handleHalfway}
           onComplete={() => finishSession(0)}
+        />
+      )}
+
+      {phase === 'exercise' && moduleCode === 'eye_training' && (
+        <SchulteExercise
+          difficultyLevel={difficultyNum}
+          onComplete={(metrics) => {
+            store.addWords(metrics.gridSize * metrics.gridSize)
+            store.recordAnswer(true, metrics.completionTime)
+            finishSession(0)
+          }}
+          onExit={handleQuit}
+        />
+      )}
+
+      {phase === 'exercise' && moduleCode === 'vocabulary' && (
+        <ContextGuessExercise
+          onComplete={(vocabMetrics) => {
+            store.addWords(vocabMetrics.total * 10)
+            for (let i = 0; i < vocabMetrics.total; i++) {
+              store.recordAnswer(i < vocabMetrics.correct, vocabMetrics.avgResponseMs)
+            }
+            finishSession(0)
+          }}
+          onExit={handleQuit}
+        />
+      )}
+
+      {/* Konu metinleri (mevcut + yeni) — TextReader ile işlenir */}
+      {phase === 'exercise' &&
+        !['speed_control','deep_comprehension','attention_power','mental_reset','eye_training','vocabulary'].includes(moduleCode) &&
+        exercise && exercise.content.length > 0 && (
+        <TextReader
+          text={exercise.content}
+          wordCount={exercise.wordCount}
+          onHalfway={handleHalfway}
+          onComplete={(wpm) => handleExerciseComplete(wpm)}
         />
       )}
 

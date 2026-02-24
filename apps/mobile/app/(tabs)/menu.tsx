@@ -30,12 +30,14 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'training', icon: '💪', label: 'Antrenmanlar', sub: 'Hız, kavrama, dikkat', color: colors.primary,
+    id: 'training', icon: '💪', label: 'Antrenmanlar', sub: 'Hız, kavrama, dikkat, göz, kelime', color: colors.primary,
     items: [
       { id: 'speed', icon: '⚡', label: 'Hız Antrenmanı',    route: '/exercise/speed_control'     },
       { id: 'comp',  icon: '🧠', label: 'Derin Kavrama',     route: '/exercise/deep_comprehension' },
       { id: 'attn',  icon: '🎯', label: 'Dikkat Gücü',       route: '/exercise/attention_power'    },
       { id: 'reset', icon: '🌿', label: 'Zihinsel Sıfırlama',route: '/exercise/mental_reset'       },
+      { id: 'eye',   icon: '👁️', label: 'Göz Egzersizleri 🔒',route: '/exercise/eye_training'     },
+      { id: 'vocab', icon: '📖', label: 'Kelime Hazinesi 🔒', route: '/exercise/vocabulary'        },
       { id: 'diag',  icon: '🧪', label: 'Tanılama Testi',    route: '/diagnostic'                  },
     ],
   },

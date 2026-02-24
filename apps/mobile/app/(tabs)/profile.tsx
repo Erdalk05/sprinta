@@ -1,11 +1,25 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
+import { createClient } from '@supabase/supabase-js'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import type { AppTheme } from '../../src/theme'
 import { useAuthStore } from '../../src/stores/authStore'
+import { useGamificationStore } from '../../src/stores/gamificationStore'
 import { XPBar } from '../../src/components/gamification/XPBar'
+import { BadgeCard } from '../../src/components/gamification/BadgeCard'
+
+const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+interface SessionStats {
+  totalSessions: number
+  totalMinutes: number
+  weeklyArpChange: number
+}
 
 const EXAM_LABELS: Record<string, string> = {
   lgs: 'LGS', tyt: 'TYT', ayt: 'AYT',
@@ -24,6 +38,38 @@ export default function ProfileScreen() {
   const s = useMemo(() => ms(t), [t])
   const router = useRouter()
   const { student, logout, isLoading } = useAuthStore()
+  const { earnedBadges } = useGamificationStore()
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
+
+  useEffect(() => {
+    if (!student) return
+    const fetchStats = async () => {
+      try {
+        const { data: sessions } = await supabase
+          .from('sessions')
+          .select('duration_seconds, arp, created_at')
+          .eq('student_id', student.id)
+          .eq('is_completed', true)
+
+        const totalSessions = sessions?.length ?? 0
+        const totalMinutes = Math.round(
+          (sessions?.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0) ?? 0) / 60
+        )
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        const weekSessions = (sessions ?? [])
+          .filter(s => new Date(s.created_at) >= weekAgo)
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        const weeklyArpChange = weekSessions.length >= 2
+          ? Math.round(weekSessions[weekSessions.length - 1].arp - weekSessions[0].arp)
+          : 0
+        setSessionStats({ totalSessions, totalMinutes, weeklyArpChange })
+      } catch (e) {
+        console.warn('[Profile] fetchStats:', e)
+      }
+    }
+    fetchStats()
+  }, [student])
 
   const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğine emin misin?', [
@@ -89,6 +135,32 @@ export default function ProfileScreen() {
           <PerfItem t={t} s={s} label="Toplam XP" value={student.totalXp} accent="#D97706" />
         </View>
 
+        {/* Seans İstatistikleri */}
+        {sessionStats && (
+          <View style={s.perf}>
+            <PerfItem t={t} s={s} label="Seans" value={sessionStats.totalSessions} accent="#059669" />
+            <PerfItem t={t} s={s} label="Dakika" value={sessionStats.totalMinutes} accent="#0EA5E9" />
+            <PerfItem
+              t={t} s={s} label="Haftalık ARP"
+              value={sessionStats.weeklyArpChange}
+              accent={sessionStats.weeklyArpChange >= 0 ? '#059669' : '#EF4444'}
+              prefix={sessionStats.weeklyArpChange > 0 ? '+' : ''}
+            />
+          </View>
+        )}
+
+        {/* Kazanılan Rozetler */}
+        {earnedBadges.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>🏅 Rozetlerim ({earnedBadges.length})</Text>
+            <View style={{ gap: 8, marginBottom: 20 }}>
+              {earnedBadges.map(badge => (
+                <BadgeCard key={badge.id} badge={badge} earned size="small" />
+              ))}
+            </View>
+          </>
+        )}
+
         {/* Tanılama Durumu */}
         <View style={[s.diagCard, { backgroundColor: diagBg }]}>
           <Text style={s.diagTitle}>
@@ -143,10 +215,10 @@ function InfoRow({ t, s, label, value, border }: { t: AppTheme; s: Styles; label
   )
 }
 
-function PerfItem({ t, s, label, value, accent }: { t: AppTheme; s: Styles; label: string; value: number; accent: string }) {
+function PerfItem({ t, s, label, value, accent, prefix = '' }: { t: AppTheme; s: Styles; label: string; value: number; accent: string; prefix?: string }) {
   return (
     <View style={[s.perfItem, { borderTopColor: accent, borderTopWidth: 3 }]}>
-      <Text style={[s.perfValue, { color: accent }]}>{value.toLocaleString('tr')}</Text>
+      <Text style={[s.perfValue, { color: accent }]}>{prefix}{value.toLocaleString('tr')}</Text>
       <Text style={s.perfLabel}>{label}</Text>
     </View>
   )

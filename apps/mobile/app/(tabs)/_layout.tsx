@@ -7,9 +7,11 @@ import { theme } from '../../src/theme'
 function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
   const router = useRouter()
 
-  // Visible tabs: index=0 (Ana Sayfa), menu=1 (Menü)
-  const isHome = state.index === 0
-  const isMenu = state.routes[state.index]?.name === 'menu'
+  const isHome     = state.routes[state.index]?.name === 'index'
+  const isSession  = state.routes[state.index]?.name === 'sessions'
+  const isProgress = state.routes[state.index]?.name === 'progress'
+  const isSocial   = state.routes[state.index]?.name === 'social'
+  const isMenu     = state.routes[state.index]?.name === 'menu'
 
   return (
     <View style={s.bar}>
@@ -23,6 +25,16 @@ function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
         <Text style={[s.tabLabel, isHome && s.tabLabelActive]}>Ana Sayfa</Text>
       </TouchableOpacity>
 
+      {/* Çalış — sessions sekmesi */}
+      <TouchableOpacity
+        style={s.tabBtn}
+        onPress={() => navigation.navigate('sessions')}
+        activeOpacity={0.7}
+      >
+        <Text style={[s.tabIcon, isSession && s.tabIconActive]}>📚</Text>
+        <Text style={[s.tabLabel, isSession && s.tabLabelActive]}>Çalış</Text>
+      </TouchableOpacity>
+
       {/* Merkez — Sprinta butonu (yükseltilmiş) */}
       <View style={s.centerWrap}>
         <TouchableOpacity
@@ -33,6 +45,26 @@ function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
           <Text style={s.centerIcon}>🎓</Text>
         </TouchableOpacity>
       </View>
+
+      {/* İlerleme — progress sekmesi */}
+      <TouchableOpacity
+        style={s.tabBtn}
+        onPress={() => navigation.navigate('progress')}
+        activeOpacity={0.7}
+      >
+        <Text style={[s.tabIcon, isProgress && s.tabIconActive]}>📊</Text>
+        <Text style={[s.tabLabel, isProgress && s.tabLabelActive]}>İlerleme</Text>
+      </TouchableOpacity>
+
+      {/* Sosyal */}
+      <TouchableOpacity
+        style={s.tabBtn}
+        onPress={() => navigation.navigate('social')}
+        activeOpacity={0.7}
+      >
+        <Text style={[s.tabIcon, isSocial && s.tabIconActive]}>👥</Text>
+        <Text style={[s.tabLabel, isSocial && s.tabLabelActive]}>Sosyal</Text>
+      </TouchableOpacity>
 
       {/* Menü */}
       <TouchableOpacity
@@ -58,9 +90,9 @@ export default function TabsLayout() {
       <Tabs.Screen name="menu"    options={{ title: 'Menü' }} />
 
       {/* Gizli route'lar — menü üzerinden erişilir */}
-      <Tabs.Screen name="sessions"  options={{ href: null }} />
-      <Tabs.Screen name="progress"  options={{ href: null }} />
-      <Tabs.Screen name="social"    options={{ href: null }} />
+      <Tabs.Screen name="sessions"  options={{ title: 'Çalış' }} />
+      <Tabs.Screen name="progress"  options={{ title: 'İlerleme' }} />
+      <Tabs.Screen name="social"    options={{ title: 'Sosyal' }} />
       <Tabs.Screen name="profile"   options={{ href: null }} />
     </Tabs>
   )

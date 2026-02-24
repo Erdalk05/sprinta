@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/stores/authStore'
 import { useOnboardingStore } from '../src/features/onboarding/onboardingStore'
 import { initRewardEngine } from '../src/features/rewards/RewardEngine'
+import { notificationService } from '../src/services/notificationService'
 
 export default function RootLayout() {
   const router = useRouter()
@@ -15,6 +16,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     initRewardEngine()
+    notificationService.init().then(() => {
+      notificationService.scheduleDailyReminder()
+    })
     loadFromStorage().finally(() => {
       setQuizLoaded(true)
       setMounted(true)
