@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, StyleSheet, ViewStyle } from 'react-native'
+import { StyleSheet, ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { theme } from '../../theme'
 
@@ -15,7 +15,7 @@ export function GradientCard({
   colors: gradColors = ['#1A1033', '#0B141A'],
   style,
   children,
-  radius = theme.radius.xl,
+  radius = 16,
   padding = theme.spacing.xl,
 }: Props) {
   return (
@@ -23,7 +23,7 @@ export function GradientCard({
       colors={gradColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[styles.card, { borderRadius: radius, padding }, theme.shadow.lg, style]}
+      style={[styles.card, { borderRadius: radius, padding }, theme.shadows.md, style]}
     >
       {children}
     </LinearGradient>
@@ -34,6 +34,6 @@ const styles = StyleSheet.create({
   card: {
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 })

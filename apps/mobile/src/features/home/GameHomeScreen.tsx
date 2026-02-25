@@ -1,42 +1,34 @@
-import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react'
+/**
+ * Sprinta Ana Sayfa — Hero Redesign
+ * Gradient hero header, ARP count-up, glassmorphism stats,
+ * günlük hedef kartı, haftalık özet, son seans, rozetler.
+ */
+import React, { useEffect, useRef, useMemo, useState } from 'react'
 import {
-  View, Text, TouchableOpacity, ScrollView,
-  SafeAreaView, Animated, StyleSheet,
+  View, Text, TouchableOpacity, ScrollView, FlatList,
+  SafeAreaView, Animated, StyleSheet, Dimensions,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
+import { useGamificationStore } from '../../stores/gamificationStore'
+import { useThemeToggle, useAppTheme } from '../../theme/useAppTheme'
+import type { AppTheme } from '../../theme'
 import { calculateExamProgress, getLevelFromXp } from '@sprinta/shared'
-import { colors } from '../../theme/colors'
-import { typography } from '../../theme/typography'
-import { shadows } from '../../theme/shadows'
-import { spacing } from '../../theme/spacing'
-import { ProgressBar } from '../../components/ui/ProgressBar'
-import { Badge } from '../../components/ui/Badge'
 import { EventBus } from '../rewards/EventBus'
 import { getBadgeById } from '../rewards/RewardEngine'
 
-const DEFAULT_ROUTE = '/exercise/speed_control' as const
+const { width: W } = Dimensions.get('window')
 
-const MOTIVATION_MESSAGES = [
-  'Harika gidiyorsun! 🚀',
-  'Serini bozma! 🔥',
-  'Bugün bir adım daha! 💪',
-  'Zirveye oynuyorsun! 🏆',
-  'Odaklan ve başar! 🎯',
-  'Her gün biraz daha iyi! 📈',
-]
+// ─── CountUp animasyon ────────────────────────────────────────────
 
-// ─── CountUp animasyon ────────────────────────────────────────
-function useCountUp(target: number, duration = 800): number {
-  const anim = useRef(new Animated.Value(target)).current
-  const [display, setDisplay] = useState(target)
-  const prevTarget = useRef(target)
+function useCountUp(target: number, duration = 1000): number {
+  const anim = useRef(new Animated.Value(0)).current
+  const [display, setDisplay] = useState(0)
 
   useEffect(() => {
-    if (prevTarget.current === target) return
-    prevTarget.current = target
-    anim.setValue(prevTarget.current)
+    anim.setValue(0)
     const listener = anim.addListener(({ value }) => setDisplay(Math.round(value)))
     Animated.timing(anim, { toValue: target, duration, useNativeDriver: false }).start(() => {
       anim.removeListener(listener)
@@ -47,9 +39,11 @@ function useCountUp(target: number, duration = 800): number {
   return display
 }
 
-// ─── BadgeToast ───────────────────────────────────────────────
+// ─── BadgeToast ───────────────────────────────────────────────────
+
 function BadgeToast({ badgeId, onHide }: { badgeId: string; onHide: () => void }) {
-  const badge = getBadgeById(badgeId)
+  const t = useAppTheme()
+  const badge  = getBadgeById(badgeId)
   const slideY = useRef(new Animated.Value(-80)).current
   const opacity = useRef(new Animated.Value(0)).current
 
@@ -58,275 +52,63 @@ function BadgeToast({ badgeId, onHide }: { badgeId: string; onHide: () => void }
       Animated.spring(slideY, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 8 }),
       Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start()
-
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(slideY, { toValue: -80, duration: 300, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0,  duration: 300, useNativeDriver: true }),
       ]).start(onHide)
-    }, 2000)
-
-    return () => clearTimeout(t)
+    }, 2500)
+    return () => clearTimeout(timer)
   }, [])
 
   if (!badge) return null
-
   return (
-    <Animated.View style={[bt.root, { transform: [{ translateY: slideY }], opacity }]}>
-      <Text style={bt.emoji}>{badge.emoji}</Text>
-      <Text style={bt.txt}>{badge.title} rozeti kazandın!</Text>
+    <Animated.View style={[{
+      position: 'absolute', top: 12, left: 16, right: 16, zIndex: 999,
+      backgroundColor: t.colors.panel, borderRadius: 14,
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 16, paddingVertical: 12,
+      transform: [{ translateY: slideY }], opacity,
+      ...t.shadows.md,
+    }]}>
+      <Text style={{ fontSize: 20 }}>{badge.emoji}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff', flex: 1 }}>
+        {badge.title} rozeti kazandın!
+      </Text>
     </Animated.View>
   )
 }
-const bt = StyleSheet.create({
-  root: {
-    position: 'absolute', top: 12, left: spacing.md, right: spacing.md, zIndex: 999,
-    backgroundColor: colors.primaryDarker, borderRadius: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12,
-    ...shadows.md,
-  },
-  emoji: { fontSize: 20 },
-  txt:   { ...(typography.label as object), color: '#fff', fontWeight: '600', flex: 1 },
-})
 
-// ─── HomeHeader ───────────────────────────────────────────────
-interface HomeHeaderProps {
-  greeting:   string
-  userName:   string
-  streakDays: number
-  totalXp:    number
-  message:    string
-}
+// ─── GlassStat ────────────────────────────────────────────────────
 
-function HomeHeader({ greeting, userName, streakDays, totalXp, message }: HomeHeaderProps) {
-  const pulse = useRef(new Animated.Value(1)).current
-
-  useEffect(() => {
-    const run = () =>
-      Animated.sequence([
-        Animated.spring(pulse, { toValue: 1.05, useNativeDriver: true, speed: 20, bounciness: 8 }),
-        Animated.spring(pulse, { toValue: 1,    useNativeDriver: true, speed: 20, bounciness: 8 }),
-      ]).start()
-    const id = setInterval(run, 3000)
-    return () => clearInterval(id)
-  }, [pulse])
-
+function GlassStat({ emoji, value, label }: { emoji: string; value: string | number; label: string }) {
   return (
-    <View style={sh.root}>
-      <View style={sh.left}>
-        <Text style={sh.greeting}>{greeting},</Text>
-        <Text style={sh.name}>{userName}</Text>
-        <Text style={sh.message}>{message}</Text>
-      </View>
-      <View style={sh.right}>
-        <Animated.View style={{ transform: [{ scale: pulse }] }}>
-          <Badge type="streak" value={streakDays} size="sm" />
-        </Animated.View>
-        <Badge type="xp" value={totalXp.toLocaleString('tr')} size="sm" />
-      </View>
+    <View style={{
+      flex: 1,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderRadius: 14,
+      padding: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.25)',
+    }}>
+      <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff', marginTop: 2 }}>{value}</Text>
+      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{label}</Text>
     </View>
   )
 }
-const sh = StyleSheet.create({
-  root: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  left:    { flex: 1 },
-  greeting:{ ...(typography.caption as object), color: colors.textSecondary },
-  name:    { ...(typography.h3 as object), color: colors.textPrimary, marginTop: 2 },
-  message: { ...(typography.caption as object), color: colors.primary, marginTop: 4, fontWeight: '600' },
-  right:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-})
 
-// ─── StreakWarningBanner ─────────────────────────────────────
-function StreakWarningBanner() {
-  return (
-    <View style={sw.root}>
-      <Text style={sw.txt}>
-        🔥 Serini korumak için bugün 1 antrenman yeterli!
-      </Text>
-    </View>
-  )
-}
-const sw = StyleSheet.create({
-  root: {
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1.5, borderColor: colors.primary,
-    borderRadius: 14,
-    marginHorizontal: spacing.md, marginTop: spacing.sm,
-    padding: spacing.md,
-  },
-  txt: { ...(typography.label as object), color: colors.primaryDarker, fontWeight: '600' },
-})
+// ─── Ana Ekran ────────────────────────────────────────────────────
 
-// ─── DailyMissionCard ─────────────────────────────────────────
-interface DailyMissionCardProps {
-  examTarget:      string
-  progressPercent: number
-  remainingArp:    number
-  hasLastSession:  boolean
-  onContinue:      () => void
-}
-
-function DailyMissionCard({
-  examTarget, progressPercent, remainingArp, hasLastSession, onContinue,
-}: DailyMissionCardProps) {
-  const scale = useRef(new Animated.Value(1)).current
-
-  const onPressIn  = () =>
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
-  const onPressOut = () =>
-    Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 50, bounciness: 4 }).start()
-
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    onContinue()
-  }
-
-  const ctaText = hasLastSession ? 'Kaldığın Yerden Devam Et ▶' : 'Hızlı Başla (3 dk) ⚡'
-
-  return (
-    <View style={sc.root}>
-      <Text style={sc.title}>Bugünkü Görev 🎯</Text>
-      <Text style={sc.sub}>Hedef: 200 ARP · {examTarget} hazırlığı</Text>
-
-      <ProgressBar
-        progress={Math.min(progressPercent / 100, 1)}
-        color={colors.primary}
-        trackColor={colors.border}
-        height={10}
-        showPercent
-        style={sc.bar}
-      />
-
-      <Text style={sc.remaining}>
-        {remainingArp > 0 ? `Hedefe ${remainingArp} ARP kaldı` : 'Hedefe ulaştın! 🎉'}
-      </Text>
-
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <TouchableOpacity
-          style={sc.btn}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          onPress={handlePress}
-          activeOpacity={1}
-        >
-          <Text style={sc.btnTxt}>{ctaText}</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </View>
-  )
-}
-const sc = StyleSheet.create({
-  root: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    padding: spacing.lg,
-    ...shadows.md,
-  },
-  title:    { ...(typography.h2 as object), color: colors.textPrimary, marginBottom: 6 },
-  sub:      { ...(typography.label as object), color: colors.textSecondary, marginBottom: spacing.md },
-  bar:      { marginBottom: 10 },
-  remaining:{ ...(typography.caption as object), color: colors.textSecondary, marginBottom: spacing.lg },
-  btn: {
-    backgroundColor: colors.primary,
-    borderRadius: 12, paddingVertical: 16,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  btnTxt: { fontSize: 17, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
-})
-
-// ─── MomentumStats (micro animasyon) ─────────────────────────
-interface MomentumStatsProps {
-  arpDisplay: string
-  xpValue:    number
-  badgePct:   number
-}
-
-function MomentumStats({ arpDisplay, xpValue, badgePct }: MomentumStatsProps) {
-  const xpAnim = useRef(new Animated.Value(1)).current
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.spring(xpAnim, { toValue: 1.08, useNativeDriver: true, speed: 40, bounciness: 6 }),
-      Animated.spring(xpAnim, { toValue: 1,    useNativeDriver: true, speed: 40, bounciness: 6 }),
-    ]).start()
-  }, [xpValue])
-
-  const xpDisplay = useCountUp(xpValue)
-
-  const items: ReadonlyArray<{ emoji: string; value: string; label: string; scale?: Animated.Value }> = [
-    { emoji: '🏆', value: arpDisplay,              label: 'Haftalık\nİlerleme' },
-    { emoji: '⚡', value: xpDisplay.toLocaleString('tr'), label: 'Kazanılan\nXP', scale: xpAnim },
-    { emoji: '⭐', value: `%${badgePct}`,           label: 'Rozet\nİlerlemesi' },
-  ]
-
-  return (
-    <View style={sm.row}>
-      {items.map((it, i) => (
-        <Animated.View
-          key={i}
-          style={[sm.card, it.scale ? { transform: [{ scale: it.scale }] } : undefined]}
-        >
-          <Text style={sm.emoji}>{it.emoji}</Text>
-          <Text style={sm.val}>{it.value}</Text>
-          <Text style={sm.lbl}>{it.label}</Text>
-        </Animated.View>
-      ))}
-    </View>
-  )
-}
-const sm = StyleSheet.create({
-  row:  { flexDirection: 'row', marginHorizontal: spacing.md, gap: 10, marginTop: spacing.md },
-  card: { flex: 1, backgroundColor: '#F4F4F4', borderRadius: 12, padding: 12, alignItems: 'center' },
-  emoji:{ fontSize: 22, marginBottom: 4 },
-  val:  { ...(typography.h3 as object), color: colors.textPrimary, marginBottom: 2 },
-  lbl:  { ...(typography.caption as object), color: colors.textSecondary, textAlign: 'center', lineHeight: 16 },
-})
-
-// ─── StreakMotivation ─────────────────────────────────────────
-function StreakMotivation({ streakDays }: { streakDays: number }) {
-  if (streakDays < 3) return null
-  return (
-    <View style={ss.root}>
-      <Text style={ss.txt}>🔥 {streakDays} günlük seri! Bugün de devam et.</Text>
-    </View>
-  )
-}
-const ss = StyleSheet.create({
-  root: {
-    backgroundColor: colors.primaryLight, borderRadius: 16,
-    marginHorizontal: spacing.md, marginTop: spacing.md, padding: spacing.md,
-  },
-  txt: { ...(typography.label as object), color: colors.primaryDarker, fontWeight: '600' },
-})
-
-// ─── GameHomeScreen ───────────────────────────────────────────
 export default function GameHomeScreen() {
-  const router  = useRouter()
+  const t = useAppTheme()
+  const s = useMemo(() => ms(t), [t])
+  const router = useRouter()
+  const { isDark, toggleTheme } = useThemeToggle()
   const { student } = useAuthStore()
-  const fadeAnim = useRef(new Animated.Value(0)).current
+  const { earnedBadges } = useGamificationStore()
   const [badgeToast, setBadgeToast] = useState<string | null>(null)
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start()
-  }, [fadeAnim])
-
-  // EventBus: badge unlock toast
-  useEffect(() => {
-    const handler = ({ badgeId }: { badgeId: string }) => {
-      setBadgeToast(badgeId)
-    }
-    EventBus.on('BADGE_UNLOCKED', handler)
-    return () => EventBus.off('BADGE_UNLOCKED', handler)
-  }, [])
 
   const name       = student?.fullName?.split(' ')[0] ?? 'Öğrenci'
   const currentArp = student?.currentArp  ?? 0
@@ -338,21 +120,26 @@ export default function GameHomeScreen() {
   const hour     = new Date().getHours()
   const greeting = hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar'
 
-  // Random motivasyon mesajı (mount'ta sabit)
-  const message = useMemo(
-    () => MOTIVATION_MESSAGES[Math.floor(Math.random() * MOTIVATION_MESSAGES.length)],
-    []
-  )
+  const examProg   = calculateExamProgress(currentArp, examTarget.toLowerCase())
+  const arpDisplay = useCountUp(currentArp, 1200)
+  const badgeCount = earnedBadges.length
 
-  // Streak korku motoru: saat 20:00+ ve bugün aktivite yok
-  const showStreakWarning = streakDays > 0 && hour >= 20
+  // EventBus badge toast
+  useEffect(() => {
+    const handler = ({ badgeId }: { badgeId: string }) => setBadgeToast(badgeId)
+    EventBus.on('BADGE_UNLOCKED', handler)
+    return () => EventBus.off('BADGE_UNLOCKED', handler)
+  }, [])
 
-  const examProg = calculateExamProgress(currentArp, examTarget.toLowerCase())
-  const badgePct = Math.min(99, level * 15 + 10)
+  const handleStart = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    router.push('/exercise/speed_control' as any)
+  }
 
-  const handleContinue = useCallback(() => {
-    router.push(DEFAULT_ROUTE as any)
-  }, [router])
+  const handleContinue = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    router.push('/(tabs)/sessions' as any)
+  }
 
   return (
     <SafeAreaView style={s.root}>
@@ -360,42 +147,260 @@ export default function GameHomeScreen() {
         <BadgeToast badgeId={badgeToast} onHide={() => setBadgeToast(null)} />
       )}
 
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-          <HomeHeader
-            greeting={greeting}
-            userName={name}
-            streakDays={streakDays}
-            totalXp={totalXp}
-            message={message}
-          />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-          {showStreakWarning && <StreakWarningBanner />}
+        {/* ═══════════════════════════════════════════════════════
+            BÖLÜM 1 — Hero Header
+        ═══════════════════════════════════════════════════════ */}
+        <LinearGradient
+          colors={t.gradients.hero as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.hero}
+        >
+          {/* Üst satır: selam + tema toggle */}
+          <View style={s.heroTop}>
+            <View>
+              <Text style={s.heroGreeting}>{greeting} 👋</Text>
+              <Text style={s.heroName}>{name}</Text>
+            </View>
+            <TouchableOpacity onPress={toggleTheme} style={s.themeBtn}>
+              <Text style={{ fontSize: 22 }}>{isDark ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+          </View>
 
-          <DailyMissionCard
-            examTarget={examTarget}
-            progressPercent={examProg.progressPercent}
-            remainingArp={examProg.remainingArp}
-            hasLastSession={totalXp > 0}
-            onContinue={handleContinue}
-          />
+          {/* ARP büyük sayı — count-up */}
+          <View style={s.arpBlock}>
+            <Text style={s.arpLabel}>ARP SKORUM</Text>
+            <Text style={s.arpValue}>{arpDisplay}</Text>
+            {examProg.progressPercent > 0 && (
+              <Text style={s.arpTrend}>
+                {'↑ '}
+                {examTarget} hedefine %{Math.round(examProg.progressPercent)} ulaştın
+              </Text>
+            )}
+          </View>
 
-          <StreakMotivation streakDays={streakDays} />
+          {/* 3 mini glassmorphism stat */}
+          <View style={s.glassRow}>
+            <GlassStat emoji="🔥" value={streakDays} label="gün seri" />
+            <GlassStat emoji="⚡" value={totalXp.toLocaleString('tr')} label="XP" />
+            <GlassStat emoji="🏆" value={badgeCount} label="rozet" />
+          </View>
 
-          <MomentumStats
-            arpDisplay={`+${currentArp}`}
-            xpValue={totalXp}
-            badgePct={badgePct}
-          />
+          {/* HIZLI BAŞLA */}
+          <TouchableOpacity style={s.startBtn} onPress={handleStart} activeOpacity={0.9}>
+            <Text style={s.startIcon}>▶</Text>
+            <Text style={s.startTxt}>HIZLI BAŞLA</Text>
+          </TouchableOpacity>
+        </LinearGradient>
 
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </Animated.View>
+        {/* ═══════════════════════════════════════════════════════
+            BÖLÜM 2 — Günlük Hedef
+        ═══════════════════════════════════════════════════════ */}
+        <LinearGradient
+          colors={t.gradients.cardPrimary as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.goalCard}
+        >
+          <View style={s.goalTop}>
+            <Text style={s.goalTitle}>🎯 Bugünkü Hedef</Text>
+            <View style={s.goalBadge}>
+              <Text style={s.goalBadgeTxt}>{examTarget}</Text>
+            </View>
+          </View>
+          <View style={s.goalBar}>
+            <View style={[s.goalBarFill, { width: `${Math.min(100, examProg.progressPercent)}%` as any }]} />
+          </View>
+          <View style={s.goalBottom}>
+            <Text style={s.goalPct}>%{Math.round(examProg.progressPercent)} tamamlandı</Text>
+            {examProg.progressPercent >= 100 ? (
+              <Text style={s.goalDone}>✅ Bugünkü hedef tamamlandı!</Text>
+            ) : (
+              <TouchableOpacity style={s.goalBtn} onPress={handleContinue}>
+                <Text style={s.goalBtnTxt}>Devam Et →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </LinearGradient>
+
+        {/* ═══════════════════════════════════════════════════════
+            BÖLÜM 3 — Bu Hafta İstatistikleri
+        ═══════════════════════════════════════════════════════ */}
+        <Text style={s.sectionTitle}>Bu Hafta</Text>
+        <View style={s.weekRow}>
+          {[
+            { emoji: '📊', value: String(Math.max(0, Math.floor(totalXp / 120))), unit: 'seans' },
+            { emoji: '🕐', value: String(Math.max(0, Math.floor(totalXp / 40))),  unit: 'dakika' },
+            { emoji: '⚡', value: totalXp.toLocaleString('tr'),                   unit: 'XP' },
+          ].map((item, i) => (
+            <View key={i} style={s.weekCard}>
+              <Text style={{ fontSize: 24, marginBottom: 4 }}>{item.emoji}</Text>
+              <Text style={s.weekValue}>{item.value}</Text>
+              <Text style={s.weekUnit}>{item.unit}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ═══════════════════════════════════════════════════════
+            BÖLÜM 4 — Son Seans / Motivasyon
+        ═══════════════════════════════════════════════════════ */}
+        {totalXp > 0 ? (
+          <LinearGradient
+            colors={t.gradients.cardSuccess as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.lastCard}
+          >
+            <Text style={s.lastTitle}>Son Seans</Text>
+            <Text style={s.lastMeta}>
+              Hız Kontrolü  ·  {currentArp} ARP
+            </Text>
+            <TouchableOpacity
+              style={s.lastBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                router.push('/exercise/speed_control' as any)
+              }}
+            >
+              <Text style={s.lastBtnTxt}>Tekrarla →</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        ) : (
+          <LinearGradient
+            colors={t.gradients.cardSuccess as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.lastCard}
+          >
+            <Text style={s.lastTitle}>🚀 İlk Antrenmanına Başla!</Text>
+            <Text style={s.lastMeta}>Sprinta ile okuma hızını ölç ve geliştir.</Text>
+            <TouchableOpacity style={s.lastBtn} onPress={handleStart}>
+              <Text style={s.lastBtnTxt}>Şimdi Başla →</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════
+            BÖLÜM 5 — Rozetler
+        ═══════════════════════════════════════════════════════ */}
+        {earnedBadges.length > 0 && (
+          <>
+            <View style={s.badgeHeader}>
+              <Text style={s.sectionTitle}>Son Kazanılan Rozetler</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/progress' as any)}>
+                <Text style={[s.sectionLink, { color: t.colors.primary }]}>Tümü →</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              horizontal
+              data={earnedBadges.slice(0, 8)}
+              keyExtractor={(b) => b.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.badgeList}
+              renderItem={({ item }) => (
+                <View style={s.badgeItem}>
+                  <View style={[s.badgeCircle, { backgroundColor: item.color + '20' }]}>
+                    <Text style={{ fontSize: 24 }}>{item.iconName}</Text>
+                  </View>
+                  <Text style={s.badgeName} numberOfLines={1}>{item.name}</Text>
+                </View>
+              )}
+            />
+          </>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
-const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingBottom: 32 },
-})
+// ─── Stiller ─────────────────────────────────────────────────────
+
+function ms(t: AppTheme) {
+  return StyleSheet.create({
+    root:   { flex: 1, backgroundColor: t.colors.background },
+    scroll: { paddingBottom: 24 },
+
+    // Hero
+    hero: {
+      paddingTop: 20, paddingBottom: 24,
+      paddingHorizontal: 20,
+      gap: 16,
+    },
+    heroTop: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    },
+    heroGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+    heroName:     { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 2 },
+    themeBtn:     { padding: 6 },
+
+    arpBlock:  { alignItems: 'center', paddingVertical: 8 },
+    arpLabel:  { fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 2 },
+    arpValue:  { fontSize: 72, fontWeight: '900', color: '#fff', lineHeight: 80, marginTop: 4 },
+    arpTrend:  { fontSize: 13, color: 'rgba(255,255,255,0.80)', marginTop: 4, fontWeight: '600' },
+
+    glassRow:  { flexDirection: 'row', gap: 10 },
+
+    startBtn:  {
+      backgroundColor: '#fff',
+      borderRadius: 16, height: 56,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 10,
+      ...t.shadows.lg,
+    },
+    startIcon: { fontSize: 20 },
+    startTxt:  { fontSize: 17, fontWeight: '800', color: '#1a1a2e', letterSpacing: 1.5 },
+
+    // Günlük hedef
+    goalCard: {
+      marginHorizontal: 16, marginTop: 16,
+      borderRadius: 20, padding: 18,
+      ...t.shadows.md,
+    },
+    goalTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    goalTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    goalBadge: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+    goalBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#fff' },
+    goalBar:   { height: 6, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
+    goalBarFill: { height: 6, backgroundColor: '#fff', borderRadius: 3 },
+    goalBottom:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    goalPct:   { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
+    goalDone:  { fontSize: 13, color: '#fff', fontWeight: '700' },
+    goalBtn:   { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
+    goalBtnTxt:{ fontSize: 13, fontWeight: '700', color: '#fff' },
+
+    // Haftalık
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.colors.text, marginHorizontal: 16, marginTop: 20, marginBottom: 10 },
+    sectionLink:  { fontSize: 14, fontWeight: '600', marginTop: 20, marginRight: 16 },
+    weekRow:   { flexDirection: 'row', gap: 10, marginHorizontal: 16 },
+    weekCard:  {
+      flex: 1, backgroundColor: t.colors.surface,
+      borderRadius: 16, padding: 14, alignItems: 'center',
+      borderWidth: 1, borderColor: t.colors.border,
+      ...t.shadows.sm,
+    },
+    weekValue: { fontSize: 22, fontWeight: '900', color: t.colors.text, marginBottom: 2 },
+    weekUnit:  { fontSize: 11, color: t.colors.textHint },
+
+    // Son seans
+    lastCard: {
+      marginHorizontal: 16, marginTop: 16,
+      borderRadius: 20, padding: 18,
+      ...t.shadows.md,
+    },
+    lastTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 4 },
+    lastMeta:  { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 12 },
+    lastBtn:   { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9, alignSelf: 'flex-end' },
+    lastBtnTxt:{ fontSize: 14, fontWeight: '700', color: '#fff' },
+
+    // Rozetler
+    badgeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    badgeList:   { paddingHorizontal: 16, paddingBottom: 4, gap: 12 },
+    badgeItem:   { alignItems: 'center', width: 68 },
+    badgeCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+    badgeName:   { fontSize: 10, color: t.colors.textHint, textAlign: 'center' },
+  })
+}

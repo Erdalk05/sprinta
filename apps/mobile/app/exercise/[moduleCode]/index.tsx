@@ -1,14 +1,20 @@
-import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native'
+import React, { useMemo } from 'react'
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  SafeAreaView, ScrollView, ActivityIndicator,
+} from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { colors, moduleColors } from '../../../src/constants/colors'
+import { moduleColors } from '../../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
 import { useArticles } from '../../../src/hooks/useArticles'
 import { useAuthStore } from '../../../src/stores/authStore'
+import { useAppTheme } from '../../../src/theme/useAppTheme'
+import type { AppTheme } from '../../../src/theme'
 
-// Free modüller — konu metinleri de ücretsiz
+// Free modüller
 const FREE_MODULES = new Set([
   'speed_control', 'deep_comprehension',
   'cografya', 'edebiyat', 'sosyal', 'fen', 'saglik',
@@ -21,24 +27,41 @@ const SUBJECT_MODULE_CODES = new Set([
   'cografya', 'edebiyat', 'sosyal', 'fen', 'saglik',
 ])
 
-const DIFFICULTY_STARS = (d: number) => '★'.repeat(Math.round(d / 2)) + '☆'.repeat(5 - Math.round(d / 2))
+const DIFFICULTY_STARS = (d: number) => {
+  const stars = Math.min(5, Math.max(0, Math.round((d ?? 0) / 2)))
+  return '★'.repeat(stars) + '☆'.repeat(5 - stars)
+}
 
 export default function ExerciseIntroScreen() {
   const { moduleCode } = useLocalSearchParams<{ moduleCode: string }>()
   const router = useRouter()
   const { student } = useAuthStore()
+  const t = useAppTheme()
+  const s = useMemo(() => ms(t), [t])
 
-  const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
-  const exercise = SAMPLE_EXERCISES[moduleCode]
-  const accentColor = moduleColors[moduleCode] ?? colors.primary
-  const isPremiumRequired = !FREE_MODULES.has(moduleCode)
-  const isPremium = student?.isPremium ?? false
-  const isLocked = isPremiumRequired && !isPremium
+  const config      = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
+  const exercise    = SAMPLE_EXERCISES[moduleCode]
+  const accentColor = moduleColors[moduleCode] ?? t.colors.primary
+  // TEST MODU: tüm modüller açık
+  const isLocked    = false
 
   const currentArp = student?.currentArp ?? 0
-  const difficulty = currentArp > 200 ? 7 : currentArp > 150 ? 5 : 3
+  const difficulty  = currentArp > 200 ? 7 : currentArp > 150 ? 5 : 3
 
-  // Konu makaleleri — Supabase'den çek (offline cache ile)
+  // Tema'dan modül gradienti al
+  const moduleGradient = useMemo((): [string, string] => {
+    const map: Record<string, [string, string]> = {
+      speed_control:      t.gradients.speedControl as [string, string],
+      deep_comprehension: t.gradients.deepComp as [string, string],
+      attention_power:    t.gradients.attention as [string, string],
+      mental_reset:       t.gradients.mentalReset as [string, string],
+      eye_training:       t.gradients.eyeTraining as [string, string],
+      vocabulary:         t.gradients.vocabulary as [string, string],
+    }
+    return map[moduleCode] ?? [accentColor + 'CC', accentColor + '88']
+  }, [moduleCode, t, accentColor])
+
+  // Konu makaleleri
   const isSubjectModule = SUBJECT_MODULE_CODES.has(moduleCode)
   const { articles, loading: articlesLoading } = useArticles(
     isSubjectModule ? moduleCode : '',
@@ -49,12 +72,7 @@ export default function ExerciseIntroScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     router.push({
       pathname: '/exercise/[moduleCode]/session',
-      params: {
-        moduleCode,
-        difficulty: String(difficulty),
-        exerciseId: articleId,
-        articleId,
-      },
+      params: { moduleCode, difficulty: String(difficulty), exerciseId: articleId, articleId },
     })
   }
 
@@ -67,183 +85,221 @@ export default function ExerciseIntroScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     router.push({
       pathname: '/exercise/[moduleCode]/session',
-      params: {
-        moduleCode,
-        difficulty: String(difficulty),
-        exerciseId: exercise?.id ?? 'sample',
-      },
+      params: { moduleCode, difficulty: String(difficulty), exerciseId: exercise?.id ?? 'sample' },
     })
   }
 
-  // ─── Konu modülü → makale listesi göster ──────────────────
+  // ─── Konu modülü → makale listesi ────────────────────────────
   if (SUBJECT_MODULE_CODES.has(moduleCode)) {
     return (
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={[styles.subjectHeader, { backgroundColor: accentColor + '15' }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Geri</Text>
+      <SafeAreaView style={s.root}>
+        <LinearGradient
+          colors={moduleGradient}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={s.subjectHeader}
+        >
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Text style={s.backTxtWhite}>← Geri</Text>
           </TouchableOpacity>
-          <View style={styles.subjectTitleRow}>
-            <View style={[styles.iconSmall, { backgroundColor: accentColor + '25' }]}>
-              <Text style={styles.iconSmallTxt}>{config.icon}</Text>
+          <View style={s.subjectTitleRow}>
+            <View style={s.iconSmall}>
+              <Text style={s.iconSmallTxt}>{config.icon}</Text>
             </View>
             <View>
-              <Text style={[styles.subjectTitle, { color: accentColor }]}>{config.label}</Text>
-              <Text style={styles.subjectDesc}>{config.description}</Text>
+              <Text style={s.subjectTitle}>{config.label}</Text>
+              <Text style={s.subjectDesc}>{config.description}</Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
         {articlesLoading ? (
-          <View style={styles.noArticles}>
+          <View style={s.center}>
             <ActivityIndicator size="large" color={accentColor} />
-            <Text style={styles.noArticlesTxt}>Makaleler yükleniyor…</Text>
+            <Text style={s.centerTxt}>Makaleler yükleniyor…</Text>
           </View>
         ) : hasArticles ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.articleList}>
-            <Text style={styles.listHeader}>📚 {articles.length} Makale</Text>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.articleList}>
+            <Text style={s.listHeader}>📚 {articles.length} Makale</Text>
             {articles.map((art, idx) => (
               <TouchableOpacity
                 key={art.id}
-                style={styles.articleRow}
+                style={s.articleRow}
                 onPress={() => startWithArticle(art.id)}
                 activeOpacity={0.75}
               >
-                <View style={[styles.articleNum, { backgroundColor: accentColor + '20' }]}>
-                  <Text style={[styles.articleNumTxt, { color: accentColor }]}>{idx + 1}</Text>
+                <View style={[s.articleNum, { backgroundColor: accentColor + '20' }]}>
+                  <Text style={[s.articleNumTxt, { color: accentColor }]}>{idx + 1}</Text>
                 </View>
-                <View style={styles.articleInfo}>
-                  <Text style={styles.articleTitle}>{art.title}</Text>
-                  <Text style={styles.articleMeta}>
+                <View style={s.articleInfo}>
+                  <Text style={s.articleTitle}>{art.title}</Text>
+                  <Text style={s.articleMeta}>
                     {art.word_count > 0 ? `${art.word_count} kelime  ·  ` : ''}{DIFFICULTY_STARS(art.difficulty_level * 2)}
                   </Text>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={s.chevron}>›</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         ) : (
-          // Makale bulunamadı → fallback sample
-          <View style={styles.noArticles}>
-            <Text style={styles.noArticlesTxt}>İçerik yakında eklenecek 🔄</Text>
-            {exercise ? (
+          <View style={s.center}>
+            <Text style={s.centerTxt}>İçerik yakında eklenecek 🔄</Text>
+            {exercise && (
               <TouchableOpacity
-                style={[styles.startButton, { backgroundColor: accentColor }]}
+                style={[s.startBtn, { backgroundColor: accentColor }]}
                 onPress={() => startWithArticle(exercise.id)}
               >
-                <Text style={styles.startText}>Örnek Makale ile Başla</Text>
+                <Text style={s.startTxt}>Örnek Makale ile Başla</Text>
               </TouchableOpacity>
-            ) : null}
+            )}
           </View>
         )}
       </SafeAreaView>
     )
   }
 
-  // ─── Normal egzersiz intro ─────────────────────────────────
+  // ─── Normal egzersiz intro ────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backText}>← Geri</Text>
-      </TouchableOpacity>
-
-      <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: accentColor + '20' }]}>
-          <Text style={styles.icon}>{config.icon}</Text>
-        </View>
-        <Text style={styles.title}>{config.label}</Text>
-        <Text style={styles.description}>{config.description}</Text>
-      </View>
-
-      <View style={styles.infoGrid}>
-        <View style={styles.infoCard}>
-          <Text style={styles.infoValue}>{config.duration}</Text>
-          <Text style={styles.infoLabel}>Süre</Text>
-        </View>
-        <View style={styles.infoCard}>
-          <Text style={styles.infoValue}>{difficulty}/10</Text>
-          <Text style={styles.infoLabel}>Zorluk</Text>
-        </View>
-        {exercise?.wordCount ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.infoValue}>{exercise.wordCount}</Text>
-            <Text style={styles.infoLabel}>Kelime</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={[styles.tipBox, { borderLeftColor: accentColor }]}>
-        <Text style={styles.tipLabel}>💡 İpucu</Text>
-        <Text style={styles.tipText}>{config.tip}</Text>
-      </View>
-
-      {isLocked && (
-        <View style={[styles.premiumBanner, { borderColor: accentColor }]}>
-          <Text style={styles.premiumText}>🔒 Bu modül Premium üyelik gerektirir</Text>
-        </View>
-      )}
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.startButton, { backgroundColor: isLocked ? '#9CA3AF' : accentColor }]}
-          onPress={handleStart}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.startText}>{isLocked ? '🔒 Premium\'a Geç' : 'Egzersizi Başlat'}</Text>
+    <SafeAreaView style={s.root}>
+      {/* ── Gradient Hero Header ── */}
+      <LinearGradient
+        colors={moduleGradient}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={s.heroHeader}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backTxtWhite}>← Geri</Text>
         </TouchableOpacity>
-      </View>
+        <View style={s.heroContent}>
+          <View style={s.heroIconBox}>
+            <Text style={s.heroIcon}>{config.icon}</Text>
+          </View>
+          <Text style={s.heroTitle}>{config.label}</Text>
+          <Text style={s.heroDesc}>{config.description}</Text>
+        </View>
+      </LinearGradient>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* ── Bilgi Kartları ── */}
+        <View style={s.infoGrid}>
+          <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+            <Text style={[s.infoValue, { color: accentColor }]}>{config.duration}</Text>
+            <Text style={s.infoLabel}>Süre</Text>
+          </View>
+          <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+            <Text style={[s.infoValue, { color: accentColor }]}>{difficulty}/10</Text>
+            <Text style={s.infoLabel}>Zorluk</Text>
+          </View>
+          {exercise?.wordCount ? (
+            <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+              <Text style={[s.infoValue, { color: accentColor }]}>{exercise.wordCount}</Text>
+              <Text style={s.infoLabel}>Kelime</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* ── İpucu ── */}
+        <View style={[s.tipBox, { borderLeftColor: accentColor }]}>
+          <Text style={s.tipLabel}>💡 İpucu</Text>
+          <Text style={s.tipText}>{config.tip}</Text>
+        </View>
+
+        {/* ── Premium banner ── */}
+        {isLocked && (
+          <View style={[s.premiumBanner, { borderColor: accentColor }]}>
+            <Text style={s.premiumText}>🔒 Bu modül Premium üyelik gerektirir</Text>
+          </View>
+        )}
+
+        {/* ── Başla Butonu ── */}
+        {isLocked ? (
+          <TouchableOpacity style={[s.startBtn, { backgroundColor: t.colors.textHint }]} onPress={handleStart}>
+            <Text style={s.startTxt}>🔒 Premium'a Geç</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handleStart} activeOpacity={0.85}>
+            <LinearGradient
+              colors={moduleGradient}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.startBtn}
+            >
+              <Text style={s.startTxt}>⚡ Egzersizi Başlat</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+// ─── Stiller ─────────────────────────────────────────────────────
+function ms(t: AppTheme) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: t.colors.background },
 
-  // Subject header
-  subjectHeader: { paddingBottom: 16 },
-  subjectTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 4 },
-  iconSmall: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  iconSmallTxt: { fontSize: 22 },
-  subjectTitle: { fontSize: 20, fontWeight: '800' },
-  subjectDesc: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    // Konu modülü header
+    subjectHeader: { paddingBottom: 20 },
+    backBtn:       { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+    backTxtWhite:  { fontSize: 15, color: 'rgba(255,255,255,0.90)' },
+    subjectTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 4 },
+    iconSmall:     { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+    iconSmallTxt:  { fontSize: 24 },
+    subjectTitle:  { fontSize: 20, fontWeight: '800', color: '#fff' },
+    subjectDesc:   { fontSize: 13, color: 'rgba(255,255,255,0.82)', marginTop: 2 },
 
-  // Article list
-  articleList: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8 },
-  listHeader: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 12, marginLeft: 4 },
-  articleRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.surface, borderRadius: 14, padding: 14,
-    marginBottom: 10, borderWidth: 1, borderColor: colors.border,
-  },
-  articleNum: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  articleNumTxt: { fontSize: 14, fontWeight: '800' },
-  articleInfo: { flex: 1 },
-  articleTitle: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 4 },
-  articleMeta: { fontSize: 12, color: colors.textSecondary },
-  chevron: { fontSize: 20, color: colors.textDisabled },
+    // Makale listesi
+    articleList: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8 },
+    listHeader:  { fontSize: 13, fontWeight: '700', color: t.colors.textHint, marginBottom: 12, marginLeft: 4 },
+    articleRow:  {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: t.colors.surface, borderRadius: 14, padding: 14,
+      marginBottom: 10, borderWidth: 1, borderColor: t.colors.border,
+    },
+    articleNum:    { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    articleNumTxt: { fontSize: 14, fontWeight: '800' },
+    articleInfo:   { flex: 1 },
+    articleTitle:  { fontSize: 15, fontWeight: '600', color: t.colors.text, marginBottom: 4 },
+    articleMeta:   { fontSize: 12, color: t.colors.textSub },
+    chevron:       { fontSize: 20, color: t.colors.textHint },
 
-  noArticles: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 24 },
-  noArticlesTxt: { fontSize: 16, color: colors.textSecondary, textAlign: 'center' },
+    center:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 24 },
+    centerTxt: { fontSize: 16, color: t.colors.textSub, textAlign: 'center' },
 
-  // Normal intro
-  backButton: { paddingHorizontal: 20, paddingVertical: 16 },
-  backText: { fontSize: 15, color: colors.textSecondary },
-  header: { alignItems: 'center', paddingHorizontal: 32, paddingTop: 16, paddingBottom: 32 },
-  iconContainer: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  icon: { fontSize: 44 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text, marginBottom: 10, textAlign: 'center' },
-  description: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
-  infoGrid: { flexDirection: 'row', gap: 12, marginHorizontal: 24, marginBottom: 24, justifyContent: 'center' },
-  infoCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 16, alignItems: 'center' },
-  infoValue: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  infoLabel: { fontSize: 12, color: colors.textTertiary },
-  tipBox: { marginHorizontal: 24, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderLeftWidth: 4, marginBottom: 32 },
-  tipLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 6 },
-  tipText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  footer: { paddingHorizontal: 24, marginTop: 'auto', paddingBottom: 24 },
-  startButton: { paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
-  startText: { fontSize: 17, fontWeight: '700', color: colors.white },
-  premiumBanner: { marginHorizontal: 24, marginBottom: 16, borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: '#FEF3C7' },
-  premiumText: { fontSize: 14, fontWeight: '600', color: '#92400E' },
-})
+    // Gradient hero header
+    heroHeader: { paddingBottom: 28 },
+    heroContent:{ alignItems: 'center', paddingHorizontal: 24, paddingTop: 8 },
+    heroIconBox:{ width: 88, height: 88, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    heroIcon:   { fontSize: 44 },
+    heroTitle:  { fontSize: 26, fontWeight: '900', color: '#fff', marginBottom: 8, textAlign: 'center' },
+    heroDesc:   { fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 22 },
+
+    scroll: { padding: 20, paddingBottom: 40 },
+
+    // Bilgi kartları
+    infoGrid: { flexDirection: 'row', gap: 12, marginBottom: 20, justifyContent: 'center' },
+    infoCard: {
+      flex: 1, backgroundColor: t.colors.surface, borderRadius: 14, padding: 16,
+      alignItems: 'center', borderTopWidth: 3, borderWidth: 1, borderColor: t.colors.border,
+    },
+    infoValue: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
+    infoLabel: { fontSize: 12, color: t.colors.textHint },
+
+    // İpucu
+    tipBox:  {
+      backgroundColor: t.colors.surface, borderRadius: 14, padding: 16,
+      borderLeftWidth: 4, marginBottom: 20,
+      borderWidth: 1, borderColor: t.colors.border,
+    },
+    tipLabel: { fontSize: 13, fontWeight: '700', color: t.colors.textSub, marginBottom: 6 },
+    tipText:  { fontSize: 14, color: t.colors.textSub, lineHeight: 20 },
+
+    // Premium
+    premiumBanner: { borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: '#FEF3C720', marginBottom: 20 },
+    premiumText:   { fontSize: 14, fontWeight: '600', color: '#92400E' },
+
+    // Başla butonu
+    startBtn: { borderRadius: 18, paddingVertical: 18, alignItems: 'center', marginBottom: 8 },
+    startTxt: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  })
+}

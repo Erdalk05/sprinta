@@ -1,17 +1,27 @@
 import { Tabs, useRouter } from 'expo-router'
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
-import { theme } from '../../src/theme'
+import { useAppTheme } from '../../src/theme/useAppTheme'
+import type { AppTheme } from '../../src/theme'
+import * as Haptics from 'expo-haptics'
 
-// ─── Custom CGD-style Tab Bar ────────────────────────────────────
+// ─── Custom Sprinta Tab Bar ───────────────────────────────────────
 function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
+  const t      = useAppTheme()
   const router = useRouter()
+  const s      = createStyles(t)
 
-  const isHome     = state.routes[state.index]?.name === 'index'
-  const isSession  = state.routes[state.index]?.name === 'sessions'
-  const isProgress = state.routes[state.index]?.name === 'progress'
-  const isSocial   = state.routes[state.index]?.name === 'social'
-  const isMenu     = state.routes[state.index]?.name === 'menu'
+  const currentName = state.routes[state.index]?.name ?? ''
+  const isHome      = currentName === 'index'
+  const isSession   = currentName === 'sessions'
+  const isProgress  = currentName === 'progress'
+  const isMenu      = currentName === 'menu'
+
+  const handleFAB = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    router.push('/exercise/speed_control' as any)
+  }
 
   return (
     <View style={s.bar}>
@@ -25,7 +35,7 @@ function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
         <Text style={[s.tabLabel, isHome && s.tabLabelActive]}>Ana Sayfa</Text>
       </TouchableOpacity>
 
-      {/* Çalış — sessions sekmesi */}
+      {/* Çalış */}
       <TouchableOpacity
         style={s.tabBtn}
         onPress={() => navigation.navigate('sessions')}
@@ -35,18 +45,21 @@ function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
         <Text style={[s.tabLabel, isSession && s.tabLabelActive]}>Çalış</Text>
       </TouchableOpacity>
 
-      {/* Merkez — Sprinta butonu (yükseltilmiş) */}
-      <View style={s.centerWrap}>
-        <TouchableOpacity
-          style={s.centerBtn}
-          onPress={() => router.push('/exercise/speed_control')}
-          activeOpacity={0.85}
-        >
-          <Text style={s.centerIcon}>🎓</Text>
+      {/* FAB — Merkez yükseltilmiş başlat butonu */}
+      <View style={s.fabWrap}>
+        <TouchableOpacity onPress={handleFAB} activeOpacity={0.85}>
+          <LinearGradient
+            colors={t.gradients.hero as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.fabGrad}
+          >
+            <Text style={s.fabIcon}>⚡</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
-      {/* İlerleme — progress sekmesi */}
+      {/* İlerleme */}
       <TouchableOpacity
         style={s.tabBtn}
         onPress={() => navigation.navigate('progress')}
@@ -54,16 +67,6 @@ function SprintaTabBar({ state, navigation }: BottomTabBarProps) {
       >
         <Text style={[s.tabIcon, isProgress && s.tabIconActive]}>📊</Text>
         <Text style={[s.tabLabel, isProgress && s.tabLabelActive]}>İlerleme</Text>
-      </TouchableOpacity>
-
-      {/* Sosyal */}
-      <TouchableOpacity
-        style={s.tabBtn}
-        onPress={() => navigation.navigate('social')}
-        activeOpacity={0.7}
-      >
-        <Text style={[s.tabIcon, isSocial && s.tabIconActive]}>👥</Text>
-        <Text style={[s.tabLabel, isSocial && s.tabLabelActive]}>Sosyal</Text>
       </TouchableOpacity>
 
       {/* Menü */}
@@ -85,56 +88,66 @@ export default function TabsLayout() {
       tabBar={(props) => <SprintaTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      {/* Görünen sekmeler */}
-      <Tabs.Screen name="index"   options={{ title: 'Ana Sayfa' }} />
-      <Tabs.Screen name="menu"    options={{ title: 'Menü' }} />
-
-      {/* Gizli route'lar — menü üzerinden erişilir */}
-      <Tabs.Screen name="sessions"  options={{ title: 'Çalış' }} />
-      <Tabs.Screen name="progress"  options={{ title: 'İlerleme' }} />
-      <Tabs.Screen name="social"    options={{ title: 'Sosyal' }} />
-      <Tabs.Screen name="profile"   options={{ href: null }} />
+      <Tabs.Screen name="index"    options={{ title: 'Ana Sayfa' }} />
+      <Tabs.Screen name="sessions" options={{ title: 'Çalış' }} />
+      <Tabs.Screen name="progress" options={{ title: 'İlerleme' }} />
+      <Tabs.Screen name="menu"     options={{ title: 'Menü' }} />
+      {/* Gizli route'lar */}
+      <Tabs.Screen name="social"   options={{ href: null }} />
+      <Tabs.Screen name="profile"  options={{ href: null }} />
     </Tabs>
   )
 }
 
-const BAR_H = Platform.OS === 'ios' ? 80 : 68
+// ─── Stiller ─────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,   // beyaz — WhatsApp bottom bar
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    height: BAR_H,
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-    paddingHorizontal: 8,
-  },
-  tabBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 8,
-  },
-  tabIcon:       { fontSize: 22, marginBottom: 3, color: theme.colors.iconGray },
-  tabIconActive: { color: theme.colors.primary },
-  tabLabel:      { fontSize: 10, color: theme.colors.textHint, fontWeight: '500' },
-  tabLabelActive:{ color: theme.colors.primary, fontWeight: '700' },
+function createStyles(t: AppTheme) {
+  const BAR_H = Platform.OS === 'ios' ? 78 : 64
+  return StyleSheet.create({
+    bar: {
+      flexDirection:    'row',
+      backgroundColor:  t.colors.surface,
+      borderTopWidth:   1,
+      borderTopColor:   t.colors.divider,
+      height:           BAR_H,
+      alignItems:       'center',
+      paddingBottom:    Platform.OS === 'ios' ? 16 : 0,
+      paddingHorizontal: 4,
+      ...t.shadows.sm,
+    },
+    tabBtn: {
+      flex:           1,
+      alignItems:     'center',
+      justifyContent: 'center',
+      paddingTop:     8,
+    },
+    tabIcon:        { fontSize: 22, marginBottom: 3, opacity: 0.45 },
+    tabIconActive:  { opacity: 1 },
+    tabLabel:       { fontSize: 11, color: t.colors.textHint, fontWeight: '600' },
+    tabLabelActive: { color: t.colors.primary, fontWeight: '700' },
 
-  // Center
-  centerWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: -28,
-  },
-  centerBtn: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: theme.colors.panel,     // #075E54 koyu yeşil
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: theme.colors.surface,
-    ...theme.shadow.green,
-  },
-  centerIcon: { fontSize: 26 },
-})
+    // FAB
+    fabWrap: {
+      flex:           1,
+      alignItems:     'center',
+      justifyContent: 'flex-start',
+      marginTop:      -28,
+    },
+    fabGrad: {
+      width:          62,
+      height:         62,
+      borderRadius:   31,
+      alignItems:     'center',
+      justifyContent: 'center',
+      borderWidth:    3,
+      borderColor:    t.colors.surface,
+      // shadow via elevation
+      elevation:      10,
+      shadowColor:    '#000',
+      shadowOffset:   { width: 0, height: 4 },
+      shadowOpacity:  0.3,
+      shadowRadius:   8,
+    },
+    fabIcon: { fontSize: 26 },
+  })
+}

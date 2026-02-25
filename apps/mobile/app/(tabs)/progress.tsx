@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, SafeAreaView, ActivityIndicator, Dimensions,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { createClient } from '@supabase/supabase-js'
 import { type AppTheme } from '../../src/theme'
 import { useAppTheme } from '../../src/theme/useAppTheme'
@@ -71,6 +72,8 @@ export default function ProgressScreen() {
     if (!student) return
     setLoading(true)
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
+    // 4 saniye timeout — bağlantı yoksa boş göster
+    const timer = setTimeout(() => setLoading(false), 4000)
     Promise.all([
       supabase
         .from('daily_stats')
@@ -80,11 +83,13 @@ export default function ProgressScreen() {
         .order('date', { ascending: true }),
       badgeService.getStudentBadges(student.id),
     ]).then(([{ data }, { earned, locked }]) => {
+      clearTimeout(timer)
       setStats((data as DailyStat[]) ?? [])
       setEarned(earned)
       setLocked(locked)
       setLoading(false)
-    })
+    }).catch(() => { clearTimeout(timer); setLoading(false) })
+    return () => clearTimeout(timer)
   }, [student?.id, days])
 
   const chartData = (() => {
@@ -105,7 +110,12 @@ export default function ProgressScreen() {
 
   return (
     <SafeAreaView style={s.root}>
-      <View style={s.topBar}>
+      <LinearGradient
+        colors={t.gradients.istatistik as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.topBar}
+      >
         <Text style={s.topTitle}>İlerleme</Text>
         <View style={s.periodRow}>
           {(['7g', '30g', '90g'] as Period[]).map((p) => (
@@ -118,7 +128,7 @@ export default function ProgressScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
@@ -274,8 +284,6 @@ function ms(t: AppTheme) {
     topBar:  {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
       paddingHorizontal: 20, paddingVertical: 14,
-      borderBottomWidth: 1, borderBottomColor: t.colors.divider,
-      backgroundColor: t.colors.panel,
     },
     topTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
     periodRow:{ flexDirection: 'row', gap: 6 },
