@@ -49,6 +49,16 @@ export default function SessionsScreen() {
     router.push({ pathname: '/exercise/[moduleCode]', params: { moduleCode } })
   }
 
+  const handleChunkRSVP = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    router.push('/exercise/chunk-rsvp' as any)
+  }
+
+  const handleFlowReading = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    router.push('/exercise/flow-reading' as any)
+  }
+
   const activePhase = prog?.program.phases.find(
     (ph) => prog.currentDay >= ph.days[0] && prog.currentDay <= ph.days[1]
   ) ?? prog?.program.phases[0]
@@ -148,6 +158,51 @@ export default function SessionsScreen() {
               )
             })}
 
+            {/* ── HIZ TEKNİKLERİ ── */}
+            <Text style={[s.sectionTitle, { marginTop: 12 }]}>⚡ Hız Teknikleri</Text>
+            <TouchableOpacity
+              style={s.featureCard}
+              onPress={handleChunkRSVP}
+              activeOpacity={0.8}
+            >
+              <View style={[s.featureStripe, { backgroundColor: t.module.speed_control.color }]} />
+              <View style={s.featureBody}>
+                <View style={s.featureRow}>
+                  <View style={[s.featureIcon, { backgroundColor: t.module.speed_control.color + '20' }]}>
+                    <Text style={s.featureIconTxt}>⚡</Text>
+                  </View>
+                  <View style={s.featureInfo}>
+                    <Text style={s.featureName}>Chunk RSVP</Text>
+                    <Text style={s.featureDesc}>Parça parça hızlı okuma · Bionic · Akıllı yavaşlama</Text>
+                  </View>
+                  <View style={[s.startPill, { backgroundColor: t.module.speed_control.color }]}>
+                    <Text style={s.startTxt}>Başla</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.featureCard, { marginTop: 8 }]}
+              onPress={handleFlowReading}
+              activeOpacity={0.8}
+            >
+              <View style={[s.featureStripe, { backgroundColor: '#3B82F6' }]} />
+              <View style={s.featureBody}>
+                <View style={s.featureRow}>
+                  <View style={[s.featureIcon, { backgroundColor: '#3B82F620' }]}>
+                    <Text style={s.featureIconTxt}>🌊</Text>
+                  </View>
+                  <View style={s.featureInfo}>
+                    <Text style={s.featureName}>Akış Okuma</Text>
+                    <Text style={s.featureDesc}>Satır satır pacing · Cursor animasyonu · Sprint & Cruise</Text>
+                  </View>
+                  <View style={[s.startPill, { backgroundColor: '#3B82F6' }]}>
+                    <Text style={s.startTxt}>Başla</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
             {/* ── TÜM AŞAMALAR ── */}
             <Text style={[s.sectionTitle, { marginTop: 12 }]}>📋 Program Aşamaları</Text>
             {prog.program.phases.map((ph, i) => {
@@ -190,8 +245,53 @@ export default function SessionsScreen() {
               <Text style={s.selectTxt}>Program Seç →</Text>
             </TouchableOpacity>
 
+            {/* Hız Teknikleri */}
+            <Text style={[s.sectionTitle, { marginTop: 32 }]}>⚡ Hız Teknikleri</Text>
+            <TouchableOpacity
+              style={s.featureCard}
+              onPress={handleChunkRSVP}
+              activeOpacity={0.8}
+            >
+              <View style={[s.featureStripe, { backgroundColor: t.module.speed_control.color }]} />
+              <View style={s.featureBody}>
+                <View style={s.featureRow}>
+                  <View style={[s.featureIcon, { backgroundColor: t.module.speed_control.color + '20' }]}>
+                    <Text style={s.featureIconTxt}>⚡</Text>
+                  </View>
+                  <View style={s.featureInfo}>
+                    <Text style={s.featureName}>Chunk RSVP</Text>
+                    <Text style={s.featureDesc}>Parça parça hızlı okuma · Bionic · Akıllı yavaşlama</Text>
+                  </View>
+                  <View style={[s.startPill, { backgroundColor: t.module.speed_control.color }]}>
+                    <Text style={s.startTxt}>Başla</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.featureCard, { marginTop: 8 }]}
+              onPress={handleFlowReading}
+              activeOpacity={0.8}
+            >
+              <View style={[s.featureStripe, { backgroundColor: '#3B82F6' }]} />
+              <View style={s.featureBody}>
+                <View style={s.featureRow}>
+                  <View style={[s.featureIcon, { backgroundColor: '#3B82F620' }]}>
+                    <Text style={s.featureIconTxt}>🌊</Text>
+                  </View>
+                  <View style={s.featureInfo}>
+                    <Text style={s.featureName}>Akış Okuma</Text>
+                    <Text style={s.featureDesc}>Satır satır pacing · Cursor animasyonu · Sprint & Cruise</Text>
+                  </View>
+                  <View style={[s.startPill, { backgroundColor: '#3B82F6' }]}>
+                    <Text style={s.startTxt}>Başla</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
             {/* Hızlı başla */}
-            <Text style={[s.sectionTitle, { marginTop: 32 }]}>veya Modül Seç</Text>
+            <Text style={[s.sectionTitle, { marginTop: 20 }]}>veya Modül Seç</Text>
             {Object.entries(MODULE_META).map(([code, meta]) => (
               <TouchableOpacity
                 key={code}
@@ -310,5 +410,20 @@ function ms(t: AppTheme) {
     quickIcon:  { fontSize: 24 },
     quickLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: t.colors.text },
     quickArrow: { fontSize: 24, fontWeight: '300' },
+
+    // Öne çıkan egzersiz kartı (Chunk RSVP vb.)
+    featureCard: {
+      flexDirection: 'row', backgroundColor: t.colors.surface,
+      borderRadius: 16, marginBottom: 12,
+      overflow: 'hidden', borderWidth: 1, borderColor: t.colors.border,
+    },
+    featureStripe: { width: 4, alignSelf: 'stretch' },
+    featureBody: { flex: 1, padding: 14 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    featureIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    featureIconTxt: { fontSize: 22 },
+    featureInfo: { flex: 1 },
+    featureName: { fontSize: 15, fontWeight: '700', color: t.colors.text },
+    featureDesc: { fontSize: 12, color: t.colors.textHint, marginTop: 2 },
   })
 }
