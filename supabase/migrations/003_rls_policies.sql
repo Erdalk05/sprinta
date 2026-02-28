@@ -155,6 +155,9 @@ CREATE POLICY "super_admin_all_sessions" ON sessions
 CREATE POLICY "student_own_diagnostics" ON diagnostics
   FOR ALL USING (student_id = public.get_student_id());
 
+CREATE POLICY "student_insert_own_diagnostics" ON diagnostics
+  FOR INSERT WITH CHECK (student_id = public.get_student_id());
+
 CREATE POLICY "tenant_admin_view_diagnostics" ON diagnostics
   FOR SELECT USING (
     public.is_tenant_admin() AND

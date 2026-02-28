@@ -111,7 +111,7 @@ export default function ProgressScreen() {
   return (
     <SafeAreaView style={s.root}>
       <LinearGradient
-        colors={t.gradients.istatistik as [string, string]}
+        colors={t.gradients.istatistik as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={s.topBar}

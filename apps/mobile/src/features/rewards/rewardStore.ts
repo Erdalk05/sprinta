@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { mmkvStorage } from '../../stores/mmkvStorage'
 import { setUnlockedIds, getUnlockedIds } from './RewardEngine'
 
 interface RewardState {
@@ -31,7 +31,7 @@ export const useRewardStore = create<RewardState>()(
     }),
     {
       name: 'reward-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => mmkvStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
           setUnlockedIds(state.unlockedBadgeIds)

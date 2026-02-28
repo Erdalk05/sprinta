@@ -47,7 +47,7 @@ export default function DiagnosticResultScreen() {
       if (success) {
         markSaved()
         setSaved(true)
-        await refreshProfile()
+        refreshProfile() // arka planda çalış, bekleme
       } else {
         setSaveError(error ?? 'Kaydedilemedi')
       }
@@ -156,9 +156,9 @@ export default function DiagnosticResultScreen() {
 
         {/* CTA */}
         <TouchableOpacity
-          style={[styles.continueButton, (!saved && saving) && styles.buttonDisabled]}
+          style={[styles.continueButton, (saving && !saved) && styles.buttonDisabled]}
           onPress={handleContinue}
-          disabled={saving}
+          disabled={false}
           activeOpacity={0.85}
         >
           <Text style={styles.continueText}>

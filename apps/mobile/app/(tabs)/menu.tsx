@@ -10,6 +10,12 @@ import { useAppTheme, useThemeToggle } from '../../src/theme/useAppTheme'
 import type { AppTheme } from '../../src/theme'
 import { useAuthStore } from '../../src/stores/authStore'
 
+// ─── Level adları (basit eşleme) ─────────────────────────────────
+const LEVEL_NAMES: Record<number, string> = {
+  1: 'Başlangıç', 2: 'Çaylak', 3: 'Öğrenci', 4: 'Pratisyen',
+  5: 'Uzman', 6: 'Üstad', 7: 'Şampiyon', 8: 'Titan', 9: 'Efsane', 10: 'Tanrı',
+}
+
 const { width: W } = Dimensions.get('window')
 
 // ─── Kategori tanımları ───────────────────────────────────────────
@@ -20,123 +26,150 @@ interface Category {
   items: SubItem[]
 }
 
-const CATEGORIES: Category[] = [
-  {
-    id: 'aicoach', icon: '🤖', label: 'AI Koç', sub: 'Sabah brifingi, analiz',
-    gradient: ['#667eea', '#764ba2'],
-    items: [
-      { id: 'briefing', icon: '☀️', label: 'Sabah Brifingi',      route: '/ai-coach' },
-      { id: 'chat',     icon: '💬', label: 'Serbest Sohbet',       route: '/ai-coach' },
-      { id: 'weakness', icon: '🔍', label: 'Zayıflık Analizi',     route: '/ai-coach' },
-      { id: 'content',  icon: '📝', label: 'Alıştırma Metni Üret', route: '/ai-coach' },
-    ],
-  },
-  {
-    id: 'training', icon: '💪', label: 'Antrenmanlar', sub: 'Hız, kavrama, dikkat',
-    gradient: ['#f093fb', '#f5576c'],
-    items: [
-      { id: 'speed', icon: '⚡', label: 'Hız Antrenmanı',    route: '/exercise/speed_control'     },
-      { id: 'comp',  icon: '🧠', label: 'Derin Kavrama',     route: '/exercise/deep_comprehension' },
-      { id: 'attn',  icon: '🎯', label: 'Dikkat Gücü',       route: '/exercise/attention_power'    },
-      { id: 'reset', icon: '🌿', label: 'Zihinsel Sıfırlama',route: '/exercise/mental_reset'       },
-      { id: 'eye',   icon: '👁️', label: 'Göz Egzersizleri',  route: '/exercise/eye_training'       },
-      { id: 'vocab', icon: '📖', label: 'Kelime Hazinesi',    route: '/exercise/vocabulary'         },
-      { id: 'diag',  icon: '🧪', label: 'Tanılama Testi',    route: '/diagnostic'                  },
-    ],
-  },
-  {
-    id: 'programs', icon: '🎯', label: 'Programlar', sub: 'LGS, TYT, AYT, KPSS',
-    gradient: ['#4facfe', '#00f2fe'],
-    items: [
-      { id: 'select', icon: '➕', label: 'Program Seç',   route: '/program/select'  },
-      { id: 'active', icon: '▶️', label: 'Aktif Program', route: '/(tabs)/sessions' },
-      { id: 'lgs',    icon: '📘', label: 'LGS Programı',  route: '/program/select'  },
-      { id: 'tyt',    icon: '📗', label: 'TYT Programı',  route: '/program/select'  },
-      { id: 'ayt',    icon: '📙', label: 'AYT Programı',  route: '/program/select'  },
-    ],
-  },
-  {
-    id: 'stats', icon: '📊', label: 'İstatistikler', sub: 'ARP, haftalık rapor',
-    gradient: ['#43e97b', '#38f9d7'],
-    items: [
-      { id: 'arp',    icon: '📈', label: 'ARP Gelişimim',  route: '/(tabs)/progress' },
-      { id: 'weekly', icon: '📅', label: 'Haftalık Rapor', route: '/(tabs)/progress' },
-      { id: 'skills', icon: '🎯', label: 'Beceri Profili', route: '/(tabs)/progress' },
-    ],
-  },
-  {
-    id: 'achievements', icon: '🏆', label: 'Başarılar', sub: 'Rozetler, seviye, XP',
-    gradient: ['#f7971e', '#ffd200'],
-    items: [
-      { id: 'badges', icon: '🏅', label: 'Rozetlerim',    route: '/(tabs)/progress' },
-      { id: 'level',  icon: '⭐', label: 'Seviye Durumu', route: '/(tabs)/progress' },
-      { id: 'streak', icon: '🔥', label: 'Seri Takibi',   route: '/(tabs)/progress' },
-    ],
-  },
-  {
-    id: 'social', icon: '👥', label: 'Sosyal', sub: 'Sıralama, meydan okuma',
-    gradient: ['#11998e', '#38ef7d'],
-    items: [
-      { id: 'lb',      icon: '🏆', label: 'Liderlik Tablosu', route: '/(tabs)/social' },
-      { id: 'chal',    icon: '⚔️', label: 'Meydan Okumalar',  route: '/(tabs)/social' },
-      { id: 'friends', icon: '👥', label: 'Arkadaşlarım',     route: '/(tabs)/social' },
-    ],
-  },
-  {
-    id: 'settings', icon: '⚙️', label: 'Ayarlar', sub: 'Profil, bildirim, çıkış',
-    gradient: ['#8e9eab', '#eef2f3'],
-    items: [
-      { id: 'profile', icon: '👤', label: 'Profilim',        route: '/(tabs)/profile' },
-      { id: 'notif',   icon: '🔔', label: 'Bildirimler',     route: '/(tabs)/profile' },
-      { id: 'privacy', icon: '🔒', label: 'Gizlilik',        route: '/(tabs)/profile' },
-      { id: 'help',    icon: '❓', label: 'Yardım & Destek', route: '/(tabs)/profile' },
-      { id: 'logout',  icon: '⏻',  label: 'Çıkış Yap',      route: '__logout__'      },
-    ],
-  },
-]
+// Kategoriler temadan türetilir — renk şeması değişince anında güncellenir
+function buildCategories(t: ReturnType<typeof import('../../src/theme').buildTheme>): Category[] {
+  return [
+    {
+      id: 'profil', icon: '👤', label: 'Profil', sub: 'Hesap, istatistikler',
+      gradient: t.gradients.ayarlar as [string, string],
+      items: [
+        { id: 'myprofile', icon: '👤', label: 'Profilim',        route: '/(tabs)/profile' },
+        { id: 'stats2',    icon: '📊', label: 'İstatistiklerim', route: '/(tabs)/progress' },
+        { id: 'streak2',   icon: '🔥', label: 'Seri Takibi',     route: '/(tabs)/progress' },
+      ],
+    },
+    {
+      id: 'aicoach', icon: '🤖', label: 'AI Koç', sub: 'Sabah brifingi, sohbet',
+      gradient: t.gradients.aiKoc as [string, string],
+      items: [
+        { id: 'briefing', icon: '☀️', label: 'Sabah Brifingi',      route: '/(tabs)/coach' },
+        { id: 'chat',     icon: '💬', label: 'Serbest Sohbet',       route: '/(tabs)/coach' },
+        { id: 'weakness', icon: '🔍', label: 'Zayıflık Analizi',     route: '/(tabs)/coach' },
+        { id: 'content',  icon: '📝', label: 'Alıştırma Metni Üret', route: '/(tabs)/coach' },
+      ],
+    },
+    {
+      id: 'calis', icon: '💪', label: 'Çalış', sub: 'Tanılama, RSVP, Göz egzersizleri',
+      gradient: t.gradients.antrenmanlar as [string, string],
+      items: [
+        { id: 'tanilama', icon: '🧪', label: 'Tanılama Testi',    route: '/tanilama'                    },
+        { id: 'rsvp',     icon: '⚡', label: 'RSVP Okuma',        route: '/exercise/chunk-rsvp'         },
+        { id: 'flow',     icon: '🌊', label: 'Akış Okuma',        route: '/exercise/flow-reading'       },
+        { id: 'goz',      icon: '👁️', label: 'Kartal Gözü',        route: '/visual-mechanics'            },
+        { id: 'vocab',    icon: '📖', label: 'Kelime Haznesi',     route: '/exercise/vocabulary'         },
+      ],
+    },
+    {
+      id: 'istatistik', icon: '📊', label: 'İstatistikler', sub: 'ARP trendi, haftalık rapor',
+      gradient: t.gradients.istatistik as [string, string],
+      items: [
+        { id: 'arp',    icon: '📈', label: 'ARP Gelişimim',  route: '/(tabs)/progress' },
+        { id: 'weekly', icon: '📅', label: 'Haftalık Rapor', route: '/(tabs)/progress' },
+        { id: 'skills', icon: '🎯', label: 'Beceri Profili', route: '/(tabs)/progress' },
+      ],
+    },
+    {
+      id: 'ilerleme', icon: '📈', label: 'İlerleme', sub: 'Seviye, XP, sıralama',
+      gradient: t.gradients.basarilar as [string, string],
+      items: [
+        { id: 'level',  icon: '⭐', label: 'Seviye Durumu',     route: '/(tabs)/progress' },
+        { id: 'xp',     icon: '💎', label: 'XP Durumu',         route: '/(tabs)/progress' },
+        { id: 'rank',   icon: '🏆', label: 'Sıralamam',         route: '/(tabs)/social'   },
+      ],
+    },
+    {
+      id: 'social', icon: '👥', label: 'Sosyal', sub: 'Liderlik, meydan okuma',
+      gradient: t.gradients.social as [string, string],
+      items: [
+        { id: 'lb',      icon: '🏆', label: 'Liderlik Tablosu', route: '/(tabs)/social' },
+        { id: 'chal',    icon: '⚔️', label: 'Meydan Okumalar',  route: '/(tabs)/social' },
+        { id: 'friends', icon: '👥', label: 'Arkadaşlarım',     route: '/(tabs)/social' },
+      ],
+    },
+    {
+      id: 'library', icon: '📚', label: 'Kütüphane', sub: 'PDF, URL, içeriklerim',
+      gradient: t.gradients.library as [string, string],
+      items: [
+        { id: 'mylib',  icon: '📂', label: 'Kütüphanem',        route: '/content-library' },
+        { id: 'addpdf', icon: '📄', label: 'PDF Ekle',           route: '/content-library' },
+        { id: 'addurl', icon: '🔗', label: "URL'den İçe Aktar",  route: '/content-library' },
+      ],
+    },
+    {
+      id: 'basarilar', icon: '🏆', label: 'Başarılar', sub: 'Rozetler, sıralama, XP',
+      gradient: t.gradients.basarilar as [string, string],
+      items: [
+        { id: 'badges', icon: '🏅', label: 'Rozetlerim',    route: '/(tabs)/progress' },
+        { id: 'level2', icon: '⭐', label: 'Seviye Durumu', route: '/(tabs)/progress' },
+        { id: 'streak', icon: '🔥', label: 'Seri Takibi',   route: '/(tabs)/progress' },
+      ],
+    },
+    {
+      id: 'tercihler', icon: '⚙️', label: 'Tercihler', sub: 'Bildirim, gizlilik, çıkış',
+      gradient: t.gradients.ayarlar as [string, string],
+      items: [
+        { id: 'notif',   icon: '🔔', label: 'Bildirimler',     route: '/(tabs)/profile' },
+        { id: 'privacy', icon: '🔒', label: 'Gizlilik',        route: '/(tabs)/profile' },
+        { id: 'help',    icon: '❓', label: 'Yardım & Destek', route: '/(tabs)/profile' },
+        { id: 'logout',  icon: '⏻',  label: 'Çıkış Yap',      route: '__logout__'      },
+      ],
+    },
+  ]
+}
 
-// ─── Gradient Grid Card ───────────────────────────────────────────
-function GridCard({ cat, onPress, cardW }: { cat: Category; onPress: () => void; cardW: number }) {
+// ─── WhatsApp Flat Grid Card ──────────────────────────────────────
+const WA_GREEN = '#25D366'
+
+function GridCard({ cat, t, onPress, cardW }: {
+  cat: Category; t: import('../../src/theme').AppTheme
+  onPress: () => void; cardW: number
+}) {
   const scale = useRef(new Animated.Value(1)).current
   return (
-    <Animated.View style={{ transform: [{ scale }], width: cardW, marginBottom: 12 }}>
+    <Animated.View style={{ transform: [{ scale }], width: cardW, marginBottom: 10 }}>
       <TouchableOpacity
         activeOpacity={1}
         onPressIn={() =>
-          Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
+          Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
         }
         onPressOut={() =>
           Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
         }
         onPress={onPress}
+        style={[gCard.card, {
+          backgroundColor: t.colors.surface,
+          borderColor: t.colors.border,
+        }]}
       >
-        <LinearGradient
-          colors={cat.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[gCard.card, { minHeight: 110 }]}
-        >
-          <View style={gCard.iconBox}>
-            <Text style={gCard.icon}>{cat.icon}</Text>
-          </View>
-          <Text style={gCard.label}>{cat.label}</Text>
-          <Text style={gCard.sub} numberOfLines={2}>{cat.sub}</Text>
-        </LinearGradient>
+        {/* Yeşil ikon kutusu */}
+        <View style={[gCard.iconBox, { backgroundColor: WA_GREEN + '15' }]}>
+          <Text style={gCard.icon}>{cat.icon}</Text>
+        </View>
+        <Text style={[gCard.label, { color: t.colors.text }]}>{cat.label}</Text>
+        <Text style={[gCard.sub, { color: t.colors.textSub }]} numberOfLines={2}>{cat.sub}</Text>
+        {/* Sağ alt: yeşil ok */}
+        <Text style={[gCard.arrow, { color: WA_GREEN }]}>›</Text>
       </TouchableOpacity>
     </Animated.View>
   )
 }
 
 const gCard = StyleSheet.create({
-  card:    { borderRadius: 20, padding: 16, overflow: 'hidden' },
+  card: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    minHeight: 118,
+    position: 'relative',
+  },
   iconBox: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    width: 44, height: 44, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
-  icon:  { fontSize: 24 },
-  label: { fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  sub:   { fontSize: 11, color: 'rgba(255,255,255,0.82)', lineHeight: 15 },
+  icon:  { fontSize: 22 },
+  label: { fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  sub:   { fontSize: 11, lineHeight: 15 },
+  arrow: { position: 'absolute', bottom: 10, right: 12, fontSize: 20, fontWeight: '300' },
 })
 
 // ─── Ana Ekran ────────────────────────────────────────────────────
@@ -149,12 +182,20 @@ export default function MenuScreen() {
   const [search, setSearch]         = useState('')
   const [activeCategory, setActive] = useState<Category | null>(null)
 
-  const name = student?.fullName?.split(' ')[0] ?? 'Öğrenci'
+  const name       = student?.fullName?.split(' ')[0] ?? 'Öğrenci'
+  const currentArp = student?.currentArp ?? 0
+  const totalXp    = student?.totalXp ?? 0
+  const level      = student?.level ?? 1
+  const streak     = student?.streakDays ?? 0
+  const levelName  = LEVEL_NAMES[level] ?? 'Titan'
+  const examTarget = student?.examTarget?.toUpperCase() ?? 'TYT'
 
   // 2 sütun — eşit boşluklu
   const GAP    = 10
   const HPAD   = 16
   const cardW  = (W - HPAD * 2 - GAP) / 2
+
+  const CATEGORIES = useMemo(() => buildCategories(t), [t])
 
   const filteredCats = search.trim()
     ? CATEGORIES.filter((c) =>
@@ -165,6 +206,11 @@ export default function MenuScreen() {
 
   const openCategory = (cat: Category) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    // Çalış kategorisi doğrudan sessions tab'ına yönlendir
+    if (cat.id === 'calis') {
+      router.push('/(tabs)/sessions' as any)
+      return
+    }
     setActive(cat)
   }
 
@@ -190,13 +236,8 @@ export default function MenuScreen() {
   return (
     <SafeAreaView style={s.root}>
 
-      {/* ── HEADER ── */}
-      <LinearGradient
-        colors={t.gradients.aiKoc as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.header}
-      >
+      {/* ── HEADER — WhatsApp solid yeşil ── */}
+      <View style={s.header}>
         <View>
           <Text style={s.headerTitle}>Menü</Text>
           <Text style={s.headerSub}>Merhaba, {name} 👋</Text>
@@ -209,7 +250,7 @@ export default function MenuScreen() {
             <Text style={s.themeTxt}>{isDark ? '☀️' : '🌙'}</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
@@ -230,18 +271,54 @@ export default function MenuScreen() {
           )}
         </View>
 
+        {/* ── Sprinta Üssü — Öğrenci özeti kartı ── */}
+        {!search.trim() && (
+          <View style={s.profileCard}>
+            {/* Sol: ARP büyük gösterim */}
+            <View style={s.arpBlock}>
+              <Text style={s.arpLabel}>ARP</Text>
+              <Text style={s.arpValue}>{currentArp}</Text>
+              <Text style={s.examTarget}>{examTarget} hedefi</Text>
+            </View>
+
+            {/* Sağ: Stat chip'leri */}
+            <View style={s.statsCol}>
+              <View style={s.statChip}>
+                <Text style={s.statEmoji}>⭐</Text>
+                <View>
+                  <Text style={[s.statVal, { color: t.colors.primary }]}>{levelName}</Text>
+                  <Text style={s.statKey}>Sv. {level}</Text>
+                </View>
+              </View>
+              <View style={s.statChip}>
+                <Text style={s.statEmoji}>🔥</Text>
+                <View>
+                  <Text style={[s.statVal, { color: '#F97316' }]}>{streak} gün</Text>
+                  <Text style={s.statKey}>Seri</Text>
+                </View>
+              </View>
+              <View style={s.statChip}>
+                <Text style={s.statEmoji}>💎</Text>
+                <View>
+                  <Text style={[s.statVal, { color: '#8B5CF6' }]}>{totalXp.toLocaleString('tr')}</Text>
+                  <Text style={s.statKey}>XP</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* ── 2×N Gradient Grid ── */}
         {rows.map((row, ri) => (
           <View key={ri} style={s.row}>
             {row.map((cat) => (
-              <GridCard key={cat.id} cat={cat} cardW={cardW} onPress={() => openCategory(cat)} />
+              <GridCard key={cat.id} cat={cat} t={t} cardW={cardW} onPress={() => openCategory(cat)} />
             ))}
-            {/* Tek eleman varsa boşluğu doldur */}
             {row.length === 1 && <View style={{ width: cardW }} />}
           </View>
         ))}
 
-        <View style={{ height: 16 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* ── ALT KATEGORİ MODAL (BottomSheet) ── */}
@@ -255,19 +332,14 @@ export default function MenuScreen() {
         {activeCategory && (
           <View style={s.modalSheet}>
             <View style={s.modalHandle} />
-            {/* Modal başlık — mini gradient */}
-            <LinearGradient
-              colors={activeCategory.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.modalHeader}
-            >
+            {/* Modal başlık — WhatsApp yeşil */}
+            <View style={s.modalHeader}>
               <Text style={s.modalIcon}>{activeCategory.icon}</Text>
               <View>
                 <Text style={s.modalTitle}>{activeCategory.label}</Text>
                 <Text style={s.modalSub}>{activeCategory.sub}</Text>
               </View>
-            </LinearGradient>
+            </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 16 }}>
               {activeCategory.items.map((item) => (
                 <TouchableOpacity
@@ -299,13 +371,14 @@ function ms(t: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: t.colors.background },
 
-    // Header
+    // Header — WhatsApp solid yeşil
     header: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20,
+      backgroundColor: t.colors.headerBg,
+      paddingHorizontal: 20, paddingTop: 16, paddingBottom: 18,
     },
-    headerTitle: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
-    headerSub:   { fontSize: 13, color: 'rgba(255,255,255,0.80)', marginTop: 2 },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
+    headerSub:   { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     avatarCircle: {
       width: 38, height: 38, borderRadius: 19,
@@ -316,6 +389,11 @@ function ms(t: AppTheme) {
     avatarTxt: { fontSize: 16, fontWeight: '800', color: '#fff' },
     themeBtn:  { padding: 6 },
     themeTxt:  { fontSize: 22 },
+
+    divider: {
+      height: 1, backgroundColor: t.colors.divider,
+      marginHorizontal: 16, marginTop: 8,
+    },
 
     // Scroll
     scroll: { paddingHorizontal: 16, paddingBottom: 40 },
@@ -332,6 +410,56 @@ function ms(t: AppTheme) {
     searchIcon:  { fontSize: 15, marginRight: 8 },
     searchInput: { flex: 1, fontSize: 15, color: t.colors.text },
     searchClear: { fontSize: 14, color: t.colors.textHint, paddingHorizontal: 4 },
+
+    // Sprinta Üssü — Öğrenci özeti kartı
+    profileCard: {
+      flexDirection:    'row',
+      alignItems:       'center',
+      backgroundColor:  t.colors.surface,
+      borderRadius:     18,
+      padding:          16,
+      marginBottom:     16,
+      borderWidth:      1,
+      borderColor:      t.colors.border,
+      gap:              16,
+      ...t.shadows.sm,
+    },
+    arpBlock: {
+      flex:        1,
+      alignItems:  'flex-start',
+    },
+    arpLabel: {
+      fontSize:   11,
+      fontWeight: '700',
+      color:      t.colors.textHint,
+      letterSpacing: 1.5,
+    },
+    arpValue: {
+      fontSize:   42,
+      fontWeight: '900',
+      color:      t.colors.primary,
+      lineHeight: 50,
+    },
+    examTarget: {
+      fontSize:  11,
+      color:     t.colors.textHint,
+      marginTop: 2,
+    },
+    statsCol: {
+      gap:        8,
+    },
+    statChip: {
+      flexDirection:  'row',
+      alignItems:     'center',
+      gap:            8,
+      backgroundColor: t.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+      borderRadius:   10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    statEmoji: { fontSize: 16 },
+    statVal:   { fontSize: 13, fontWeight: '800' },
+    statKey:   { fontSize: 10, color: t.colors.textHint },
 
     // Grid row
     row: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -352,7 +480,8 @@ function ms(t: AppTheme) {
     modalHeader: {
       flexDirection: 'row', alignItems: 'center', gap: 14,
       marginHorizontal: 16, marginBottom: 4,
-      borderRadius: 16, padding: 16,
+      borderRadius: 14, padding: 14,
+      backgroundColor: t.colors.headerBg,
     },
     modalIcon:  { fontSize: 32 },
     modalTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },

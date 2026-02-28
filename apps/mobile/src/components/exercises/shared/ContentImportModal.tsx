@@ -4,7 +4,11 @@ import {
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { createClient } from '@supabase/supabase-js'
-import * as DocumentPicker from 'expo-document-picker'
+// expo-document-picker yerel stub — native link gerektirmez
+const DocumentPicker = {
+  getDocumentAsync: async (_opts: unknown): Promise<{ canceled: true } | { canceled: false; assets: Array<{ uri: string; name: string; mimeType?: string }> }> =>
+    ({ canceled: true }),
+}
 import { File as ExpoFile } from 'expo-file-system'
 import { useAppTheme } from '../../../theme/useAppTheme'
 import type { AppTheme } from '../../../theme'

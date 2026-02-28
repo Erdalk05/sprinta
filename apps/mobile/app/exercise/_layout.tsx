@@ -6,6 +6,8 @@ export default function ExerciseLayout() {
       <Stack.Screen name="[moduleCode]/index" />
       <Stack.Screen name="[moduleCode]/session" />
       <Stack.Screen name="[moduleCode]/result" />
+      <Stack.Screen name="chunk-rsvp" />
+      <Stack.Screen name="flow-reading" />
     </Stack>
   )
 }

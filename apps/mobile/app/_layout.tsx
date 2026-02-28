@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated'
 import { useAuthStore } from '../src/stores/authStore'
 import { useOnboardingStore } from '../src/features/onboarding/onboardingStore'
 import { initRewardEngine } from '../src/features/rewards/RewardEngine'
 import { notificationService } from '../src/services/notificationService'
+
+// Reanimated strict mode uyarılarını kapat (kursorun render sırasında okunması)
+configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false })
 
 export default function RootLayout() {
   const router = useRouter()
@@ -33,8 +37,9 @@ export default function RootLayout() {
     const inDiagnostic  = segments[0] === 'diagnostic'
     const inQuizOnboard = segments[0] === 'onboarding'
 
-    // 1. Henüz quiz tamamlanmadıysa → quiz onboarding
-    if (!quizCompleted && !inQuizOnboard) {
+    // 1. Henüz quiz tamamlanmadıysa → quiz onboarding (production'da)
+    // DEV modda onboarding'i atla — rebuild'de AsyncStorage sıfırlanıyor
+    if (!quizCompleted && !inQuizOnboard && !__DEV__) {
       router.replace('/onboarding')
       return
     }

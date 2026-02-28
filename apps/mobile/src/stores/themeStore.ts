@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 interface ThemeState {
-  isDark: boolean
+  isDark:      boolean
   toggleTheme: () => void
   setDark:     (v: boolean) => void
 }
@@ -11,12 +11,12 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      isDark: false,
+      isDark:      false,
       toggleTheme: () => set((s) => ({ isDark: !s.isDark })),
       setDark:     (v)  => set({ isDark: v }),
     }),
     {
-      name:    'sprinta-theme',
+      name:    'sprinta-theme-v2',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

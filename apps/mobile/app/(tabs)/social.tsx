@@ -3,6 +3,8 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, RefreshControl, Dimensions,
 } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -13,7 +15,6 @@ import {
 import { type AppTheme } from '../../src/theme'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import { useAuthStore } from '../../src/stores/authStore'
-import { GradientCard } from '../../src/components/ui/GradientCard'
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
@@ -21,28 +22,40 @@ const supabase = createClient(
 )
 const lbService = createLeaderboardService(supabase)
 
-type Tab = 'leaderboard' | 'challenges'
+const { width: W } = Dimensions.get('window')
 
-const SORT_OPTIONS: { key: LeaderboardSort; label: string; icon: string; color: string }[] = [
-  { key: 'xp',     label: 'XP',    icon: '⭐', color: '#25D366' },
-  { key: 'arp',    label: 'ARP',   icon: '⚡', color: '#F59E0B' },
-  { key: 'streak', label: 'Seri',  icon: '🔥', color: '#EF4444' },
-]
+type Tab = 'leaderboard' | 'challenges'
+type LeaderboardSortKey = LeaderboardSort
 
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+// WhatsApp paleti — her sınav türü farklı yeşil/teal tonu
+const EXAM_GRADIENT: Record<string, [string, string]> = {
+  lgs:  ['#075E54', '#25D366'],
+  tyt:  ['#0B141A', '#128C7E'],
+  ayt:  ['#128C7E', '#25D366'],
+  kpss: ['#1F2C34', '#25D366'],
+  ales: ['#075E54', '#128C7E'],
+  yds:  ['#0B141A', '#34B7F1'],
+}
 
-const EXAM_COLOR: Record<string, string> = {
-  lgs: '#6C3EE8', tyt: '#0EA5E9', ayt: '#10B981',
-  kpss: '#F59E0B', ales: '#EF4444', yds: '#8B5CF6',
+function buildSortOptions(t: AppTheme) {
+  return [
+    { key: 'xp'     as LeaderboardSortKey, label: 'Haftalık XP',  icon: '⭐', gradient: t.gradients.leaderboard as [string, string] },
+    { key: 'arp'    as LeaderboardSortKey, label: 'En Yüksek ARP', icon: '⚡', gradient: t.gradients.attention   as [string, string] },
+    { key: 'streak' as LeaderboardSortKey, label: 'En Uzun Seri',  icon: '🔥', gradient: t.gradients.streak      as [string, string] },
+  ]
 }
 
 export default function SocialScreen() {
   const { student } = useAuthStore()
   const t           = useAppTheme()
   const s           = useMemo(() => ms(t), [t])
+  const router      = useRouter()
+
+  const SORT_OPTIONS = useMemo(() => buildSortOptions(t), [t])
 
   const [activeTab, setActiveTab] = useState<Tab>('leaderboard')
-  const [sort, setSort]           = useState<LeaderboardSort>('xp')
+  const [sort, setSort]           = useState<LeaderboardSortKey>('xp')
   const [entries, setEntries]     = useState<LeaderboardEntry[]>([])
   const [myRank, setMyRank]       = useState<LeaderboardEntry | null>(null)
   const [loading, setLoading]     = useState(true)
@@ -51,13 +64,17 @@ export default function SocialScreen() {
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
+    const timer = setTimeout(() => { setLoading(false); setRefreshing(false) }, 4000)
     try {
       const [list, me] = await Promise.all([
         lbService.getLeaderboard(sort),
         student ? lbService.getMyRank(student.id) : Promise.resolve(null),
       ])
+      clearTimeout(timer)
       setEntries(list)
       setMyRank(me)
+    } catch {
+      clearTimeout(timer)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -66,37 +83,147 @@ export default function SocialScreen() {
 
   useEffect(() => { load() }, [load])
 
-  const sortLabel    = SORT_OPTIONS.find((o) => o.key === sort)!
   const myPosition   = entries.findIndex((e) => e.student_id === student?.id) + 1
+  const sortOption   = SORT_OPTIONS.find((o) => o.key === sort)!
+
+  const getRankValue = (e: LeaderboardEntry) =>
+    sort === 'xp'     ? `${e.weekly_xp.toLocaleString('tr')} XP` :
+    sort === 'arp'    ? `${e.current_arp} ARP` : `${e.streak_days} gün 🔥`
+
+  const top3 = entries.slice(0, 3)
+  const rest  = entries.slice(3)
 
   return (
     <SafeAreaView style={s.root}>
-      <View style={s.topBar}>
-        <Text style={s.topTitle}>Sosyal</Text>
-        <View style={s.tabRow}>
-          <TouchableOpacity
-            style={[s.tabBtn, activeTab === 'leaderboard' && s.tabBtnActive]}
-            onPress={() => setActiveTab('leaderboard')}
-          >
-            <Text style={[s.tabTxt, activeTab === 'leaderboard' && s.tabTxtActive]}>🏆 Sıralama</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.tabBtn, activeTab === 'challenges' && s.tabBtnActive]}
-            onPress={() => setActiveTab('challenges')}
-          >
-            <Text style={[s.tabTxt, activeTab === 'challenges' && s.tabTxtActive]}>⚔️ Meydan</Text>
-          </TouchableOpacity>
+      {/* ── Gradient Hero Header ── */}
+      <LinearGradient
+        colors={t.gradients.leaderboard as [string, string]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Text style={s.backTxt}>← Geri</Text>
+        </TouchableOpacity>
+        <View style={s.headerContent}>
+          <Text style={s.headerTitle}>👥 Sosyal Arena</Text>
+          <Text style={s.headerSub}>Rakiplerinle yarış · Sıralamaya gir · Kazan</Text>
         </View>
-      </View>
+
+        {/* Sıralama / Meydan tab seçici */}
+        <View style={s.tabRow}>
+          {(['leaderboard', 'challenges'] as Tab[]).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[s.tabBtn, activeTab === tab && s.tabBtnActive]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab(tab) }}
+            >
+              <Text style={[s.tabTxt, activeTab === tab && s.tabTxtActive]}>
+                {tab === 'leaderboard' ? '🏆 Sıralama' : '⚔️ Meydan'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </LinearGradient>
 
       {activeTab === 'leaderboard' ? (
-        <LeaderboardView t={t} s={s}
-          entries={entries} myRank={myRank} myId={student?.id}
-          sort={sort} sortLabel={sortLabel} loading={loading}
-          refreshing={refreshing} onRefresh={() => load(true)}
-          onSort={(sv) => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSort(sv) }}
-          myPosition={myPosition}
-        />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scroll}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#fff" />
+          }
+        >
+          {/* Sort pill selector */}
+          <View style={s.sortRow}>
+            {SORT_OPTIONS.map((o) => (
+              <TouchableOpacity
+                key={o.key}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSort(o.key) }}
+                activeOpacity={0.85}
+              >
+                {sort === o.key ? (
+                  <LinearGradient colors={o.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.sortPillActive}>
+                    <Text style={s.sortPillIcon}>{o.icon}</Text>
+                    <Text style={[s.sortPillTxt, { color: '#fff' }]}>{o.label}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={[s.sortPill, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
+                    <Text style={s.sortPillIcon}>{o.icon}</Text>
+                    <Text style={[s.sortPillTxt, { color: t.colors.textHint }]}>{o.label}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {loading ? (
+            <View style={s.center}>
+              <LinearGradient colors={sortOption.gradient} style={s.loadingCircle}>
+                <ActivityIndicator size="large" color="#fff" />
+              </LinearGradient>
+              <Text style={[s.emptyTitle, { marginTop: 16 }]}>Yükleniyor…</Text>
+            </View>
+          ) : (
+            <>
+              {/* Podyum — Top 3 */}
+              {top3.length >= 3 && (
+                <View style={s.podiumWrap}>
+                  {/* 2. sıra */}
+                  <PodiumCol t={t} entry={top3[1]} rank={2} value={getRankValue(top3[1])} isMe={top3[1].student_id === student?.id} />
+                  {/* 1. sıra — daha büyük */}
+                  <PodiumCol t={t} entry={top3[0]} rank={1} value={getRankValue(top3[0])} isMe={top3[0].student_id === student?.id} tall />
+                  {/* 3. sıra */}
+                  <PodiumCol t={t} entry={top3[2]} rank={3} value={getRankValue(top3[2])} isMe={top3[2].student_id === student?.id} />
+                </View>
+              )}
+
+              {/* Benim sıram */}
+              {myRank && myPosition > 3 && (
+                <LinearGradient colors={[t.colors.primary + '40', t.colors.accent + '40']} style={s.myRankCard}>
+                  <Text style={s.myRankLabel}>📍 SENİN SIRAMAN</Text>
+                  <View style={s.myRankRow}>
+                    <Text style={s.myRankNum}>#{myPosition}</Text>
+                    <Text style={s.myRankName}>{myRank.full_name}</Text>
+                    <Text style={s.myRankVal}>{getRankValue(myRank)}</Text>
+                  </View>
+                </LinearGradient>
+              )}
+
+              {/* Geri kalanlar */}
+              {rest.map((e, i) => {
+                const rank = i + 4
+                const isMe = e.student_id === student?.id
+                const grad = EXAM_GRADIENT[e.exam_target] ?? ['#667eea', '#764ba2']
+                return (
+                  <View key={e.student_id} style={[s.row, isMe && s.rowMe]}>
+                    <Text style={[s.rowRank, isMe && { color: t.colors.primary }]}>#{rank}</Text>
+                    <LinearGradient colors={grad} style={s.avatar}>
+                      <Text style={s.avatarTxt}>{e.full_name.charAt(0).toUpperCase()}</Text>
+                    </LinearGradient>
+                    <View style={s.rowInfo}>
+                      <Text style={[s.rowName, isMe && { color: t.colors.primary }]}>
+                        {e.full_name}{isMe ? ' 👋' : ''}
+                      </Text>
+                      <Text style={s.rowMeta}>{e.exam_target.toUpperCase()} · {e.streak_days} gün seri</Text>
+                    </View>
+                    <LinearGradient colors={sortOption.gradient} style={s.valPill}>
+                      <Text style={s.valPillTxt}>{getRankValue(e)}</Text>
+                    </LinearGradient>
+                  </View>
+                )
+              })}
+
+              {entries.length === 0 && (
+                <View style={s.center}>
+                  <Text style={{ fontSize: 56, marginBottom: 12 }}>🌟</Text>
+                  <Text style={s.emptyTitle}>Henüz veri yok</Text>
+                  <Text style={s.emptySub}>Bu hafta antrenman yapan öğrenciler burada görünecek.</Text>
+                </View>
+              )}
+            </>
+          )}
+          <View style={{ height: 40 }} />
+        </ScrollView>
       ) : (
         <ChallengesView t={t} s={s} student={student} entries={entries} />
       )}
@@ -104,182 +231,87 @@ export default function SocialScreen() {
   )
 }
 
-// ─── Liderlik Tablosu ─────────────────────────────────────────────
-
-type Styles = ReturnType<typeof ms>
-
-function LeaderboardView({
-  t, s, entries, myRank, myId, sort, sortLabel, loading,
-  refreshing, onRefresh, onSort, myPosition,
-}: {
-  t: AppTheme; s: Styles
-  entries: LeaderboardEntry[]
-  myRank: LeaderboardEntry | null
-  myId?: string
-  sort: LeaderboardSort
-  sortLabel: (typeof SORT_OPTIONS)[0]
-  loading: boolean; refreshing: boolean
-  onRefresh: () => void
-  onSort: (s: LeaderboardSort) => void
-  myPosition: number
+// ─── Podyum Kolonu ────────────────────────────────────────────────
+function PodiumCol({ t, entry, rank, value, isMe, tall = false }: {
+  t: AppTheme; entry: LeaderboardEntry; rank: number
+  value: string; isMe: boolean; tall?: boolean
 }) {
-  const getRankValue = (e: LeaderboardEntry) =>
-    sort === 'xp'     ? `${e.weekly_xp} XP` :
-    sort === 'arp'    ? `ARP ${e.current_arp}` : `${e.streak_days} gün 🔥`
-
-  const top3 = entries.slice(0, 3)
-  const rest  = entries.slice(3)
-
+  const grad = EXAM_GRADIENT[entry.exam_target] ?? [t.colors.primary, t.colors.accent]
+  const sz   = tall ? 64 : 52
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={s.scroll}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.colors.primary} />}
-    >
-      <View style={s.sortRow}>
-        {SORT_OPTIONS.map((o) => (
-          <TouchableOpacity
-            key={o.key}
-            style={[s.sortBtn, sort === o.key && { backgroundColor: o.color + '25', borderColor: o.color }]}
-            onPress={() => onSort(o.key)}
-          >
-            <Text style={s.sortIcon}>{o.icon}</Text>
-            <Text style={[s.sortTxt, sort === o.key && { color: o.color }]}>{o.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {loading ? (
-        <View style={s.center}><ActivityIndicator size="large" color={t.colors.primary} /></View>
-      ) : (
-        <>
-          {top3.length >= 3 && (
-            <GradientCard colors={[t.colors.primary + '30', t.colors.surface]} style={s.podiumCard}>
-              <Text style={s.podiumTitle}>{sortLabel.icon} Bu Haftanın Liderleri</Text>
-              <View style={s.podium}>
-                <PodiumCol t={t} entry={top3[1]} rank={2} valueLabel={getRankValue(top3[1])} isMe={top3[1].student_id === myId} />
-                <PodiumCol t={t} entry={top3[0]} rank={1} valueLabel={getRankValue(top3[0])} isMe={top3[0].student_id === myId} tall />
-                <PodiumCol t={t} entry={top3[2]} rank={3} valueLabel={getRankValue(top3[2])} isMe={top3[2].student_id === myId} />
-              </View>
-            </GradientCard>
-          )}
-
-          {myRank && myPosition > 3 && (
-            <View style={s.myRankBanner}>
-              <Text style={s.myRankLabel}>Senin Sıralaman</Text>
-              <View style={s.myRankRow}>
-                <Text style={s.myRankNum}>#{myPosition}</Text>
-                <Text style={s.myRankName}>{myRank.full_name}</Text>
-                <Text style={[s.myRankVal, { color: sortLabel.color }]}>{getRankValue(myRank)}</Text>
-              </View>
-            </View>
-          )}
-
-          {rest.map((e, i) => {
-            const rank = i + 4
-            const isMe = e.student_id === myId
-            const examColor = EXAM_COLOR[e.exam_target] ?? t.colors.primary
-            return (
-              <View key={e.student_id} style={[s.row, isMe && s.rowMe]}>
-                <Text style={[s.rowRank, isMe && { color: t.colors.accent }]}>#{rank}</Text>
-                <View style={[s.avatar, { backgroundColor: examColor + '30' }]}>
-                  <Text style={s.avatarTxt}>{e.full_name.charAt(0).toUpperCase()}</Text>
-                </View>
-                <View style={s.rowInfo}>
-                  <Text style={[s.rowName, isMe && { color: t.colors.accent }]}>
-                    {e.full_name}{isMe ? ' (Sen)' : ''}
-                  </Text>
-                  <Text style={s.rowMeta}>{e.exam_target.toUpperCase()} · {e.streak_days} gün seri</Text>
-                </View>
-                <Text style={[s.rowVal, { color: sortLabel.color }]}>{getRankValue(e)}</Text>
-              </View>
-            )
-          })}
-
-          {entries.length === 0 && (
-            <View style={s.center}>
-              <Text style={s.emptyEmoji}>🌟</Text>
-              <Text style={s.emptyTitle}>Henüz veri yok</Text>
-              <Text style={s.emptySub}>Bu hafta antrenman yapan öğrenciler burada görünecek.</Text>
-            </View>
-          )}
-        </>
-      )}
-    </ScrollView>
-  )
-}
-
-function PodiumCol({
-  t, entry, rank, valueLabel, isMe, tall = false,
-}: {
-  t: AppTheme
-  entry: LeaderboardEntry
-  rank: number; valueLabel: string; isMe: boolean; tall?: boolean
-}) {
-  const examColor = EXAM_COLOR[entry.exam_target] ?? t.colors.primary
-  return (
-    <View style={{ alignItems: 'center', flex: 1, ...(tall ? { paddingBottom: 8 } : {}) }}>
-      <Text style={{ fontSize: 28, marginBottom: 6 }}>{MEDAL[rank]}</Text>
-      <View style={{
-        width: 52, height: 52, borderRadius: 26,
-        alignItems: 'center', justifyContent: 'center',
-        borderWidth: 2, marginBottom: 6,
-        backgroundColor: examColor + '40', borderColor: examColor,
-      }}>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: examColor }}>
+    <View style={{ alignItems: 'center', flex: 1 }}>
+      <Text style={{ fontSize: tall ? 36 : 28, marginBottom: 6 }}>{MEDAL[rank]}</Text>
+      <LinearGradient
+        colors={isMe ? [t.colors.primary, t.colors.accent] : grad}
+        style={{
+          width: sz, height: sz, borderRadius: sz / 2,
+          alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+          borderWidth: isMe ? 3 : 0, borderColor: '#fff',
+        }}
+      >
+        <Text style={{ fontSize: tall ? 26 : 20, fontWeight: '900', color: '#fff' }}>
           {entry.full_name.charAt(0).toUpperCase()}
         </Text>
-      </View>
-      <Text style={{ fontSize: 12, fontWeight: '700', color: isMe ? t.colors.accent : t.colors.text, textAlign: 'center' }} numberOfLines={1}>
-        {isMe ? 'Sen' : entry.full_name.split(' ')[0]}
+      </LinearGradient>
+      <Text style={{ fontSize: 12, fontWeight: '800', color: isMe ? t.colors.primary : t.colors.text, textAlign: 'center' }} numberOfLines={1}>
+        {isMe ? 'Sen 👋' : entry.full_name.split(' ')[0]}
       </Text>
-      <Text style={{ fontSize: 11, color: t.colors.textHint, marginTop: 2, textAlign: 'center' }}>{valueLabel}</Text>
+      <Text style={{ fontSize: 10, color: t.colors.textHint, textAlign: 'center', marginTop: 2 }}>{value}</Text>
     </View>
   )
 }
 
+// ─── Meydan Okuma ─────────────────────────────────────────────────
+type Styles = ReturnType<typeof ms>
+
 function ChallengesView({ t, s, student, entries }: { t: AppTheme; s: Styles; student: any; entries: LeaderboardEntry[] }) {
-  const CHALLENGE_TYPES = [
-    { key: 'weekly_xp', label: '⭐ XP Yarışması',  desc: '7 günde kim daha fazla XP kazanır?' },
-    { key: 'arp_gain',  label: '📈 ARP Artışı',    desc: "Kim ARP'sini daha çok artırır?" },
-    { key: 'streak',    label: '🔥 Seri Yarışması', desc: 'Günlük seriyi kim daha uzun tutar?' },
-  ]
+  const CHALLENGES = useMemo(() => [
+    { key: 'xp',     label: 'XP Yarışması',  desc: '7 günde kim daha fazla XP kazanır?',   gradient: t.gradients.leaderboard as [string, string], icon: '⭐' },
+    { key: 'arp',    label: 'ARP Artışı',     desc: "Kim ARP'sini daha çok artırır?",        gradient: t.gradients.attention   as [string, string], icon: '📈' },
+    { key: 'streak', label: 'Seri Yarışması', desc: 'Günlük seriyi kim daha uzun tutar?',   gradient: t.gradients.streak      as [string, string], icon: '🔥' },
+  ], [t])
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-      <GradientCard colors={[t.colors.accent + '20', t.colors.surface]} style={s.howCard}>
+      {/* Nasıl çalışır */}
+      <LinearGradient colors={t.gradients.leaderboard as [string, string]} style={s.howCard}>
         <Text style={s.howTitle}>⚔️ Meydan Okuma Nasıl Çalışır?</Text>
         <Text style={s.howText}>
-          Sıralamada gördüğün bir öğrenciyi seç, 7 günlük rekabet başlatsın.
-          Süre sonunda daha yüksek puan alan kazanır ve XP bonusu alır.
+          Sıralamada gördüğün bir öğrenciyi seç, 7 günlük rekabet başlasın.
+          Süre sonunda daha yüksek puan alan kazanır ve XP bonusu alır!
         </Text>
-      </GradientCard>
+      </LinearGradient>
 
-      <Text style={s.sectionTitle}>Yarışma Türleri</Text>
-      {CHALLENGE_TYPES.map((ct) => (
-        <View key={ct.key} style={s.ctCard}>
-          <Text style={s.ctLabel}>{ct.label}</Text>
-          <Text style={s.ctDesc}>{ct.desc}</Text>
-        </View>
-      ))}
+      <Text style={s.sectionTitle}>🎯 Yarışma Türleri</Text>
+      <View style={s.challengeGrid}>
+        {CHALLENGES.map((c) => (
+          <LinearGradient key={c.key} colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctCard}>
+            <Text style={{ fontSize: 28, marginBottom: 8 }}>{c.icon}</Text>
+            <Text style={s.ctLabel}>{c.label}</Text>
+            <Text style={s.ctDesc}>{c.desc}</Text>
+          </LinearGradient>
+        ))}
+      </View>
 
-      <Text style={[s.sectionTitle, { marginTop: 8 }]}>Sıralamadan Rakip Seç</Text>
+      <Text style={[s.sectionTitle, { marginTop: 8 }]}>👊 Rakip Seç</Text>
       {entries.filter((e) => e.student_id !== student?.id).slice(0, 8).map((e) => {
-        const examColor = EXAM_COLOR[e.exam_target] ?? t.colors.primary
+        const grad = EXAM_GRADIENT[e.exam_target] ?? [t.colors.primary, t.colors.accent]
         return (
           <View key={e.student_id} style={s.opponentRow}>
-            <View style={[s.avatar, { backgroundColor: examColor + '30' }]}>
+            <LinearGradient colors={grad} style={s.avatar}>
               <Text style={s.avatarTxt}>{e.full_name.charAt(0).toUpperCase()}</Text>
-            </View>
+            </LinearGradient>
             <View style={s.rowInfo}>
               <Text style={s.rowName}>{e.full_name}</Text>
-              <Text style={s.rowMeta}>ARP {e.current_arp} · {e.streak_days} gün seri</Text>
+              <Text style={s.rowMeta}>ARP {e.current_arp} · {e.streak_days} gün 🔥</Text>
             </View>
             <TouchableOpacity
-              style={s.challengeBtn}
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+              activeOpacity={0.85}
             >
-              <Text style={s.challengeBtnTxt}>Meydan Oku</Text>
+              <LinearGradient colors={t.gradients.cta as [string, string]} style={s.challengeBtn}>
+                <Text style={s.challengeBtnTxt}>Meydan Oku</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )
@@ -287,101 +319,113 @@ function ChallengesView({ t, s, student, entries }: { t: AppTheme; s: Styles; st
 
       {entries.length === 0 && (
         <View style={s.center}>
-          <Text style={s.emptyEmoji}>🤝</Text>
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>🤝</Text>
           <Text style={s.emptyTitle}>Rakip bulunamadı</Text>
-          <Text style={s.emptySub}>Sıralama listesi yüklenince rakiplerin burada görünecek.</Text>
+          <Text style={s.emptySub}>Sıralama listesi yüklenince rakipler burada görünecek.</Text>
         </View>
       )}
-      <View style={{ height: 32 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   )
 }
 
-// ─── Styles ──────────────────────────────────────────────────────
-
+// ─── Stiller ─────────────────────────────────────────────────────
 function ms(t: AppTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: t.colors.background },
-    topBar: {
-      paddingHorizontal: 20, paddingVertical: 12,
-      borderBottomWidth: 1, borderBottomColor: t.colors.divider,
-      backgroundColor: t.colors.panel,
-    },
-    topTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', marginBottom: 10 },
-    tabRow: { flexDirection: 'row', gap: 8 },
+
+    header: { paddingBottom: 16 },
+    backBtn: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+    backTxt: { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
+    headerContent: { paddingHorizontal: 20, paddingBottom: 14 },
+    headerTitle: { fontSize: 28, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+    headerSub:   { fontSize: 13, color: 'rgba(255,255,255,0.80)', marginTop: 3 },
+
+    tabRow: { flexDirection: 'row', marginHorizontal: 20, gap: 8 },
     tabBtn: {
-      flex: 1, paddingVertical: 8, borderRadius: 999,
-      alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)',
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+      flex: 1, paddingVertical: 9, borderRadius: 12, alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
     },
-    tabBtnActive: { backgroundColor: t.colors.primary + '30', borderColor: t.colors.primary },
-    tabTxt:       { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
-    tabTxtActive: { color: '#FFFFFF' },
+    tabBtnActive: { backgroundColor: 'rgba(255,255,255,0.30)', borderColor: 'rgba(255,255,255,0.70)' },
+    tabTxt:       { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.70)' },
+    tabTxtActive: { color: '#fff' },
 
     scroll: { padding: 16, paddingBottom: 40 },
     center: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
 
-    sortRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-    sortBtn: {
-      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-      paddingVertical: 8, borderRadius: 999,
-      backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border,
-    },
-    sortIcon: { fontSize: 14 },
-    sortTxt:  { fontSize: 13, fontWeight: '700', color: t.colors.textHint },
+    loadingCircle: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
 
-    podiumCard:  { marginBottom: 16 },
-    podiumTitle: { fontSize: 14, fontWeight: '700', color: t.colors.text, marginBottom: 16, textAlign: 'center' },
-    podium:      { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
-
-    myRankBanner: {
-      backgroundColor: t.colors.accent + '15',
-      borderRadius: 16, padding: 12, marginBottom: 12,
-      borderWidth: 1, borderColor: t.colors.accent + '40',
+    // Sort pills
+    sortRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    sortPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
+      borderWidth: 1,
     },
-    myRankLabel: { fontSize: 10, fontWeight: '700', color: t.colors.accent, letterSpacing: 1, marginBottom: 4 },
+    sortPillActive: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
+    },
+    sortPillIcon: { fontSize: 13 },
+    sortPillTxt:  { fontSize: 12, fontWeight: '700' },
+
+    // Podyum
+    podiumWrap: {
+      flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around',
+      backgroundColor: t.colors.surface, borderRadius: 20, padding: 20,
+      marginBottom: 16, borderWidth: 1, borderColor: t.colors.border,
+      ...t.shadows.md,
+    },
+
+    // Benim sıram
+    myRankCard: {
+      borderRadius: 16, padding: 14, marginBottom: 12,
+      borderWidth: 1, borderColor: t.colors.primary + '40',
+    },
+    myRankLabel: { fontSize: 10, fontWeight: '900', color: t.colors.primary, letterSpacing: 1.5, marginBottom: 6 },
     myRankRow:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    myRankNum:   { fontSize: 18, fontWeight: '900', color: t.colors.accent, width: 36 },
+    myRankNum:   { fontSize: 20, fontWeight: '900', color: t.colors.primary, width: 40 },
     myRankName:  { flex: 1, fontSize: 14, fontWeight: '700', color: t.colors.text },
-    myRankVal:   { fontSize: 14, fontWeight: '800' },
+    myRankVal:   { fontSize: 14, fontWeight: '800', color: t.colors.primary },
 
+    // Liste satırı
     row: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: t.colors.surface, borderRadius: 12, padding: 12, marginBottom: 6,
+      backgroundColor: t.colors.surface, borderRadius: 14, padding: 12, marginBottom: 8,
       borderWidth: 1, borderColor: t.colors.border,
     },
-    rowMe:    { borderColor: t.colors.accent + '60', backgroundColor: t.colors.accent + '08' },
-    rowRank:  { fontSize: 13, fontWeight: '800', color: t.colors.textHint, width: 30 },
-    avatar:   { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-    avatarTxt:{ fontSize: 16, fontWeight: '800', color: t.colors.text },
-    rowInfo:  { flex: 1 },
-    rowName:  { fontSize: 14, fontWeight: '700', color: t.colors.text },
-    rowMeta:  { fontSize: 11, color: t.colors.textHint, marginTop: 1 },
-    rowVal:   { fontSize: 14, fontWeight: '800' },
+    rowMe: { borderColor: t.colors.primary + '60', backgroundColor: t.colors.primary + '08' },
+    rowRank: { fontSize: 13, fontWeight: '800', color: t.colors.textHint, width: 28 },
+    avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    avatarTxt: { fontSize: 16, fontWeight: '900', color: '#fff' },
+    rowInfo: { flex: 1 },
+    rowName: { fontSize: 14, fontWeight: '700', color: t.colors.text },
+    rowMeta: { fontSize: 11, color: t.colors.textHint, marginTop: 1 },
+    valPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+    valPillTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
 
-    emptyEmoji: { fontSize: 48, marginBottom: 12 },
     emptyTitle: { fontSize: 18, fontWeight: '800', color: t.colors.text, marginBottom: 6 },
-    emptySub:   { fontSize: 13, color: t.colors.textSub, textAlign: 'center', lineHeight: 18 },
+    emptySub:   { fontSize: 13, color: t.colors.textSub, textAlign: 'center', lineHeight: 18, paddingHorizontal: 20 },
 
-    sectionTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text, marginBottom: 10 },
+    sectionTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text, marginBottom: 12 },
 
-    howCard:  { marginBottom: 20 },
-    howTitle: { fontSize: 15, fontWeight: '800', color: t.colors.text, marginBottom: 8 },
-    howText:  { fontSize: 13, color: t.colors.textSub, lineHeight: 20 },
+    // Meydan okuma
+    howCard: { borderRadius: 20, padding: 18, marginBottom: 20 },
+    howTitle: { fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 8 },
+    howText:  { fontSize: 13, color: 'rgba(255,255,255,0.88)', lineHeight: 20 },
 
-    ctCard:  { backgroundColor: t.colors.surface, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: t.colors.border },
-    ctLabel: { fontSize: 14, fontWeight: '700', color: t.colors.text, marginBottom: 3 },
-    ctDesc:  { fontSize: 12, color: t.colors.textHint },
+    challengeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+    ctCard:  { borderRadius: 16, padding: 14, width: (W - 42) / 2 },
+    ctLabel: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 4 },
+    ctDesc:  { fontSize: 11, color: 'rgba(255,255,255,0.80)', lineHeight: 15 },
 
     opponentRow: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
-      backgroundColor: t.colors.surface, borderRadius: 12, padding: 12, marginBottom: 8,
+      backgroundColor: t.colors.surface, borderRadius: 14, padding: 12, marginBottom: 8,
       borderWidth: 1, borderColor: t.colors.border,
     },
-    challengeBtn: {
-      backgroundColor: t.colors.primary + '25', borderRadius: 999,
-      paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: t.colors.primary,
-    },
-    challengeBtnTxt: { fontSize: 11, fontWeight: '700', color: t.colors.primaryLight },
+    challengeBtn: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+    challengeBtnTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
   })
 }

@@ -9,7 +9,7 @@ import { useSessionStore } from '../../../src/stores/sessionStore'
 import { useAuthStore } from '../../../src/stores/authStore'
 import { useGamificationStore } from '../../../src/stores/gamificationStore'
 import { getLevelFromXP } from '../../../src/constants/levels'
-import { createBadgeService, createPerformancePipeline } from '@sprinta/api'
+import { createBadgeService, createPerformancePipeline, createUserContentService } from '@sprinta/api'
 import { EventBus } from '../../../src/features/rewards/EventBus'
 import { BadgeAwardModal } from '../../../src/components/gamification/BadgeAwardModal'
 import { LevelUpModal } from '../../../src/components/gamification/LevelUpModal'
@@ -21,6 +21,7 @@ const supabase = createClient(
 )
 const badgeService = createBadgeService(supabase)
 const pipeline = createPerformancePipeline(supabase)
+const ucSvc = createUserContentService(supabase)
 
 const FATIGUE_LABELS: Record<string, string> = {
   fresh: '💪 Zinde',
@@ -31,7 +32,11 @@ const FATIGUE_LABELS: Record<string, string> = {
 }
 
 export default function ResultScreen() {
-  const { moduleCode } = useLocalSearchParams<{ moduleCode: string }>()
+  const { moduleCode, userChunkId, userContentId } = useLocalSearchParams<{
+    moduleCode: string
+    userChunkId?: string
+    userContentId?: string
+  }>()
   const router = useRouter()
   const { result, lastMetrics, reset } = useSessionStore()
   const { student, refreshProfile } = useAuthStore()
@@ -96,6 +101,16 @@ export default function ResultScreen() {
       }
     }
     // ─────────────────────────────────────────────────────────────────────
+
+    // Kullanıcı chunk'ı tamamlandı olarak işaretle
+    if (userChunkId && perf && metrics) {
+      await ucSvc.markChunkCompleted({
+        chunkId: userChunkId,
+        wpm: metrics.wpm,
+        comprehension: metrics.comprehension,
+        score: perf.arp,
+      }).catch((e) => console.error('Chunk işaretlenemedi:', e))
+    }
 
     // Streak güncelle ve rozet kontrol et
     await badgeService.updateStreak(student.id)

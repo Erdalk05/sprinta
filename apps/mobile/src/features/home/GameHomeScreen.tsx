@@ -1,25 +1,29 @@
 /**
- * Sprinta Ana Sayfa — Hero Redesign
- * Gradient hero header, ARP count-up, glassmorphism stats,
- * günlük hedef kartı, haftalık özet, son seans, rozetler.
+ * Sprinta Ana Sayfa — v3 Cognitive Performance Game Engine
+ * Hero · PerformanceHeader · XPProgressBar · DailyMission · BrainPowerMap
+ * DailyLeaderboard · WeeklyMomentum · AICoach · Rozetler
  */
 import React, { useEffect, useRef, useMemo, useState } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView, FlatList,
-  SafeAreaView, Animated, StyleSheet, Dimensions,
+  SafeAreaView, Animated, StyleSheet,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../stores/authStore'
 import { useGamificationStore } from '../../stores/gamificationStore'
 import { useThemeToggle, useAppTheme } from '../../theme/useAppTheme'
 import type { AppTheme } from '../../theme'
-import { calculateExamProgress, getLevelFromXp } from '@sprinta/shared'
+import { calculateExamProgress } from '@sprinta/shared'
 import { EventBus } from '../rewards/EventBus'
 import { getBadgeById } from '../rewards/RewardEngine'
-
-const { width: W } = Dimensions.get('window')
+import { PerformanceHeader } from './components/PerformanceHeader'
+import { XPProgressBar } from './components/XPProgressBar'
+import { DailyMissionCard } from './components/DailyMissionCard'
+import { BrainPowerMap } from './components/BrainPowerMap'
+import { DailyLeaderboard } from './components/DailyLeaderboard'
+import { WeeklyMomentumStrip } from './components/WeeklyMomentumStrip'
+import { AICoachCard } from './components/AICoachCard'
 
 // ─── CountUp animasyon ────────────────────────────────────────────
 
@@ -115,7 +119,6 @@ export default function GameHomeScreen() {
   const examTarget = (student?.examTarget ?? 'tyt').toUpperCase()
   const totalXp    = student?.totalXp    ?? 0
   const streakDays = student?.streakDays ?? 0
-  const level      = getLevelFromXp(totalXp)
 
   const hour     = new Date().getHours()
   const greeting = hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar'
@@ -136,11 +139,6 @@ export default function GameHomeScreen() {
     router.push('/exercise/speed_control' as any)
   }
 
-  const handleContinue = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    router.push('/(tabs)/sessions' as any)
-  }
-
   return (
     <SafeAreaView style={s.root}>
       {badgeToast && (
@@ -149,15 +147,8 @@ export default function GameHomeScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* ═══════════════════════════════════════════════════════
-            BÖLÜM 1 — Hero Header
-        ═══════════════════════════════════════════════════════ */}
-        <LinearGradient
-          colors={t.gradients.hero as [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.hero}
-        >
+        {/* ══════════════════ BÖLÜM 1 — Hero ══════════════════════ */}
+        <View style={s.hero}>
           {/* Üst satır: selam + tema toggle */}
           <View style={s.heroTop}>
             <View>
@@ -189,102 +180,34 @@ export default function GameHomeScreen() {
           </View>
 
           {/* HIZLI BAŞLA */}
-          <TouchableOpacity style={s.startBtn} onPress={handleStart} activeOpacity={0.9}>
-            <Text style={s.startIcon}>▶</Text>
+          <TouchableOpacity onPress={handleStart} activeOpacity={0.9} style={s.startBtn}>
+            <Text style={s.startIcon}>⚡</Text>
             <Text style={s.startTxt}>HIZLI BAŞLA</Text>
           </TouchableOpacity>
-        </LinearGradient>
-
-        {/* ═══════════════════════════════════════════════════════
-            BÖLÜM 2 — Günlük Hedef
-        ═══════════════════════════════════════════════════════ */}
-        <LinearGradient
-          colors={t.gradients.cardPrimary as [string, string]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.goalCard}
-        >
-          <View style={s.goalTop}>
-            <Text style={s.goalTitle}>🎯 Bugünkü Hedef</Text>
-            <View style={s.goalBadge}>
-              <Text style={s.goalBadgeTxt}>{examTarget}</Text>
-            </View>
-          </View>
-          <View style={s.goalBar}>
-            <View style={[s.goalBarFill, { width: `${Math.min(100, examProg.progressPercent)}%` as any }]} />
-          </View>
-          <View style={s.goalBottom}>
-            <Text style={s.goalPct}>%{Math.round(examProg.progressPercent)} tamamlandı</Text>
-            {examProg.progressPercent >= 100 ? (
-              <Text style={s.goalDone}>✅ Bugünkü hedef tamamlandı!</Text>
-            ) : (
-              <TouchableOpacity style={s.goalBtn} onPress={handleContinue}>
-                <Text style={s.goalBtnTxt}>Devam Et →</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </LinearGradient>
-
-        {/* ═══════════════════════════════════════════════════════
-            BÖLÜM 3 — Bu Hafta İstatistikleri
-        ═══════════════════════════════════════════════════════ */}
-        <Text style={s.sectionTitle}>Bu Hafta</Text>
-        <View style={s.weekRow}>
-          {[
-            { emoji: '📊', value: String(Math.max(0, Math.floor(totalXp / 120))), unit: 'seans' },
-            { emoji: '🕐', value: String(Math.max(0, Math.floor(totalXp / 40))),  unit: 'dakika' },
-            { emoji: '⚡', value: totalXp.toLocaleString('tr'),                   unit: 'XP' },
-          ].map((item, i) => (
-            <View key={i} style={s.weekCard}>
-              <Text style={{ fontSize: 24, marginBottom: 4 }}>{item.emoji}</Text>
-              <Text style={s.weekValue}>{item.value}</Text>
-              <Text style={s.weekUnit}>{item.unit}</Text>
-            </View>
-          ))}
         </View>
 
-        {/* ═══════════════════════════════════════════════════════
-            BÖLÜM 4 — Son Seans / Motivasyon
-        ═══════════════════════════════════════════════════════ */}
-        {totalXp > 0 ? (
-          <LinearGradient
-            colors={t.gradients.cardSuccess as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.lastCard}
-          >
-            <Text style={s.lastTitle}>Son Seans</Text>
-            <Text style={s.lastMeta}>
-              Hız Kontrolü  ·  {currentArp} ARP
-            </Text>
-            <TouchableOpacity
-              style={s.lastBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                router.push('/exercise/speed_control' as any)
-              }}
-            >
-              <Text style={s.lastBtnTxt}>Tekrarla →</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        ) : (
-          <LinearGradient
-            colors={t.gradients.cardSuccess as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.lastCard}
-          >
-            <Text style={s.lastTitle}>🚀 İlk Antrenmanına Başla!</Text>
-            <Text style={s.lastMeta}>Sprinta ile okuma hızını ölç ve geliştir.</Text>
-            <TouchableOpacity style={s.lastBtn} onPress={handleStart}>
-              <Text style={s.lastBtnTxt}>Şimdi Başla →</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        )}
+        {/* ══════════════════ BÖLÜM 2 — Performans Metrikleri ═════ */}
+        <PerformanceHeader />
 
-        {/* ═══════════════════════════════════════════════════════
-            BÖLÜM 5 — Rozetler
-        ═══════════════════════════════════════════════════════ */}
+        {/* ══════════════════ BÖLÜM 3 — XP İlerleme ══════════════ */}
+        <XPProgressBar />
+
+        {/* ══════════════════ BÖLÜM 4 — Günlük Görev ═════════════ */}
+        <DailyMissionCard />
+
+        {/* ══════════════════ BÖLÜM 5 — Bilişsel Güç Haritası ════ */}
+        <BrainPowerMap />
+
+        {/* ══════════════════ BÖLÜM 6 — Günlük Sıralama ══════════ */}
+        <DailyLeaderboard />
+
+        {/* ══════════════════ BÖLÜM 7 — Haftalık Momentum ════════ */}
+        <WeeklyMomentumStrip />
+
+        {/* ══════════════════ BÖLÜM 8 — AI Koç ═══════════════════ */}
+        <AICoachCard />
+
+        {/* ══════════════════ BÖLÜM 9 — Rozetler ══════════════════ */}
         {earnedBadges.length > 0 && (
           <>
             <View style={s.badgeHeader}>
@@ -324,77 +247,81 @@ function ms(t: AppTheme) {
     root:   { flex: 1, backgroundColor: t.colors.background },
     scroll: { paddingBottom: 24 },
 
-    // Hero
+    // Hero — WhatsApp solid header
     hero: {
-      paddingTop: 20, paddingBottom: 24,
+      backgroundColor: t.colors.headerBg,
+      paddingTop: 16, paddingBottom: 22,
       paddingHorizontal: 20,
       gap: 16,
     },
     heroTop: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     },
-    heroGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-    heroName:     { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 2 },
+    heroGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+    heroName:     { fontSize: 20, fontWeight: '700', color: '#fff', marginTop: 2 },
     themeBtn:     { padding: 6 },
 
-    arpBlock:  { alignItems: 'center', paddingVertical: 8 },
-    arpLabel:  { fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 2 },
-    arpValue:  { fontSize: 72, fontWeight: '900', color: '#fff', lineHeight: 80, marginTop: 4 },
-    arpTrend:  { fontSize: 13, color: 'rgba(255,255,255,0.80)', marginTop: 4, fontWeight: '600' },
+    arpBlock:  { alignItems: 'center', paddingVertical: 4 },
+    arpLabel:  { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 2 },
+    arpValue:  { fontSize: 64, fontWeight: '900', color: '#fff', lineHeight: 72, marginTop: 4 },
+    arpTrend:  { fontSize: 12, color: 'rgba(255,255,255,0.80)', marginTop: 4, fontWeight: '600' },
 
     glassRow:  { flexDirection: 'row', gap: 10 },
 
+    // Başla butonu — beyaz kenarlıklı
     startBtn:  {
-      backgroundColor: '#fff',
-      borderRadius: 16, height: 56,
+      borderRadius: 14, height: 52,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-      gap: 10,
-      ...t.shadows.lg,
+      gap: 8,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.50)',
     },
     startIcon: { fontSize: 20 },
-    startTxt:  { fontSize: 17, fontWeight: '800', color: '#1a1a2e', letterSpacing: 1.5 },
+    startTxt:  { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
 
-    // Günlük hedef
+    // Günlük hedef — flat beyaz kart
     goalCard: {
+      backgroundColor: t.colors.surface,
       marginHorizontal: 16, marginTop: 16,
-      borderRadius: 20, padding: 18,
-      ...t.shadows.md,
+      borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: t.colors.border,
     },
     goalTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    goalTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
-    goalBadge: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-    goalBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#fff' },
-    goalBar:   { height: 6, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
-    goalBarFill: { height: 6, backgroundColor: '#fff', borderRadius: 3 },
+    goalTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text },
+    goalBadge: { backgroundColor: t.colors.greenLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+    goalBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#25D366' },
+    goalBar:   { height: 5, backgroundColor: t.colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
+    goalBarFill: { height: 5, backgroundColor: '#25D366', borderRadius: 3 },
     goalBottom:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    goalPct:   { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-    goalDone:  { fontSize: 13, color: '#fff', fontWeight: '700' },
-    goalBtn:   { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
-    goalBtnTxt:{ fontSize: 13, fontWeight: '700', color: '#fff' },
+    goalPct:   { fontSize: 12, color: t.colors.textSub },
+    goalDone:  { fontSize: 12, color: '#25D366', fontWeight: '700' },
+    goalBtn:   { borderWidth: 1.5, borderColor: '#25D366', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+    goalBtnTxt:{ fontSize: 12, fontWeight: '700', color: '#25D366' },
 
     // Haftalık
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.colors.text, marginHorizontal: 16, marginTop: 20, marginBottom: 10 },
-    sectionLink:  { fontSize: 14, fontWeight: '600', marginTop: 20, marginRight: 16 },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: t.colors.text, marginHorizontal: 16, marginTop: 20, marginBottom: 10 },
+    sectionLink:  { fontSize: 13, fontWeight: '600', marginTop: 20, marginRight: 16 },
     weekRow:   { flexDirection: 'row', gap: 10, marginHorizontal: 16 },
     weekCard:  {
       flex: 1, backgroundColor: t.colors.surface,
-      borderRadius: 16, padding: 14, alignItems: 'center',
+      borderRadius: 14, padding: 14, alignItems: 'center',
       borderWidth: 1, borderColor: t.colors.border,
-      ...t.shadows.sm,
     },
-    weekValue: { fontSize: 22, fontWeight: '900', color: t.colors.text, marginBottom: 2 },
-    weekUnit:  { fontSize: 11, color: t.colors.textHint },
+    weekValue: { fontSize: 20, fontWeight: '700', color: t.colors.text, marginBottom: 2 },
+    weekUnit:  { fontSize: 10, color: t.colors.textHint },
 
-    // Son seans
+    // Son seans — flat beyaz kart, yeşil aksan
     lastCard: {
+      backgroundColor: t.colors.surface,
       marginHorizontal: 16, marginTop: 16,
-      borderRadius: 20, padding: 18,
-      ...t.shadows.md,
+      borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: t.colors.border,
     },
-    lastTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 4 },
-    lastMeta:  { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 12 },
-    lastBtn:   { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9, alignSelf: 'flex-end' },
-    lastBtnTxt:{ fontSize: 14, fontWeight: '700', color: '#fff' },
+    lastTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
+    lastMeta:  { fontSize: 12, color: t.colors.textSub, marginBottom: 14 },
+    lastBtn:   { borderWidth: 1.5, borderColor: '#25D366', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-end' },
+    lastBtnTxt:{ fontSize: 13, fontWeight: '700', color: '#25D366' },
 
     // Rozetler
     badgeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

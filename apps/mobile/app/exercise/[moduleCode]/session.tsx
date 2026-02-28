@@ -7,6 +7,14 @@ import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
 import { getArticleById, type Article } from '../../../src/hooks/useArticles'
 import { useSessionStore } from '../../../src/stores/sessionStore'
+import { createClient } from '@supabase/supabase-js'
+import { createUserContentService } from '@sprinta/api'
+
+const _supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+)
+const _ucSvc = createUserContentService(_supabase)
 import { ChunkReader } from '../../../src/components/exercise/ChunkReader'
 import { TextReader } from '../../../src/components/exercise/TextReader'
 import { AttentionGrid } from '../../../src/components/exercise/AttentionGrid'
@@ -35,12 +43,15 @@ function articleToExercise(art: Article) {
 }
 
 export default function SessionScreen() {
-  const { moduleCode, difficulty, exerciseId, articleId } = useLocalSearchParams<{
-    moduleCode: string
-    difficulty: string
-    exerciseId: string
-    articleId?: string
-  }>()
+  const { moduleCode, difficulty, exerciseId, articleId, userContentId, userChunkId } =
+    useLocalSearchParams<{
+      moduleCode: string
+      difficulty: string
+      exerciseId: string
+      articleId?: string
+      userContentId?: string
+      userChunkId?: string
+    }>()
   const router = useRouter()
   const { student } = useAuthStore()
   const store = useSessionStore()
@@ -49,21 +60,45 @@ export default function SessionScreen() {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [readingWpm, setReadingWpm] = useState(0)
-  const [articleLoading, setArticleLoading] = useState(!!articleId)
+  const [articleLoading, setArticleLoading] = useState(!!(articleId || userContentId))
   const [remoteArticle, setRemoteArticle] = useState<ReturnType<typeof articleToExercise> | null>(null)
 
   const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
   const difficultyNum = parseInt(difficulty ?? '5', 10)
   const accentColor = moduleColors[moduleCode] ?? colors.primary
 
-  // articleId varsa önbellekten çek (useArticles hook'u zaten cache'ledi)
+  // articleId → platform makalesinden çek
   useEffect(() => {
-    if (!articleId) { setArticleLoading(false); return }
+    if (!articleId) return
     getArticleById(articleId).then((art) => {
       if (art) setRemoteArticle(articleToExercise(art))
       setArticleLoading(false)
     })
   }, [articleId])
+
+  // userContentId → kullanıcının kendi içeriğinden chunk çek
+  useEffect(() => {
+    if (!userContentId) {
+      if (!articleId) setArticleLoading(false)
+      return
+    }
+    _ucSvc.getContentChunks(userContentId).then((chunks) => {
+      const idx = userChunkId ? parseInt(userChunkId, 10) : 0
+      const chunk = chunks[idx] ?? chunks[0]
+      if (chunk) {
+        setRemoteArticle({
+          id: chunk.id,
+          moduleCode,
+          title: `Bölüm ${(idx + 1)}`,
+          content: chunk.chunk_text,
+          wordCount: chunk.word_count,
+          difficulty: difficultyNum,
+          questions: [],
+        })
+      }
+      setArticleLoading(false)
+    })
+  }, [userContentId, userChunkId, moduleCode, difficultyNum])
 
   // Kullanılacak exercise: remote → sample fallback
   const exercise = remoteArticle ?? SAMPLE_EXERCISES[moduleCode]
@@ -139,7 +174,11 @@ export default function SessionScreen() {
 
     router.replace({
       pathname: '/exercise/[moduleCode]/result',
-      params: { moduleCode },
+      params: {
+        moduleCode,
+        ...(userChunkId ? { userChunkId } : {}),
+        ...(userContentId ? { userContentId } : {}),
+      },
     })
   }, [store, student, router, moduleCode])
 

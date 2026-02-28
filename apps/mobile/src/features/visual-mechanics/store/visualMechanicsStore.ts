@@ -34,6 +34,9 @@ interface VisualMechanicsState {
   activeExerciseId: ExerciseId | null
   isExerciseActive: boolean
 
+  // Dışarıdan doğrudan egzersiz açmak için (sessions tab → intro ekranı)
+  pendingExerciseId: ExerciseId | null
+
   // Actions
   setLastSelectedLevel: (level: DifficultyLevel) => void
   startExercise: (exerciseId: ExerciseId) => void
@@ -41,6 +44,7 @@ interface VisualMechanicsState {
   exitExercise: () => void
   getExerciseHistory: (exerciseId: ExerciseId) => ExerciseResult[]
   getTotalXpFromVisualMechanics: () => number
+  setPendingExerciseId: (id: ExerciseId | null) => void
 }
 
 export const useVisualMechanicsStore = create<VisualMechanicsState>()(
@@ -50,6 +54,7 @@ export const useVisualMechanicsStore = create<VisualMechanicsState>()(
       completedExercises: [],
       activeExerciseId: null,
       isExerciseActive: false,
+      pendingExerciseId: null,
 
       setLastSelectedLevel: (level) => set({ lastSelectedLevel: level }),
 
@@ -71,6 +76,8 @@ export const useVisualMechanicsStore = create<VisualMechanicsState>()(
 
       getTotalXpFromVisualMechanics: () =>
         get().completedExercises.reduce((sum, r) => sum + r.xpEarned, 0),
+
+      setPendingExerciseId: (id) => set({ pendingExerciseId: id }),
     }),
     {
       name: 'visual-mechanics-store',

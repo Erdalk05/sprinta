@@ -7,7 +7,10 @@
  * Expo-router gerektirmez — tüm geçişler içeride yönetilir.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useStarStore } from '../../../stores/starStore'
+import { useAuthStore } from '../../../stores/authStore'
+import type { GamificationState } from '@sprinta/api'
 import {
   View,
   Text,
@@ -29,8 +32,21 @@ import type {
 } from '../constants/exerciseConfig'
 import { ExerciseIntroScreen } from '../components/ExerciseIntroScreen'
 import { ExerciseResultScreen } from '../components/ExerciseResultScreen'
-import FlashJumpMatrix from '../components/exercises/FlashJumpMatrix'
-import { ComingSoonExercise } from '../components/exercises/ComingSoonExercise'
+import FlashJumpMatrix         from '../components/exercises/FlashJumpMatrix'
+import VerticalPulseTrack     from '../components/exercises/VerticalPulseTrack'
+import DiagonalLaserDash      from '../components/exercises/DiagonalLaserDash'
+import PeripheralFlashHunter  from '../components/exercises/PeripheralFlashHunter'
+import ExpandingRingsFocus    from '../components/exercises/ExpandingRingsFocus'
+import SpeedDotStorm          from '../components/exercises/SpeedDotStorm'
+import OppositePull           from '../components/exercises/OppositePull'
+import RandomBlinkTrap        from '../components/exercises/RandomBlinkTrap'
+import CircularOrbitChase     from '../components/exercises/CircularOrbitChase'
+import ShrinkZoomFocus        from '../components/exercises/ShrinkZoomFocus'
+import DoubleTargetSwitch     from '../components/exercises/DoubleTargetSwitch'
+import LineScanSprint         from '../components/exercises/LineScanSprint'
+import SplitScreenMirror      from '../components/exercises/SplitScreenMirror'
+import MicroPauseReact        from '../components/exercises/MicroPauseReact'
+import TunnelVisionBreaker    from '../components/exercises/TunnelVisionBreaker'
 import { calculateScore } from '../engines/scoringEngine'
 import type { RawMetrics, ExerciseScore } from '../engines/scoringEngine'
 import { useVisualMechanicsStore } from '../store/visualMechanicsStore'
@@ -105,10 +121,27 @@ export const VisualMechanicsHomeScreen: React.FC<VisualMechanicsHomeScreenProps>
 }) => {
   const t = useAppTheme()
   const [screen, setScreen] = useState<ScreenState>({ mode: 'home' })
+  const [lastGamState, setLastGamState] = useState<GamificationState | null>(null)
+
+  const studentId    = useAuthStore((s) => s.student?.id ?? null)
+  const recordExercise = useStarStore((s) => s.recordExercise)
+
+  // Dışarıdan (TrainingBottomSheet) doğrudan girildiyse geri tuşu home'u
+  // göstermeden router.back() çağırır
+  const directEntry = useRef(false)
 
   const totalXp = useVisualMechanicsStore((s) => s.getTotalXpFromVisualMechanics())
-  const { completeExercise, startExercise, exitExercise, completedExercises } =
-    useVisualMechanicsStore()
+  const { completeExercise, startExercise, exitExercise, completedExercises,
+          pendingExerciseId, setPendingExerciseId } = useVisualMechanicsStore()
+
+  // Sessions tab'dan doğrudan egzersiz açma
+  useEffect(() => {
+    if (pendingExerciseId) {
+      directEntry.current = true
+      setPendingExerciseId(null)
+      setScreen({ mode: 'intro', exerciseId: pendingExerciseId })
+    }
+  }, [pendingExerciseId, setPendingExerciseId])
 
   /** Egzersiz ID'sine göre son skoru bul */
   const lastScoreMap = useMemo(() => {
@@ -172,16 +205,28 @@ export const VisualMechanicsHomeScreen: React.FC<VisualMechanicsHomeScreenProps>
         arpContribution: config.arpEffect,
       })
 
+      // ── Gamification: yıldız kaydet ──
+      if (studentId) {
+        recordExercise(studentId, exerciseId, score.focusStabilityScore)
+          .then((gamState) => setLastGamState(gamState))
+          .catch(() => {/* sessiz hata — gamification kritik değil */})
+      }
+
       setScreen({ mode: 'result', exerciseId, level, score })
     },
-    [screen, completeExercise],
+    [screen, completeExercise, studentId, recordExercise],
   )
 
   // ── Çıkış / Geri ─────────────────────────────────────────────────────────
   const handleExit = useCallback(() => {
     exitExercise()
-    setScreen({ mode: 'home' })
-  }, [exitExercise])
+    if (directEntry.current) {
+      // Dışarıdan (TrainingBottomSheet) gelindi → önceki ekrana dön
+      onBack?.()
+    } else {
+      setScreen({ mode: 'home' })
+    }
+  }, [exitExercise, onBack])
 
   const handleRetry = useCallback(() => {
     if (screen.mode !== 'result') return
@@ -193,26 +238,32 @@ export const VisualMechanicsHomeScreen: React.FC<VisualMechanicsHomeScreenProps>
   // ── Render: Egzersiz ─────────────────────────────────────────────────────
   if (screen.mode === 'exercise') {
     const { exerciseId, level } = screen
+    const exProps = { level, onComplete: handleExerciseComplete, onExit: handleExit }
 
-    if (exerciseId === 'flash_jump_matrix') {
-      return (
-        <SafeAreaView style={styles.fill}>
-          <FlashJumpMatrix
-            level={level}
-            onComplete={handleExerciseComplete}
-            onExit={handleExit}
-          />
-        </SafeAreaView>
-      )
-    }
+    const ExerciseComponent: React.ReactNode = (() => {
+      switch (exerciseId) {
+        case 'flash_jump_matrix':      return <FlashJumpMatrix        {...exProps} />
+        case 'vertical_pulse_track':   return <VerticalPulseTrack     {...exProps} />
+        case 'diagonal_laser_dash':    return <DiagonalLaserDash      {...exProps} />
+        case 'peripheral_flash_hunter':return <PeripheralFlashHunter  {...exProps} />
+        case 'expanding_rings_focus':  return <ExpandingRingsFocus    {...exProps} />
+        case 'speed_dot_storm':        return <SpeedDotStorm          {...exProps} />
+        case 'opposite_pull':          return <OppositePull           {...exProps} />
+        case 'random_blink_trap':      return <RandomBlinkTrap        {...exProps} />
+        case 'circular_orbit_chase':   return <CircularOrbitChase     {...exProps} />
+        case 'shrink_zoom_focus':      return <ShrinkZoomFocus        {...exProps} />
+        case 'double_target_switch':   return <DoubleTargetSwitch     {...exProps} />
+        case 'line_scan_sprint':       return <LineScanSprint         {...exProps} />
+        case 'split_screen_mirror':    return <SplitScreenMirror      {...exProps} />
+        case 'micro_pause_react':      return <MicroPauseReact        {...exProps} />
+        case 'tunnel_vision_breaker':  return <TunnelVisionBreaker    {...exProps} />
+        default:                       return null
+      }
+    })()
 
-    // Diğer egzersizler → ComingSoonExercise
     return (
       <SafeAreaView style={styles.fill}>
-        <ComingSoonExercise
-          title={EXERCISE_CONFIGS[exerciseId].titleTR}
-          onExit={handleExit}
-        />
+        {ExerciseComponent}
       </SafeAreaView>
     )
   }
@@ -240,6 +291,7 @@ export const VisualMechanicsHomeScreen: React.FC<VisualMechanicsHomeScreenProps>
           level={screen.level}
           onRetry={handleRetry}
           onExit={handleExit}
+          gamState={lastGamState}
         />
       </SafeAreaView>
     )
@@ -264,7 +316,7 @@ export const VisualMechanicsHomeScreen: React.FC<VisualMechanicsHomeScreenProps>
             <Text style={[styles.backText, { color: t.colors.textHint }]}>← Geri</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.headerTitle}>Göz Kasları Antrenmanı</Text>
+        <Text style={styles.headerTitle}>Kartal Gözü</Text>
         <Text style={[styles.headerSub, { color: t.colors.textHint }]}>
           Okuma hızın için gözlerini güçlendir
         </Text>

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { PerformanceResult, SessionMetrics } from '@sprinta/shared'
+import { useModuleUsageStore } from './moduleUsageStore'
 
 interface HalfMetrics {
   wpm: number
@@ -65,6 +66,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   ...initialState,
 
   startSession: ({ moduleCode, exerciseId, difficultyLevel }) => {
+    // Kullanım sayacını artır → RadialFab dinamik top-6 için
+    useModuleUsageStore.getState().increment(moduleCode)
     set({
       ...initialState,
       isActive: true,

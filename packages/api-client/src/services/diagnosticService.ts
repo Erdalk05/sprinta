@@ -47,40 +47,42 @@ export function createDiagnosticService(supabase: SupabaseClient<any>) {
       return { success: false, error: diagError.message }
     }
 
-    // 2. students tablosunu güncelle (trigger da çalışır ama açık olsun)
-    const { error: studentError } = await supabase
-      .from('students')
-      .update({
-        has_completed_diagnostic: true,
-        baseline_wpm: baselineWpm,
-        baseline_comprehension: baselineComprehension,
-        baseline_arp: baselineArp,
-        current_wpm: baselineWpm,
-        current_comprehension: baselineComprehension,
-        current_arp: baselineArp,
-        last_activity_at: new Date().toISOString(),
-      })
-      .eq('id', studentId)
+    // 2 + 3. students ve cognitive_profiles'ı paralel güncelle
+    const speedSkill = Math.min(100, Math.round((baselineWpm / 400) * 100))
+    const now = new Date().toISOString()
+
+    const [{ error: studentError }] = await Promise.all([
+      supabase
+        .from('students')
+        .update({
+          has_completed_diagnostic: true,
+          baseline_wpm: baselineWpm,
+          baseline_comprehension: baselineComprehension,
+          baseline_arp: baselineArp,
+          current_wpm: baselineWpm,
+          current_comprehension: baselineComprehension,
+          current_arp: baselineArp,
+          last_activity_at: now,
+        })
+        .eq('id', studentId),
+      supabase
+        .from('cognitive_profiles')
+        .update({
+          sustainable_wpm: baselineWpm,
+          peak_wpm: baselineWpm,
+          comprehension_baseline: baselineComprehension,
+          speed_skill: speedSkill,
+          comprehension_skill: baselineComprehension,
+          primary_weakness: primaryWeakness,
+          secondary_weakness: secondaryWeakness,
+          updated_at: now,
+        })
+        .eq('student_id', studentId),
+    ])
 
     if (studentError) {
       return { success: false, error: studentError.message }
     }
-
-    // 3. cognitive_profiles güncelle
-    const speedSkill = Math.min(100, Math.round((baselineWpm / 400) * 100))
-    await supabase
-      .from('cognitive_profiles')
-      .update({
-        sustainable_wpm: baselineWpm,
-        peak_wpm: baselineWpm,
-        comprehension_baseline: baselineComprehension,
-        speed_skill: speedSkill,
-        comprehension_skill: baselineComprehension,
-        primary_weakness: primaryWeakness,
-        secondary_weakness: secondaryWeakness,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('student_id', studentId)
 
     return { success: true }
   }
