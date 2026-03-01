@@ -20,6 +20,9 @@ import {
   estimateRemainingSeconds, calculateXP, Chunk,
 } from './ChunkRSVPEngine'
 import type { SessionMetrics } from '../types'
+import { QuestionModal } from '../../reading/QuestionModal'
+import type { TextQuestion, QuestionAnswer } from '@sprinta/api'
+import { supabase } from '../../../lib/supabase'
 
 // ─── Tipler ────────────────────────────────────────────────────────
 
@@ -39,8 +42,10 @@ export interface ChunkRSVPMetrics extends SessionMetrics {
 }
 
 interface Props {
-  onComplete: (metrics: ChunkRSVPMetrics) => void
-  onExit: () => void
+  onComplete:      (metrics: ChunkRSVPMetrics) => void
+  onExit:          () => void
+  /** Kütüphaneden gelen metin — varsa seçim ekranını atla */
+  initialContent?: ImportedContent
 }
 
 interface Settings {
@@ -65,15 +70,15 @@ const DEFAULT_SETTINGS: Settings = {
 
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
-export default function ChunkRSVPExercise({ onComplete, onExit }: Props) {
+export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }: Props) {
   const t = useAppTheme()
   const s = useMemo(() => ms(t), [t])
 
-  const [phase, setPhase]           = useState<Phase>('select')
+  const [phase, setPhase]           = useState<Phase>(initialContent ? 'select' : 'select')
   const [settings, setSettings]     = useState<Settings>(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [content, setContent]       = useState<ImportedContent | null>(null)
+  const [content, setContent]       = useState<ImportedContent | null>(initialContent ?? null)
 
   // Okuma state
   const [chunks, setChunks]         = useState<Chunk[]>([])
@@ -87,6 +92,10 @@ export default function ChunkRSVPExercise({ onComplete, onExit }: Props) {
 
   // Seans sonu
   const [finalMetrics, setFinalMetrics] = useState<ChunkRSVPMetrics | null>(null)
+
+  // Quiz
+  const [showQuiz,   setShowQuiz]   = useState(false)
+  const [questions,  setQuestions]  = useState<TextQuestion[]>([])
 
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -266,7 +275,11 @@ export default function ChunkRSVPExercise({ onComplete, onExit }: Props) {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.topBar}>
-          <TouchableOpacity onPress={onExit}><Text style={s.exitTxt}>← Geri</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onExit}
+            hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+            style={s.closeBtn}>
+            <Text style={s.closeBtnTxt}>✕</Text>
+          </TouchableOpacity>
           <Text style={s.topTitle}>Chunk RSVP</Text>
           <TouchableOpacity onPress={() => setShowSettings(true)}><Text style={s.settingsIcon}>⚙️</Text></TouchableOpacity>
         </View>
@@ -446,21 +459,52 @@ export default function ChunkRSVPExercise({ onComplete, onExit }: Props) {
 
   // ── AŞAMA 3: Seans Sonu ───────────────────────────────────────
 
+  const fetchAndShowQuiz = useCallback(async () => {
+    const textId = content?.libraryTextId
+    if (!textId) return
+    try {
+      const { data } = await (supabase as any)
+        .from('text_questions')
+        .select('*')
+        .eq('text_id', textId)
+        .order('order_index')
+        .limit(5)
+      setQuestions((data as TextQuestion[]) ?? [])
+      setShowQuiz(true)
+    } catch { /* sessiz */ }
+  }, [content])
+
   if (phase === 'result' && finalMetrics) {
     return (
-      <ResultScreen
-        metrics={finalMetrics}
-        content={content}
-        onRepeat={() => {
-          setPhase('select')
-          setChunkIdx(0)
-          setWpmHistory([])
-          setRegressionCount(0)
-        }}
-        onComplete={() => onComplete(finalMetrics)}
-        t={t}
-        s={s}
-      />
+      <>
+        <ResultScreen
+          metrics={finalMetrics}
+          content={content}
+          onRepeat={() => {
+            setPhase('select')
+            setChunkIdx(0)
+            setWpmHistory([])
+            setRegressionCount(0)
+          }}
+          onComplete={() => onComplete(finalMetrics)}
+          onExit={onExit}
+          onQuiz={fetchAndShowQuiz}
+          hasQuiz={content?.source === 'library'}
+          t={t}
+          s={s}
+        />
+        <QuestionModal
+          visible={showQuiz}
+          questions={questions}
+          textId={content?.libraryTextId ?? ''}
+          chapterId={null}
+          onComplete={(_answers: QuestionAnswer[]) => {
+            setShowQuiz(false)
+            onComplete(finalMetrics)
+          }}
+          onSkip={() => setShowQuiz(false)}
+        />
+      </>
     )
   }
 
@@ -474,15 +518,28 @@ interface ResultProps {
   content: ImportedContent | null
   onRepeat: () => void
   onComplete: () => void
+  onExit: () => void
+  onQuiz?: () => void
+  hasQuiz?: boolean
   t: AppTheme
   s: ReturnType<typeof ms>
 }
 
-function ResultScreen({ metrics, content, onRepeat, onComplete, t, s }: ResultProps) {
+function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, hasQuiz, t, s }: ResultProps) {
   const xp = calculateXP(metrics.arpScore, metrics.totalWords, metrics.bionicEnabled, metrics.durationSeconds)
 
   return (
     <SafeAreaView style={s.container}>
+      {/* X Kapat */}
+      <View style={{ paddingHorizontal:16, paddingTop:8, alignItems:'flex-end' }}>
+        <TouchableOpacity onPress={onExit}
+          hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+          style={{ width:38, height:38, borderRadius:19,
+            backgroundColor: t.colors.surface, borderWidth:1, borderColor: t.colors.border,
+            alignItems:'center', justifyContent:'center' }}>
+          <Text style={{ fontSize:18, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={s.resultScroll}>
         <Text style={s.resultEmoji}>🎉</Text>
         <Text style={s.resultTitle}>Seans Tamamlandı!</Text>
@@ -513,13 +570,24 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, t, s }: ResultPr
           <Text style={s.xpTxt}>+{xp} XP kazandın!</Text>
         </View>
 
+        {/* Quiz Butonu */}
+        {hasQuiz && onQuiz && (
+          <TouchableOpacity
+            style={{ backgroundColor:'#10B981', borderRadius:14, paddingVertical:14,
+              alignItems:'center', width:'100%', marginBottom:4 }}
+            onPress={onQuiz}
+          >
+            <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>📝 Anlama Soruları</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Butonlar */}
         <View style={s.resultBtns}>
           <TouchableOpacity style={s.repeatBtn} onPress={onRepeat}>
             <Text style={s.repeatBtnTxt}>Tekrar Yap</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.continueBtn} onPress={onComplete}>
-            <Text style={s.continueBtnTxt}>Sonuçları Kaydet →</Text>
+            <Text style={s.continueBtnTxt}>İleri →</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -619,6 +687,10 @@ function ms(t: AppTheme) {
       backgroundColor: t.colors.panel,
     },
     exitTxt:      { fontSize: 15, color: 'rgba(255,255,255,0.8)' },
+    closeBtn:     { width:36, height:36, borderRadius:18,
+      backgroundColor:'rgba(255,255,255,0.12)',
+      alignItems:'center', justifyContent:'center' },
+    closeBtnTxt:  { fontSize:18, color:'rgba(255,255,255,0.9)', fontWeight:'700' },
     topTitle:     { fontSize: 17, fontWeight: '800', color: '#fff' },
     settingsIcon: { fontSize: 20 },
 

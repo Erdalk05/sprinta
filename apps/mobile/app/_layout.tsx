@@ -82,6 +82,8 @@ export default function RootLayout() {
         <Stack.Screen name="diagnostic" />
         <Stack.Screen name="program" />
         <Stack.Screen name="ai-coach" />
+        <Stack.Screen name="text-detail" />
+        <Stack.Screen name="reader" options={{ gestureEnabled: false }} />
       </Stack>
     </GestureHandlerRootView>
   )

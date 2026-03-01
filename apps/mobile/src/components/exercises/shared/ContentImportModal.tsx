@@ -3,7 +3,7 @@ import {
   Modal, View, Text, TouchableOpacity, TextInput, ScrollView,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../../lib/supabase'
 // expo-document-picker yerel stub — native link gerektirmez
 const DocumentPicker = {
   getDocumentAsync: async (_opts: unknown): Promise<{ canceled: true } | { canceled: false; assets: Array<{ uri: string; name: string; mimeType?: string }> }> =>
@@ -14,11 +14,6 @@ import { useAppTheme } from '../../../theme/useAppTheme'
 import type { AppTheme } from '../../../theme'
 import { mmkvStorage } from '../../../stores/mmkvStorage'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-)
-
 // ─── Tipler ────────────────────────────────────────────────────────
 
 export interface ImportedContent {
@@ -27,15 +22,18 @@ export interface ImportedContent {
   wordCount: number
   source: 'library' | 'text' | 'url'
   estimatedMinutes: number
+  /** Kütüphane metni ID'si — QuestionModal için (source==='library' ise dolu) */
+  libraryTextId?: string
 }
 
 interface LibraryArticle {
   id: string
   title: string
-  content_text: string
-  word_count: number
-  difficulty_level: number
-  subject_code: string
+  body: string
+  word_count: number | null
+  difficulty: number
+  category: string
+  exam_type: string
 }
 
 interface RecentContent {
@@ -153,14 +151,14 @@ export default function ContentImportModal({
   const loadLibrary = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('articles')
-        .select('id, title, content_text, word_count, difficulty_level, subject_code')
-        .eq('is_published', true)
-        .order('difficulty_level')
-        .limit(30)
+      let query = (supabase as any)
+        .from('text_library')
+        .select('id, title, body, word_count, difficulty, category, exam_type')
+        .eq('status', 'published')
+        .order('difficulty')
+        .limit(40)
 
-      if (subjectCode) query = query.eq('subject_code', subjectCode)
+      if (subjectCode) query = query.eq('exam_type', subjectCode)
 
       const { data } = await query
       setArticles((data as LibraryArticle[]) ?? [])
@@ -194,12 +192,14 @@ export default function ContentImportModal({
   const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
 
   const selectArticle = (a: LibraryArticle) => {
+    const wc = a.word_count ?? wordCount(a.body)
     onContentSelected({
-      text: a.content_text,
+      text: a.body,
       title: a.title,
-      wordCount: a.word_count || wordCount(a.content_text),
+      wordCount: wc,
       source: 'library',
-      estimatedMinutes: Math.max(1, Math.round((a.word_count || 200) / 250)),
+      estimatedMinutes: Math.max(1, Math.round(wc / 250)),
+      libraryTextId: a.id,
     })
   }
 
@@ -359,7 +359,7 @@ export default function ContentImportModal({
                     <View style={s.articleInfo}>
                       <Text style={s.articleTitle} numberOfLines={2}>{a.title}</Text>
                       <Text style={s.articleMeta}>
-                        {a.word_count} kelime · {diffStars(a.difficulty_level)} · ~{Math.max(1, Math.round(a.word_count / 250))} dk
+                        {a.word_count ?? '?'} kelime · {diffStars(a.difficulty)} · ~{Math.max(1, Math.round((a.word_count ?? 250) / 250))} dk
                       </Text>
                     </View>
                     <Text style={s.chevron}>›</Text>

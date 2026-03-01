@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { PurchasesService } from '@sprinta/api';
+import { PurchasesService } from '../../../../packages/api-client/src/services/purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 const FEATURES = [

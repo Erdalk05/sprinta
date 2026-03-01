@@ -23,6 +23,9 @@ import type { AppTheme } from '../../../theme'
 import ContentImportModal, {
   ImportedContent, saveRecentContent,
 } from '../shared/ContentImportModal'
+import { QuestionModal } from '../../reading/QuestionModal'
+import type { TextQuestion, QuestionAnswer } from '@sprinta/api'
+import { supabase } from '../../../lib/supabase'
 import {
   parseTextToLines, applyLineDurations, calculateRealTimeWPM,
   rollingAverageWPM, computeFlowSessionARP, calculateHighlightState,
@@ -49,8 +52,10 @@ export interface FlowReadingMetrics extends SessionMetrics {
 }
 
 interface Props {
-  onComplete: (metrics: FlowReadingMetrics) => void
-  onExit: () => void
+  onComplete:      (metrics: FlowReadingMetrics) => void
+  onExit:          () => void
+  /** Kütüphaneden gelen metin — varsa seçim ekranını atla */
+  initialContent?: ImportedContent
 }
 
 interface Settings {
@@ -83,7 +88,7 @@ const LINE_OPACITIES = [0.12, 0.30, 1.0, 0.45, 0.22] // past2, past1, current, n
 
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
-export default function FlowReadingExercise({ onComplete, onExit }: Props) {
+export default function FlowReadingExercise({ onComplete, onExit, initialContent }: Props) {
   const t = useAppTheme()
   const s = useMemo(() => ms(t), [t])
 
@@ -91,7 +96,7 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
   const [settings, setSettings]         = useState<Settings>(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
   const [showImport, setShowImport]     = useState(false)
-  const [content, setContent]           = useState<ImportedContent | null>(null)
+  const [content, setContent]           = useState<ImportedContent | null>(initialContent ?? null)
 
   // Okuma state
   const [lines, setLines]               = useState<TextLine[]>([])
@@ -102,6 +107,10 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
   const [regressionCount, setRegressionCount] = useState(0)
   const [startTime, setStartTime]       = useState<number | null>(null)
   const [finalMetrics, setFinalMetrics] = useState<FlowReadingMetrics | null>(null)
+
+  // Quiz
+  const [showQuiz,  setShowQuiz]  = useState(false)
+  const [questions, setQuestions] = useState<TextQuestion[]>([])
 
   // Cursor animasyonu
   const cursorX       = useSharedValue(0)   // 0 → 1 (satır genişliğinin yüzdesi)
@@ -370,8 +379,9 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
     return (
       <SafeAreaView style={s.root}>
         <View style={s.selectHeader}>
-          <TouchableOpacity onPress={onExit} style={s.exitBtn}>
-            <Text style={s.exitTxt}>← Geri</Text>
+          <TouchableOpacity onPress={onExit} style={s.exitBtn}
+            hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+            <Text style={s.exitTxt}>✕</Text>
           </TouchableOpacity>
           <Text style={s.selectTitle}>🌊 Akış Okuma</Text>
           <Text style={s.selectSub}>Satır satır, rehber çizgiyle oku</Text>
@@ -459,8 +469,9 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
       <SafeAreaView style={s.root}>
         {/* Header */}
         <View style={s.readHeader}>
-          <TouchableOpacity onPress={() => { setIsPlaying(false); setPhase('select') }} style={s.exitBtn}>
-            <Text style={s.exitTxt}>←</Text>
+          <TouchableOpacity onPress={() => { setIsPlaying(false); setPhase('select') }} style={s.exitBtn}
+            hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+            <Text style={s.exitTxt}>✕</Text>
           </TouchableOpacity>
           <Text style={s.readTitle} numberOfLines={1}>{content?.title ?? 'Akış Okuma'}</Text>
           <TouchableOpacity onPress={toggleMode} style={s.modeBtn}>
@@ -686,6 +697,21 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
 
   // ── AŞAMA 3: Seans Sonu ────────────────────────────────────────
 
+  const fetchAndShowQuiz = useCallback(async () => {
+    const textId = content?.libraryTextId
+    if (!textId) return
+    try {
+      const { data } = await (supabase as any)
+        .from('text_questions')
+        .select('*')
+        .eq('text_id', textId)
+        .order('order_index')
+        .limit(5)
+      setQuestions((data as TextQuestion[]) ?? [])
+      setShowQuiz(true)
+    } catch { /* sessiz */ }
+  }, [content])
+
   if (!finalMetrics) return null
 
   const totalDurMin = Math.floor(finalMetrics.durationSeconds / 60)
@@ -697,6 +723,16 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
 
   return (
     <SafeAreaView style={s.root}>
+      {/* X Kapat */}
+      <View style={{ paddingHorizontal:16, paddingTop:8, alignItems:'flex-end' }}>
+        <TouchableOpacity onPress={onExit}
+          hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+          style={{ width:38, height:38, borderRadius:19,
+            backgroundColor: t.colors.surface, borderWidth:1, borderColor: t.colors.border,
+            alignItems:'center', justifyContent:'center' }}>
+          <Text style={{ fontSize:18, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={s.resultScroll} showsVerticalScrollIndicator={false}>
         {/* Başlık */}
         <View style={s.resultHero}>
@@ -734,6 +770,17 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
           ))}
         </View>
 
+        {/* Quiz Butonu */}
+        {content?.source === 'library' && (
+          <TouchableOpacity
+            style={{ backgroundColor:'#10B981', borderRadius:14, paddingVertical:14,
+              alignItems:'center', marginHorizontal:0, marginBottom:8 }}
+            onPress={fetchAndShowQuiz}
+          >
+            <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>📝 Anlama Soruları</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Butonlar */}
         <View style={s.resultActions}>
           <TouchableOpacity
@@ -752,10 +799,22 @@ export default function FlowReadingExercise({ onComplete, onExit }: Props) {
             style={[s.saveBtn, { backgroundColor: t.module.speed_control.color }]}
             onPress={() => { onComplete(finalMetrics); onExit() }}
           >
-            <Text style={s.saveBtnTxt}>Sonuçları Kaydet →</Text>
+            <Text style={s.saveBtnTxt}>İleri →</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <QuestionModal
+        visible={showQuiz}
+        questions={questions}
+        textId={content?.libraryTextId ?? ''}
+        chapterId={null}
+        onComplete={(_answers: QuestionAnswer[]) => {
+          setShowQuiz(false)
+          onComplete(finalMetrics)
+          onExit()
+        }}
+        onSkip={() => setShowQuiz(false)}
+      />
     </SafeAreaView>
   )
 }

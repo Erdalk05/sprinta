@@ -9,75 +9,21 @@ import { RadialFab } from '../../src/features/navigation/components/RadialFab'
 import TrainingBottomSheet from '../../src/components/training/TrainingBottomSheet'
 import type { TrainingSheetRef } from '../../src/components/training/TrainingBottomSheet'
 
-// ─── Deep Blue Eye Icon ───────────────────────────────────────────
-// Katmanlı iris: koyu lacivert → okyanus mavisi → parlak cyan
-// Speküler yansıma noktası → cam/göz derinliği hissi
-// Aktifken neon glow border
-function BlueEyeIcon({ active }: { active: boolean }) {
-  const opacity    = active ? 1.0 : 0.40
-  const borderClr  = active ? '#38BDF8' : '#0EA5E9'
-  const glowOp     = active ? 0.65 : 0.15
-
+// ─── Eagle Eye Icon (Kartal Gözü) ────────────────────────────────
+// Sistem emojisi 👁️ — Apple retina kalitesi, aktifken altın glow
+function EagleEyeIcon({ active }: { active: boolean }) {
   return (
     <View style={{
-      opacity,
-      width: 32, height: 22,
-      alignItems: 'center', justifyContent: 'center',
-      // Aktifken iris rengi glow
-      shadowColor:   '#0EA5E9',
+      opacity:       active ? 1.0 : 0.38,
+      alignItems:    'center',
+      justifyContent: 'center',
+      shadowColor:   '#D97706',
       shadowOffset:  { width: 0, height: 0 },
-      shadowRadius:  active ? 7 : 3,
-      shadowOpacity: glowOp,
-      elevation:     active ? 8 : 2,
+      shadowRadius:  active ? 10 : 0,
+      shadowOpacity: active ? 0.80 : 0,
+      elevation:     active ? 10 : 0,
     }}>
-      {/* Badem (almond) göz şekli */}
-      <View style={{
-        width: 32, height: 20,
-        borderRadius: 10,
-        borderWidth:  1.6,
-        borderColor:  borderClr,
-        overflow:     'hidden',
-        alignItems:   'center',
-        justifyContent: 'center',
-        // Sklerada çok hafif mavi ton
-        backgroundColor: 'rgba(14,165,233,0.06)',
-      }}>
-
-        {/* İris — Katman 1: Dış halka (koyu lacivert — derinlik) */}
-        <View style={{
-          width: 15, height: 15, borderRadius: 7.5,
-          backgroundColor: '#0B2849',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          {/* İris — Katman 2: Orta halka (okyanus mavisi) */}
-          <View style={{
-            width: 11, height: 11, borderRadius: 5.5,
-            backgroundColor: '#0369A1',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            {/* İris — Katman 3: İç halka (parlak cyan) */}
-            <View style={{
-              width: 7.5, height: 7.5, borderRadius: 3.75,
-              backgroundColor: '#38BDF8',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              {/* Pupil (saf siyah merkez) */}
-              <View style={{
-                width: 3.8, height: 3.8, borderRadius: 1.9,
-                backgroundColor: '#020617',
-              }} />
-            </View>
-          </View>
-        </View>
-
-        {/* Speküler yansıma — sağ üst, cam/göz derinliği illüzyonu */}
-        <View style={{
-          position: 'absolute', top: 3, right: 6,
-          width: 3, height: 3, borderRadius: 1.5,
-          backgroundColor: 'rgba(255,255,255,0.88)',
-        }} />
-
-      </View>
+      <Text style={{ fontSize: 26, lineHeight: 30 }}>👁️</Text>
     </View>
   )
 }
@@ -87,26 +33,28 @@ const BAR_H = Platform.OS === 'ios' ? 80 : 66
 
 // ─── Custom Sprinta Tab Bar ───────────────────────────────────────
 interface SprintaTabBarProps extends BottomTabBarProps {
-  onOpenEgzersiz: () => void
-  onOpenOkuma:    () => void
-  egzersizActive: boolean
-  okumaActive:    boolean
+  onOpenEgzersiz:  () => void
+  onNavigateCalis: () => void
+  egzersizActive:  boolean
+  okumaActive:     boolean
 }
 
 function SprintaTabBar({
   state,
   navigation,
   onOpenEgzersiz,
-  onOpenOkuma,
+  onNavigateCalis,
   egzersizActive,
   okumaActive,
 }: SprintaTabBarProps) {
   const t = useAppTheme()
   const s = createStyles(t)
 
-  const currentName = state.routes[state.index]?.name ?? ''
-  const isHome      = currentName === 'index'
-  const isMenu      = currentName === 'menu'
+  const currentName   = state.routes[state.index]?.name ?? ''
+  const isHome        = currentName === 'index'
+  const isMenu        = currentName === 'menu'
+  // calis ekranı aktifken Okuma tab'ı vurgulu görünür
+  const isCalisActive = currentName === 'calis'
 
   // Regular nav tab
   const navTab = (
@@ -161,14 +109,14 @@ function SprintaTabBar({
         }}
         activeOpacity={0.7}
       >
-        <BlueEyeIcon active={egzersizActive} />
+        <EagleEyeIcon active={egzersizActive} />
         <Text style={[s.tabLabel, egzersizActive && s.tabLabelActive]}>Kartal Gözü</Text>
       </TouchableOpacity>
 
       {/* FAB placeholder — RadialFab overlay olarak render edilir */}
       <View style={s.fabSlot} pointerEvents="none" />
 
-      {sheetTab('📖', 'Okuma', okumaActive, onOpenOkuma)}
+      {sheetTab('📖', 'Okuma', okumaActive || isCalisActive, onNavigateCalis)}
       {navTab('menu', '🎓', 'Üssü', isMenu)}
     </View>
   )
@@ -178,9 +126,8 @@ function SprintaTabBar({
 export default function TabsLayout() {
   const t = useAppTheme()
 
-  // Bottom sheet refs
+  // Bottom sheet ref (sadece egzersiz sheet'i)
   const egzersizRef = useRef<TrainingSheetRef>(null)
-  const okumaRef    = useRef<TrainingSheetRef>(null)
 
   // Active states for tab highlight
   const [egzersizActive, setEgzersizActive] = useState(false)
@@ -197,10 +144,10 @@ export default function TabsLayout() {
               setEgzersizActive(true)
               egzersizRef.current?.open()
             }}
-            onOpenOkuma={() => {
+            onNavigateCalis={() => {
               setEgzersizActive(false)
               setOkumaActive(true)
-              okumaRef.current?.open()
+              props.navigation.navigate('calis')
             }}
             egzersizActive={egzersizActive}
             okumaActive={okumaActive}
@@ -212,6 +159,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="menu"     options={{ title: 'Üssü' }} />
 
         {/* Navigable but hidden from tab bar */}
+        <Tabs.Screen name="calis"    options={{ href: null }} />
         <Tabs.Screen name="coach"    options={{ href: null }} />
         <Tabs.Screen name="sessions" options={{ href: null }} />
         <Tabs.Screen name="progress" options={{ href: null }} />
@@ -222,16 +170,11 @@ export default function TabsLayout() {
       {/* Radial FAB — Tabs'ın üzerinde */}
       <RadialFab theme={t} tabBarHeight={BAR_H} />
 
-      {/* Training Bottom Sheets — en üstte render edilir */}
+      {/* Egzersiz Training Bottom Sheet */}
       <TrainingBottomSheet
         ref={egzersizRef}
         type="egzersiz"
         onClose={() => setEgzersizActive(false)}
-      />
-      <TrainingBottomSheet
-        ref={okumaRef}
-        type="okuma"
-        onClose={() => setOkumaActive(false)}
       />
     </View>
   )
