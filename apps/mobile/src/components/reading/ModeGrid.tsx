@@ -83,6 +83,26 @@ export const READING_MODES: ModeItem[] = [
     subtitle: 'Alt ses bastırma · Hız artırımı',
     route: '/exercise/subvocal-free', free: true, comingSoon: false,
   },
+  {
+    icon: '🧬', label: 'Biyonik Okuma',
+    subtitle: 'Kalın ilk yarı · Hızlı kelime tanıma',
+    route: '/exercise/bionic-reading', free: true, comingSoon: false,
+  },
+  {
+    icon: '📜', label: 'Oto Kaydırma',
+    subtitle: 'WPM bazlı otomatik kaydırma',
+    route: '/exercise/auto-scroll', free: true, comingSoon: false,
+  },
+  {
+    icon: '🪜', label: 'Hız Merdiveni',
+    subtitle: 'Artan hızlı RSVP antrenmanı',
+    route: '/exercise/speed-ladder', free: true, comingSoon: false,
+  },
+  {
+    icon: '💫', label: 'Çok Kelime',
+    subtitle: '2-4 kelime RSVP · Span genişlet',
+    route: '/exercise/word-burst', free: true, comingSoon: false,
+  },
 ]
 
 // ─── Props ────────────────────────────────────────────

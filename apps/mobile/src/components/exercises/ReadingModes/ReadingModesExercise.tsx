@@ -868,17 +868,12 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
   const dotStyles = [dotStyle0, dotStyle1, dotStyle2, dotStyle3]
 
   return (
-    <SafeAreaView style={{ flex:1, backgroundColor: '#0D1117' }}>
-      <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-        paddingHorizontal:16, paddingVertical:12 }}>
-        <TouchableOpacity onPress={() => { stopTimers(); onExit() }}>
-          <Text style={{ fontSize:15, color:'rgba(255,255,255,0.6)' }}>← Geri</Text>
-        </TouchableOpacity>
-        <Text style={{ fontSize:15, fontWeight:'800', color:'#fff' }}>🤫 Sessiz Okuma</Text>
-        <Text style={{ fontSize:14, fontWeight:'700', color }}>{wpm} WPM</Text>
-      </View>
+    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={() => { stopTimers(); onExit() }} color={color}
+        right={<Text style={{ fontSize:14, fontWeight:'700', color }}>{wpm} WPM</Text>}
+      />
 
-      <View style={{ height:3, backgroundColor:'rgba(255,255,255,0.1)', marginHorizontal:16 }}>
+      <View style={{ height:3, backgroundColor: t.colors.border, marginHorizontal:16 }}>
         <View style={{ height:3, backgroundColor:color, borderRadius:2,
           width:`${Math.round(progress * 100)}%` as `${number}%` }} />
       </View>
@@ -896,14 +891,14 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
           />
         ))}
       </View>
-      <Text style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.35)',
+      <Text style={{ textAlign:'center', fontSize:11, color: t.colors.textHint,
         marginTop:-8, marginBottom:8 }}>
         Görsel ritme odaklan — iç sesi sustur
       </Text>
 
       {/* Kelime gösterimi */}
       <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:40 }}>
-        <Text style={{ fontSize:36, fontWeight:'800', color:'#FFFFFF',
+        <Text style={{ fontSize:36, fontWeight:'800', color: t.colors.text,
           textAlign:'center', letterSpacing:1 }}>
           {chunks[chunkIdx] ?? ''}
         </Text>
@@ -913,21 +908,21 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
       <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'center',
         gap:16, paddingVertical:12 }}>
         <TouchableOpacity
-          style={{ backgroundColor:'rgba(255,255,255,0.1)', borderRadius:999,
-            paddingHorizontal:18, paddingVertical:8 }}
+          style={{ backgroundColor: t.colors.surface, borderRadius:999,
+            paddingHorizontal:18, paddingVertical:8, borderWidth:1, borderColor: t.colors.border }}
           onPress={() => { Haptics.selectionAsync(); setWpm(w => Math.max(300, w - 25)) }}
         >
-          <Text style={{ fontSize:14, fontWeight:'700', color:'rgba(255,255,255,0.8)' }}>−25</Text>
+          <Text style={{ fontSize:14, fontWeight:'700', color: t.colors.text }}>−25</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize:18, fontWeight:'800', color:'#fff', minWidth:100, textAlign:'center' }}>
+        <Text style={{ fontSize:18, fontWeight:'800', color: t.colors.text, minWidth:100, textAlign:'center' }}>
           {wpm} WPM
         </Text>
         <TouchableOpacity
-          style={{ backgroundColor:'rgba(255,255,255,0.1)', borderRadius:999,
-            paddingHorizontal:18, paddingVertical:8 }}
+          style={{ backgroundColor: t.colors.surface, borderRadius:999,
+            paddingHorizontal:18, paddingVertical:8, borderWidth:1, borderColor: t.colors.border }}
           onPress={() => { Haptics.selectionAsync(); setWpm(w => Math.min(800, w + 25)) }}
         >
-          <Text style={{ fontSize:14, fontWeight:'700', color:'rgba(255,255,255,0.8)' }}>+25</Text>
+          <Text style={{ fontSize:14, fontWeight:'700', color: t.colors.text }}>+25</Text>
         </TouchableOpacity>
       </View>
 
@@ -935,6 +930,389 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
       <View style={{ paddingHorizontal:24, paddingBottom: Platform.OS === 'ios' ? 32 : 16 }}>
         <TouchableOpacity
           style={{ backgroundColor:color, borderRadius:20, paddingVertical:22, alignItems:'center' }}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setPlaying(p => !p) }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize:20, fontWeight:'900', color:'#fff' }}>
+            {isPlaying ? '⏸ Dur' : '▶ Başlat'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOD 8 — 🧬 BİYONİK OKUMA (SuperReader tarzı)
+// ═══════════════════════════════════════════════════════════════════
+
+function BionicView({ content, config, onFinish, onExit, t, color }: ReadingViewProps) {
+  const [scrollRatio, setScrollRatio] = useState(0)
+  const startRef = useRef(Date.now())
+
+  const finish = useCallback(() => {
+    const elapsed = Date.now() - startRef.current
+    onFinish({
+      avgWPM:        calcWPM(content.wordCount * Math.max(0.1, scrollRatio), elapsed),
+      durationSec:   Math.round(elapsed / 1000),
+      completion:    scrollRatio,
+      comprehension: 82,
+    })
+  }, [scrollRatio, content, onFinish])
+
+  // Paragrafları kelime kelime bionic formatla
+  const paragraphs = useMemo(() => splitIntoParagraphs(content.text), [content])
+
+  const progress = scrollRatio
+  return (
+    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={finish} color={color} />
+      <ProgressBar value={progress} color={color} />
+
+      <ScrollView
+        contentContainerStyle={{ padding:20, paddingBottom:100 }}
+        onScroll={e => {
+          const { contentOffset:{ y }, contentSize:{ height }, layoutMeasurement:{ height:lh } } = e.nativeEvent
+          setScrollRatio(Math.min(1, y / Math.max(1, height - lh)))
+        }}
+        scrollEventThrottle={120}
+      >
+        {paragraphs.map((para, pi) => (
+          <Text key={pi} style={{ fontSize:16, lineHeight:30, marginBottom:18 }}>
+            {para.split(/(\s+)/).map((chunk, wi) => {
+              if (/^\s+$/.test(chunk)) return <Text key={wi}>{chunk}</Text>
+              const half = Math.ceil(chunk.length / 2)
+              return (
+                <Text key={wi}>
+                  <Text style={{ fontWeight:'900', color: t.colors.text }}>{chunk.slice(0, half)}</Text>
+                  <Text style={{ fontWeight:'400', color: t.colors.text, opacity: 0.75 }}>{chunk.slice(half)}</Text>
+                </Text>
+              )
+            })}
+          </Text>
+        ))}
+      </ScrollView>
+
+      <View style={{ paddingHorizontal:24, paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+        paddingTop:12, backgroundColor: t.colors.panel }}>
+        <TouchableOpacity
+          style={{ backgroundColor:color, borderRadius:16, paddingVertical:16, alignItems:'center' }}
+          onPress={finish}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize:16, fontWeight:'800', color:'#fff' }}>✓ Okumayı Bitir</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOD 9 — 📜 OTOMATİK KAYDIRMA (SuperReader / tüm hızlı okuma)
+// ═══════════════════════════════════════════════════════════════════
+
+function AutoScrollView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) {
+  const [wpm, setWpm] = useState(initWpm)
+  const [isScrolling, setScrolling] = useState(false)
+  const [scrollRatio, setScrollRatio]  = useState(0)
+  const scrollRef    = useRef<ScrollView>(null)
+  const scrollYRef   = useRef(0)
+  const contentHRef  = useRef(0)
+  const viewHRef     = useRef(0)
+  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startRef     = useRef(0)
+  const wpmRef       = useRef(wpm)
+  wpmRef.current = wpm
+
+  const TICK_MS = 80
+
+  const stopScroll = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }, [])
+
+  const finishReading = useCallback((ratio: number) => {
+    stopScroll()
+    setScrolling(false)
+    const elapsed = Date.now() - startRef.current
+    onFinish({
+      avgWPM:        calcWPM(content.wordCount * Math.max(0.05, ratio), elapsed),
+      durationSec:   Math.round(elapsed / 1000),
+      completion:    ratio,
+      comprehension: 72,
+    })
+  }, [content, onFinish, stopScroll])
+
+  const startScroll = useCallback(() => {
+    stopScroll()
+    if (startRef.current === 0) startRef.current = Date.now()
+    setScrolling(true)
+    timerRef.current = setInterval(() => {
+      const maxY = contentHRef.current - viewHRef.current
+      if (maxY <= 0) return
+      const totalMs  = (content.wordCount / Math.max(1, wpmRef.current)) * 60_000
+      const pxPerTick = (maxY / totalMs) * TICK_MS
+      scrollYRef.current = Math.min(scrollYRef.current + pxPerTick, maxY)
+      scrollRef.current?.scrollTo({ y: scrollYRef.current, animated: false })
+      const ratio = scrollYRef.current / maxY
+      setScrollRatio(ratio)
+      if (ratio >= 0.99) finishReading(1)
+    }, TICK_MS)
+  }, [content, stopScroll, finishReading])
+
+  const pauseScroll = useCallback(() => {
+    stopScroll()
+    setScrolling(false)
+  }, [stopScroll])
+
+  useEffect(() => () => stopScroll(), [stopScroll])
+
+  return (
+    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={() => finishReading(scrollRatio)} color={color}
+        right={<Text style={{ fontSize:13, color:'rgba(255,255,255,0.85)', fontWeight:'700' }}>{wpm} WPM</Text>}
+      />
+      <ProgressBar value={scrollRatio} color={color} />
+
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ padding:20, paddingBottom:60 }}
+        onLayout={e => { viewHRef.current = e.nativeEvent.layout.height }}
+        onContentSizeChange={(_, h) => { contentHRef.current = h }}
+        scrollEnabled={!isScrolling}
+        scrollEventThrottle={100}
+      >
+        <Text style={{ fontSize:16, color: t.colors.text, lineHeight:28, letterSpacing:0.2 }}>
+          {content.text}
+        </Text>
+      </ScrollView>
+
+      <View style={{ paddingHorizontal:16, paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+        paddingTop:10, backgroundColor: t.colors.panel,
+        flexDirection:'row', alignItems:'center', justifyContent:'center', gap:14 }}>
+        <TouchableOpacity
+          style={{ backgroundColor:'rgba(255,255,255,0.15)', borderRadius:999,
+            paddingHorizontal:18, paddingVertical:10 }}
+          onPress={() => setWpm(w => Math.max(60, w - 25))}
+        >
+          <Text style={{ color:'#fff', fontWeight:'700', fontSize:14 }}>−25</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ backgroundColor:color, borderRadius:20, paddingHorizontal:36,
+            paddingVertical:14, minWidth:130, alignItems:'center' }}
+          onPress={() => isScrolling ? pauseScroll() : startScroll()}
+          activeOpacity={0.85}
+        >
+          <Text style={{ color:'#fff', fontWeight:'800', fontSize:17 }}>
+            {isScrolling ? '⏸ Dur' : '▶ Başlat'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ backgroundColor:'rgba(255,255,255,0.15)', borderRadius:999,
+            paddingHorizontal:18, paddingVertical:10 }}
+          onPress={() => setWpm(w => Math.min(600, w + 25))}
+        >
+          <Text style={{ color:'#fff', fontWeight:'700', fontSize:14 }}>+25</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOD 10 — 🪜 HIZ MERDİVENİ (Spreeder / SuperReader antrenmanı)
+// ═══════════════════════════════════════════════════════════════════
+
+function SpeedLadderView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) {
+  const [chunks]     = useState(() => buildRsvpChunks(content.text, 1))
+  const [chunkIdx,   setChunkIdx]   = useState(0)
+  const [currentWpm, setCurrentWpm] = useState(initWpm)
+  const [isPlaying,  setPlaying]    = useState(false)
+  const startRef   = useRef(0)
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wpmRef     = useRef(initWpm)
+  const idxRef     = useRef(0)
+
+  const STEP_WPM   = 25
+  const STEP_WORDS = 30
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
+
+  const scheduleNext = useCallback((idx: number, wpm: number) => {
+    if (idx >= chunks.length) {
+      stopTimer()
+      setPlaying(false)
+      const elapsed = Date.now() - startRef.current
+      onFinish({ avgWPM: wpm, durationSec: Math.round(elapsed / 1000), completion: 1, comprehension: 68 })
+      return
+    }
+    idxRef.current = idx
+    setChunkIdx(idx)
+    const nextWpm = (idx > 0 && idx % STEP_WORDS === 0)
+      ? Math.min(800, wpm + STEP_WPM) : wpm
+    if (nextWpm !== wpm) {
+      wpmRef.current = nextWpm
+      setCurrentWpm(nextWpm)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    }
+    const ms = Math.round(60_000 / Math.max(1, nextWpm))
+    timerRef.current = setTimeout(() => scheduleNext(idx + 1, nextWpm), ms)
+  }, [chunks.length, content, onFinish, stopTimer]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!isPlaying) return
+    if (startRef.current === 0) startRef.current = Date.now()
+    scheduleNext(idxRef.current, wpmRef.current)
+    return stopTimer
+  }, [isPlaying]) // eslint-disable-line
+
+  useEffect(() => () => stopTimer(), [stopTimer])
+
+  const progress = chunks.length > 0 ? chunkIdx / chunks.length : 0
+  const stepNum  = Math.floor(chunkIdx / STEP_WORDS) + 1
+  const wordsToNext = STEP_WORDS - (chunkIdx % STEP_WORDS)
+
+  return (
+    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={() => {
+        stopTimer()
+        const elapsed = Date.now() - startRef.current
+        onFinish({ avgWPM: currentWpm, durationSec: Math.round(elapsed / 1000), completion: progress, comprehension: 68 })
+      }} color={color} />
+      <ProgressBar value={progress} color={color} />
+
+      {/* Level & next-step info */}
+      <View style={{ flexDirection:'row', justifyContent:'center', gap:10,
+        paddingHorizontal:16, paddingTop:14 }}>
+        <View style={{ backgroundColor: color + '22', borderRadius:20,
+          paddingHorizontal:16, paddingVertical:6 }}>
+          <Text style={{ fontSize:12, color, fontWeight:'800' }}>🏆 SEVİYE {stepNum}</Text>
+        </View>
+        <View style={{ backgroundColor: t.colors.surface, borderRadius:20,
+          paddingHorizontal:14, paddingVertical:6,
+          borderWidth:1, borderColor: t.colors.border }}>
+          <Text style={{ fontSize:12, color: t.colors.textHint }}>
+            {wordsToNext} kelime sonra ⬆ +{STEP_WPM}
+          </Text>
+        </View>
+      </View>
+
+      {/* WPM Badge */}
+      <View style={{ alignItems:'center', paddingTop:24 }}>
+        <Text style={{ fontSize:18, fontWeight:'800', color, letterSpacing:1 }}>
+          ⚡ {currentWpm} WPM
+        </Text>
+      </View>
+
+      {/* Current word */}
+      <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:40 }}>
+        <Text style={{ fontSize:44, fontWeight:'900', color: t.colors.text,
+          textAlign:'center', letterSpacing:1 }}>
+          {chunks[chunkIdx] ?? ''}
+        </Text>
+      </View>
+
+      <View style={{ paddingHorizontal:24, paddingBottom: Platform.OS === 'ios' ? 32 : 16 }}>
+        <TouchableOpacity
+          style={{ backgroundColor:color, borderRadius:20, paddingVertical:20, alignItems:'center' }}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setPlaying(p => !p) }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize:20, fontWeight:'900', color:'#fff' }}>
+            {isPlaying ? '⏸ Dur' : '▶ Başlat'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOD 11 — 💫 ÇOK KELİME RSVP (Spreeder / EyeQ multi-word)
+// ═══════════════════════════════════════════════════════════════════
+
+function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+  const [groupSize, setGroupSize] = useState(2)
+  const chunks    = useMemo(() => buildRsvpChunks(content.text, groupSize), [content, groupSize])
+  const [chunkIdx, setChunkIdx]   = useState(0)
+  const [isPlaying, setPlaying]   = useState(false)
+  const startRef  = useRef(0)
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const idxRef    = useRef(0)
+
+  const intervalMs = Math.round((60_000 / Math.max(1, wpm)) * groupSize)
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
+
+  const scheduleNext = useCallback((idx: number) => {
+    if (idx >= chunks.length) {
+      stopTimer()
+      setPlaying(false)
+      const elapsed = Date.now() - startRef.current
+      onFinish({ avgWPM: calcWPM(content.wordCount, elapsed),
+        durationSec: Math.round(elapsed / 1000), completion: 1, comprehension: 74 })
+      return
+    }
+    idxRef.current = idx
+    setChunkIdx(idx)
+    timerRef.current = setTimeout(() => scheduleNext(idx + 1), intervalMs)
+  }, [chunks.length, intervalMs, content, onFinish, stopTimer])
+
+  useEffect(() => {
+    if (!isPlaying) return
+    if (startRef.current === 0) startRef.current = Date.now()
+    scheduleNext(idxRef.current)
+    return stopTimer
+  }, [isPlaying]) // eslint-disable-line
+
+  useEffect(() => { idxRef.current = 0; setChunkIdx(0); setPlaying(false); stopTimer() }, [groupSize]) // eslint-disable-line
+  useEffect(() => () => stopTimer(), [stopTimer])
+
+  const progress = chunks.length > 0 ? chunkIdx / chunks.length : 0
+
+  return (
+    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={() => {
+        stopTimer()
+        const elapsed = Date.now() - startRef.current
+        onFinish({ avgWPM: calcWPM(content.wordCount * progress, elapsed),
+          durationSec: Math.round(elapsed / 1000), completion: progress, comprehension: 74 })
+      }} color={color} />
+      <ProgressBar value={progress} color={color} />
+
+      {/* Group size selector */}
+      <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'center',
+        gap:10, paddingVertical:14 }}>
+        <Text style={{ fontSize:12, color: t.colors.textHint, fontWeight:'600' }}>Kelime/Grup:</Text>
+        {([1, 2, 3, 4] as const).map(n => (
+          <TouchableOpacity
+            key={n}
+            style={{ width:40, height:40, borderRadius:20, alignItems:'center', justifyContent:'center',
+              backgroundColor: groupSize === n ? color : t.colors.surface,
+              borderWidth:1, borderColor: groupSize === n ? color : t.colors.border }}
+            onPress={() => setGroupSize(n)}
+          >
+            <Text style={{ fontSize:15, fontWeight:'800',
+              color: groupSize === n ? '#fff' : t.colors.text }}>{n}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Current chunk */}
+      <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:28 }}>
+        <Text style={{ fontSize: groupSize <= 2 ? 40 : 32, fontWeight:'900', color: t.colors.text,
+          textAlign:'center', letterSpacing: groupSize === 1 ? 2 : 1,
+          lineHeight: groupSize <= 2 ? 54 : 46 }}>
+          {chunks[chunkIdx] ?? ''}
+        </Text>
+      </View>
+
+      <View style={{ paddingHorizontal:24, paddingBottom: Platform.OS === 'ios' ? 32 : 16 }}>
+        <TouchableOpacity
+          style={{ backgroundColor:color, borderRadius:20, paddingVertical:20, alignItems:'center' }}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setPlaying(p => !p) }}
           activeOpacity={0.85}
         >
@@ -979,6 +1357,14 @@ function ResultView({ metrics, config, onRepeat, onComplete, onExit, onQuiz, has
         return `🔮 ${metrics.predictionTotal ?? 0} cümle tahmin edildi`
       case 'focus_filter':
         return `🎯 ${metrics.paragraphsCompleted ?? 0} paragraf odaklı okundu`
+      case 'bionic':
+        return `🧬 Biyonik formatta ${metrics.totalWords} kelime okundu`
+      case 'auto_scroll':
+        return `📜 %${Math.round(metrics.completionRatio * 100)} tamamlandı · oto-kaydırma`
+      case 'speed_ladder':
+        return `🪜 Zirve hız: ${metrics.avgWPM} WPM — merdiveni çıktın!`
+      case 'word_burst':
+        return `💫 Çok kelime modunda ${metrics.totalWords} kelime işlendi`
       default:
         return `${config.icon} Seans tamamlandı`
     }
@@ -1317,6 +1703,10 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       case 'prediction':   return <PredictionView   {...props} />
       case 'focus_filter': return <FocusFilterView  {...props} />
       case 'subvocal':     return <SubvocalView     {...props} />
+      case 'bionic':       return <BionicView       {...props} />
+      case 'auto_scroll':  return <AutoScrollView   {...props} />
+      case 'speed_ladder': return <SpeedLadderView  {...props} />
+      case 'word_burst':   return <WordBurstView    {...props} />
     }
   }
 

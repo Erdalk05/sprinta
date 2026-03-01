@@ -24,7 +24,7 @@ interface ModeOption {
   label:    string
   subtitle: string
   route:    string
-  tag:      'hız' | 'anlama' | 'odak' | 'kelime' | 'tarama'
+  tag:      'hız' | 'anlama' | 'odak' | 'kelime' | 'tarama' | 'süper'
 }
 
 const MODE_OPTIONS: ModeOption[] = [
@@ -94,22 +94,48 @@ const MODE_OPTIONS: ModeOption[] = [
     route: '/exercise/vocabulary',
     tag: 'kelime',
   },
+  {
+    icon: '🧬', label: 'Biyonik Okuma',
+    subtitle: 'Kalın ilk yarı • hızlı tanıma',
+    route: '/exercise/bionic-reading',
+    tag: 'süper',
+  },
+  {
+    icon: '📜', label: 'Oto Kaydırma',
+    subtitle: 'WPM bazlı rehberli okuma',
+    route: '/exercise/auto-scroll',
+    tag: 'hız',
+  },
+  {
+    icon: '🪜', label: 'Hız Merdiveni',
+    subtitle: 'Artan hızlı RSVP antrenmanı',
+    route: '/exercise/speed-ladder',
+    tag: 'hız',
+  },
+  {
+    icon: '💫', label: 'Çok Kelime',
+    subtitle: '2-4 kelime RSVP • span genişlet',
+    route: '/exercise/word-burst',
+    tag: 'süper',
+  },
 ]
 
 // ─── Tag renkleri ─────────────────────────────────────────────
 const TAG_COLORS: Record<string, string> = {
-  hız:     '#00C853',
-  anlama:  '#2196F3',
-  odak:    '#FF9800',
-  kelime:  '#9C27B0',
-  tarama:  '#F44336',
+  hız:    '#00C853',
+  anlama: '#2196F3',
+  odak:   '#FF9800',
+  kelime: '#9C27B0',
+  tarama: '#F44336',
+  süper:  '#0EA5E9',
 }
 const TAG_LABELS: Record<string, string> = {
-  hız:     'Hız',
-  anlama:  'Anlama',
-  odak:    'Odak',
-  kelime:  'Kelime',
-  tarama:  'Tarama',
+  hız:    'Hız',
+  anlama: 'Anlama',
+  odak:   'Odak',
+  kelime: 'Kelime',
+  tarama: 'Tarama',
+  süper:  'Süper',
 }
 
 // ─── Props ────────────────────────────────────────────────────

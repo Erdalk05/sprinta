@@ -14,6 +14,10 @@ export type ReadingModeKey =
   | 'prediction'    // 🔮 Tahmin Okuma
   | 'focus_filter'  // 🎯 Dikkat Filtresi
   | 'subvocal'      // 🤫 Sessiz Okuma
+  | 'bionic'        // 🧬 Biyonik Okuma   — SuperReader tarzı
+  | 'auto_scroll'   // 📜 Otomatik Kaydırma — hız kontrollü otomatik scroll
+  | 'speed_ladder'  // 🪜 Hız Merdiveni  — artan hızlı RSVP antrenmanı
+  | 'word_burst'    // 💫 Çok Kelime     — çoklu kelime RSVP (2-4 kelime)
 
 export interface ModeConfig {
   key:               ReadingModeKey
@@ -62,6 +66,26 @@ export const MODE_CONFIGS: Record<ReadingModeKey, ModeConfig> = {
     key: 'subvocal', icon: '🤫', label: 'Sessiz Okuma', color: '#F59E0B',
     description: 'Görsel ritimle iç sesi bastır — subvokalizasyonu kır',
     defaultWpm: 350,
+  },
+  bionic: {
+    key: 'bionic', icon: '🧬', label: 'Biyonik Okuma', color: '#0EA5E9',
+    description: 'Her kelimenin ilk yarısı kalın — beyin kelimeyi hızla tamamlar',
+    defaultWpm: 250,
+  },
+  auto_scroll: {
+    key: 'auto_scroll', icon: '📜', label: 'Oto Kaydırma', color: '#22C55E',
+    description: 'Metin WPM hızında otomatik kayar — rehberli okuma ritmi',
+    defaultWpm: 200,
+  },
+  speed_ladder: {
+    key: 'speed_ladder', icon: '🪜', label: 'Hız Merdiveni', color: '#F97316',
+    description: 'Her 30 kelimede hız 25 WPM artar — konfor zonunu zorla',
+    defaultWpm: 200,
+  },
+  word_burst: {
+    key: 'word_burst', icon: '💫', label: 'Çok Kelime', color: '#EC4899',
+    description: '2-4 kelime aynı anda — göz alanını genişlet, alt sesi azalt',
+    defaultWpm: 250,
   },
 }
 

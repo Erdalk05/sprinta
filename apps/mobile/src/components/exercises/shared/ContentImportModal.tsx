@@ -4,12 +4,8 @@ import {
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { supabase } from '../../../lib/supabase'
-// expo-document-picker yerel stub — native link gerektirmez
-const DocumentPicker = {
-  getDocumentAsync: async (_opts: unknown): Promise<{ canceled: true } | { canceled: false; assets: Array<{ uri: string; name: string; mimeType?: string }> }> =>
-    ({ canceled: true }),
-}
-import { File as ExpoFile } from 'expo-file-system'
+import * as DocumentPicker from 'expo-document-picker'
+import { File as FSFile } from 'expo-file-system'
 import { useAppTheme } from '../../../theme/useAppTheme'
 import type { AppTheme } from '../../../theme'
 import { mmkvStorage } from '../../../stores/mmkvStorage'
@@ -269,7 +265,7 @@ export default function ContentImportModal({
       const isPdf = mime === 'application/pdf' || name.toLowerCase().endsWith('.pdf')
 
       if (isTxt) {
-        const text = await new ExpoFile(uri).text()
+        const text = await new FSFile(uri).text()
         const trimmed = text.replace(/\s+/g, ' ').trim().slice(0, 20000)
         const wc = wordCount(trimmed)
         if (wc < 10) {
@@ -279,7 +275,7 @@ export default function ContentImportModal({
         setPickedFile({ title: name.replace(/\.\w+$/, ''), text: trimmed, wordCount: wc })
 
       } else if (isPdf) {
-        const b64 = await new ExpoFile(uri).base64()
+        const b64 = await new FSFile(uri).base64()
         const text = extractPdfText(b64)
         const wc   = wordCount(text)
         if (wc < 20) {
