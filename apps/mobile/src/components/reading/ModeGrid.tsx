@@ -21,87 +21,92 @@ export interface ModeItem {
   comingSoon: boolean
 }
 
-// ─── Statik mod listesi (module-level sabit) ──────────
+// ─── Statik mod listesi — en popülerden en aza (sınav odaklı) ─────
 export const READING_MODES: ModeItem[] = [
   {
-    icon: '🏕️', label: 'Hızlı Okuma Kampı',
-    subtitle: 'Günlük devreniz · WPM trend',
-    route: '/exercise/speed-camp', free: true, comingSoon: false,
-  },
-  {
-    icon: '👁️', label: 'Göz Genişliği',
-    subtitle: 'Flash kelime grupları · Span artır',
-    route: '/exercise/fixation-trainer', free: true, comingSoon: false,
-  },
-  {
     icon: '⚡', label: 'Chunk Okuma',
-    subtitle: 'RSVP · Bionic · Hız kontrolü',
+    subtitle: 'Kelimeyi grup grup gör · hızını 2×',
     route: '/exercise/chunk-rsvp', free: true, comingSoon: false,
   },
   {
-    icon: '🌊', label: 'Akış Okuma',
-    subtitle: 'Satır pacing · Sprint modu',
-    route: '/exercise/flow-reading', free: true, comingSoon: false,
-  },
-  {
-    icon: '📖', label: 'Kelime Haznesi',
-    subtitle: 'Bağlamsal öğrenme · LGS / TYT',
-    route: '/exercise/vocabulary', free: true, comingSoon: false,
-  },
-  {
     icon: '⏱️', label: 'Zamanlı Okuma',
-    subtitle: 'Süre baskısı · Hız rekoru',
+    subtitle: 'Süre baskısı · YKS/TYT simülasyonu',
     route: '/exercise/timed-reading', free: true, comingSoon: false,
   },
   {
-    icon: '📚', label: 'Akademik Mod',
-    subtitle: 'Yavaş tempo · Ağır metinler',
-    route: '/exercise/academic-mode', free: true, comingSoon: false,
-  },
-  {
-    icon: '🔍', label: 'Anahtar Kelime',
-    subtitle: 'Tarama tekniği · Hızlı bulma',
-    route: '/exercise/keyword-scan', free: true, comingSoon: false,
-  },
-  {
-    icon: '🧠', label: 'Hafıza Sabitleme',
-    subtitle: 'Spaced repetition · Geri çağırma',
-    route: '/exercise/memory-anchor', free: true, comingSoon: false,
-  },
-  {
-    icon: '🔮', label: 'Tahmin Okuma',
-    subtitle: 'Anlamsal bağlantı · Tahmin',
-    route: '/exercise/prediction-reading', free: true, comingSoon: false,
-  },
-  {
-    icon: '🎯', label: 'Dikkat Filtresi',
-    subtitle: 'Ritim egzersizi · Odak geliştirme',
-    route: '/exercise/focus-filter', free: true, comingSoon: false,
-  },
-  {
-    icon: '🤫', label: 'Sessiz Okuma',
-    subtitle: 'Alt ses bastırma · Hız artırımı',
-    route: '/exercise/subvocal-free', free: true, comingSoon: false,
-  },
-  {
-    icon: '🧬', label: 'Biyonik Okuma',
-    subtitle: 'Kalın ilk yarı · Hızlı kelime tanıma',
-    route: '/exercise/bionic-reading', free: true, comingSoon: false,
-  },
-  {
-    icon: '📜', label: 'Oto Kaydırma',
-    subtitle: 'WPM bazlı otomatik kaydırma',
-    route: '/exercise/auto-scroll', free: true, comingSoon: false,
+    icon: '🌊', label: 'Akış Okuma',
+    subtitle: 'Satır pacing · anlama + hız dengesi',
+    route: '/exercise/flow-reading', free: true, comingSoon: false,
   },
   {
     icon: '🪜', label: 'Hız Merdiveni',
-    subtitle: 'Artan hızlı RSVP antrenmanı',
+    subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',
     route: '/exercise/speed-ladder', free: true, comingSoon: false,
   },
   {
+    icon: '🧬', label: 'Biyonik Okuma',
+    subtitle: 'İlk heceler kalın · beyin tamamlar',
+    route: '/exercise/bionic-reading', free: true, comingSoon: false,
+  },
+  {
+    icon: '🔍', label: 'Anahtar Kelime',
+    subtitle: 'Kritik bilgiyi tara · pasaj tekniği',
+    route: '/exercise/keyword-scan', free: true, comingSoon: false,
+  },
+  {
+    icon: '👁️', label: 'Göz Genişliği',
+    subtitle: 'Flash gruplar · daha az göz hareketi',
+    route: '/exercise/fixation-trainer', free: true, comingSoon: false,
+  },
+  {
     icon: '💫', label: 'Çok Kelime',
-    subtitle: '2-4 kelime RSVP · Span genişlet',
+    subtitle: '2-4 kelime aynı anda · span artır',
     route: '/exercise/word-burst', free: true, comingSoon: false,
+  },
+  {
+    icon: '📜', label: 'Oto Kaydırma',
+    subtitle: 'Metin kendi hızında akar · ritim kur',
+    route: '/exercise/auto-scroll', free: true, comingSoon: false,
+  },
+  {
+    icon: '📝', label: 'Cümle Adım',
+    subtitle: 'Cümle cümle ilerle · anlama odaklı',
+    route: '/exercise/sentence-step', free: true, comingSoon: false,
+  },
+  {
+    icon: '📚', label: 'Akademik Mod',
+    subtitle: 'Derin anlama · ağır paragraf çözme',
+    route: '/exercise/academic-mode', free: true, comingSoon: false,
+  },
+  {
+    icon: '🎯', label: 'Dikkat Filtresi',
+    subtitle: 'Tek satırı gör · odaklanmayı güçlendir',
+    route: '/exercise/focus-filter', free: true, comingSoon: false,
+  },
+  {
+    icon: '🧠', label: 'Hafıza Sabitleme',
+    subtitle: 'Oku-gizle-hatırla · bilgiyi kalıcı yap',
+    route: '/exercise/memory-anchor', free: true, comingSoon: false,
+  },
+  {
+    icon: '📖', label: 'Kelime Haznesi',
+    subtitle: 'Kelime öğren · bağlamsal anlam · LGS',
+    route: '/exercise/vocabulary', free: true, comingSoon: false,
+  },
+  {
+    icon: '🔮', label: 'Tahmin Okuma',
+    subtitle: 'Cümle sonunu tahmin et · anlam bağlantısı',
+    route: '/exercise/prediction-reading', free: true, comingSoon: false,
+  },
+  {
+    icon: '🤫', label: 'Sessiz Okuma',
+    subtitle: 'İç sesi bastır · subvokalizasyonu kır',
+    route: '/exercise/subvocal-free', free: true, comingSoon: false,
+  },
+  {
+    icon: '🏕️', label: 'Hızlı Okuma Kampı',
+    subtitle: 'Günlük antrenman · WPM gelişimini izle',
+    route: '/exercise/speed-camp', free: true, comingSoon: false,
   },
 ]
 
@@ -122,10 +127,12 @@ const ModeCard = React.memo(function ModeCard({ mode, onPress, s }: ModeCardProp
     <TouchableOpacity
       style={[s.card, mode.comingSoon && s.cardDim]}
       onPress={() => onPress(mode)}
-      activeOpacity={mode.comingSoon ? 1 : 0.75}
+      activeOpacity={mode.comingSoon ? 1 : 0.72}
     >
-      <Text style={s.icon}>{mode.icon}</Text>
-      <Text style={s.label} numberOfLines={2}>{mode.label}</Text>
+      <View style={s.iconWrap}>
+        <Text style={s.icon}>{mode.icon}</Text>
+      </View>
+      <Text style={s.label} numberOfLines={1}>{mode.label}</Text>
       <Text style={s.subtitle} numberOfLines={2}>{mode.subtitle}</Text>
 
       {mode.comingSoon && (
@@ -187,24 +194,32 @@ function createStyles(t: AppTheme) {
       flex:            1,
       backgroundColor: t.colors.surface,
       borderRadius:    t.radius.lg,
-      padding:         t.spacing.md,
-      minHeight:       108,
+      padding:         t.spacing.sm,
+      paddingVertical: 14,
+      minHeight:       112,
       borderWidth:     StyleSheet.hairlineWidth,
       borderColor:     t.colors.border,
       ...t.shadows.sm,
+      gap: 4,
     },
-    cardDim: { opacity: 0.52 },
-    icon:  { fontSize: 24, marginBottom: 6 },
+    cardDim: { opacity: 0.45 },
+    iconWrap: {
+      width: 36, height: 36,
+      borderRadius: 10,
+      backgroundColor: t.colors.background,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 4,
+    },
+    icon:  { fontSize: 20 },
     label: {
       fontSize:   t.font.sm,
       fontWeight: '700',
       color:      t.colors.text,
-      marginBottom: 3,
     },
     subtitle: {
-      fontSize:   t.font.xs,
+      fontSize:   11,
       color:      t.colors.textHint,
-      lineHeight: 14,
+      lineHeight: 15,
     },
     comingSoonBadge: {
       marginTop:         8,

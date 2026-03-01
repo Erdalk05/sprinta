@@ -421,7 +421,7 @@ export default function ReadingHubScreen() {
         <WPMTrendCard />
 
         {/* Okuma Modları */}
-        <SectionTitle icon="⚡" title="Okuma Modları" sub="10 mod · tümü aktif" s={s} />
+        <SectionTitle icon="⚡" title="Okuma Modları" sub="17 mod · popülerden az yaygına" s={s} />
         <ModeGrid onModePress={handleModePress} />
 
         {/* Metin Kütüphanesi */}

@@ -712,6 +712,15 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
     } catch { /* sessiz */ }
   }, [content])
 
+  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
+  useEffect(() => {
+    if (finalMetrics && content?.source === 'library') {
+      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalMetrics])
+
   if (!finalMetrics) return null
 
   const totalDurMin = Math.floor(finalMetrics.durationSeconds / 60)

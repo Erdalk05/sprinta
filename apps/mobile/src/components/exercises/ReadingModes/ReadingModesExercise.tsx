@@ -1326,6 +1326,122 @@ function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: Rea
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// CÜMLE ADIM GÖRÜNÜMÜ — Cümle cümle anlama odaklı okuma
+// ═══════════════════════════════════════════════════════════════════
+function SentenceStepView({ content, config, onFinish, onExit, t, color }: ReadingViewProps) {
+  const sentences = useMemo(() => {
+    const raw = content.text.replace(/\n+/g, ' ')
+    const m = raw.match(/[^.!?]+[.!?]+/g)
+    const arr = m ?? [raw]
+    return arr.map(s => s.trim()).filter(s => s.split(/\s+/).length >= 3)
+  }, [content.text])
+
+  const [idx, setIdx]       = useState(0)
+  const [startMs]           = useState(() => Date.now())
+  const total                = sentences.length
+
+  const handleNext = () => {
+    if (idx < total - 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      setIdx(i => i + 1)
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      const elapsed = Math.max(1, (Date.now() - startMs) / 1000)
+      onFinish({
+        avgWPM:       Math.round((content.wordCount / elapsed) * 60),
+        comprehension: 80,
+        durationSec:  Math.round(elapsed),
+        completion:   1,
+      })
+    }
+  }
+
+  const progress = total > 0 ? (idx + 1) / total : 0
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
+      <TopBar title={config.label} onExit={onExit} color={color} />
+      <ProgressBar value={progress} color={color} />
+
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 }}>
+        {/* Sayaç */}
+        <Text style={{ fontSize: 13, color: t.colors.textHint, textAlign: 'center', fontWeight: '700' }}>
+          {idx + 1} / {total}
+        </Text>
+
+        {/* Cümle kartı */}
+        <View style={{
+          backgroundColor: color + '12',
+          borderRadius: 20,
+          padding: 28,
+          borderWidth: 2,
+          borderColor: color + '50',
+          minHeight: 140,
+          justifyContent: 'center',
+        }}>
+          <Text style={{
+            fontSize: 19,
+            lineHeight: 30,
+            color: t.colors.text,
+            fontWeight: '500',
+            textAlign: 'center',
+          }}>
+            {sentences[idx] ?? ''}
+          </Text>
+        </View>
+
+        {/* İlerleme noktaları */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
+          {sentences.slice(Math.max(0, idx - 4), Math.min(total, idx + 5)).map((_, i) => {
+            const absIdx = Math.max(0, idx - 4) + i
+            return (
+              <View key={absIdx} style={{
+                width: absIdx === idx ? 16 : 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: absIdx === idx ? color : (absIdx < idx ? color + '60' : t.colors.border),
+              }} />
+            )
+          })}
+        </View>
+
+        {/* Navigasyon butonları */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity
+            style={{
+              width: 56, height: 56,
+              backgroundColor: t.colors.surface,
+              borderRadius: 16,
+              alignItems: 'center', justifyContent: 'center',
+              borderWidth: 1, borderColor: t.colors.border,
+              opacity: idx === 0 ? 0.3 : 1,
+            }}
+            onPress={() => { if (idx > 0) setIdx(i => i - 1) }}
+            disabled={idx === 0}
+          >
+            <Text style={{ fontSize: 22, color: t.colors.text }}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              flex: 1, height: 56,
+              backgroundColor: color,
+              borderRadius: 16,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+            onPress={handleNext}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>
+              {idx < total - 1 ? 'İleri →' : '✓ Tamamla'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // SONUÇ EKRANI (tüm modlar için paylaşılan)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -1365,6 +1481,8 @@ function ResultView({ metrics, config, onRepeat, onComplete, onExit, onQuiz, has
         return `🪜 Zirve hız: ${metrics.avgWPM} WPM — merdiveni çıktın!`
       case 'word_burst':
         return `💫 Çok kelime modunda ${metrics.totalWords} kelime işlendi`
+      case 'sentence_step':
+        return `📝 Cümle cümle ${metrics.totalWords} kelime okundu`
       default:
         return `${config.icon} Seans tamamlandı`
     }
@@ -1539,6 +1657,15 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     }
   }, [content])
 
+  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
+  useEffect(() => {
+    if (phase === 'result' && content?.source === 'library') {
+      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   const handleStart = () => {
     if (!content) { setShowImport(true); return }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -1703,10 +1830,11 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       case 'prediction':   return <PredictionView   {...props} />
       case 'focus_filter': return <FocusFilterView  {...props} />
       case 'subvocal':     return <SubvocalView     {...props} />
-      case 'bionic':       return <BionicView       {...props} />
-      case 'auto_scroll':  return <AutoScrollView   {...props} />
-      case 'speed_ladder': return <SpeedLadderView  {...props} />
-      case 'word_burst':   return <WordBurstView    {...props} />
+      case 'bionic':        return <BionicView        {...props} />
+      case 'auto_scroll':   return <AutoScrollView   {...props} />
+      case 'speed_ladder':  return <SpeedLadderView  {...props} />
+      case 'word_burst':    return <WordBurstView     {...props} />
+      case 'sentence_step': return <SentenceStepView {...props} />
     }
   }
 

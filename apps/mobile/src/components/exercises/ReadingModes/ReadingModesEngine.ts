@@ -14,10 +14,11 @@ export type ReadingModeKey =
   | 'prediction'    // 🔮 Tahmin Okuma
   | 'focus_filter'  // 🎯 Dikkat Filtresi
   | 'subvocal'      // 🤫 Sessiz Okuma
-  | 'bionic'        // 🧬 Biyonik Okuma   — SuperReader tarzı
-  | 'auto_scroll'   // 📜 Otomatik Kaydırma — hız kontrollü otomatik scroll
-  | 'speed_ladder'  // 🪜 Hız Merdiveni  — artan hızlı RSVP antrenmanı
-  | 'word_burst'    // 💫 Çok Kelime     — çoklu kelime RSVP (2-4 kelime)
+  | 'bionic'         // 🧬 Biyonik Okuma    — SuperReader tarzı
+  | 'auto_scroll'    // 📜 Otomatik Kaydırma — hız kontrollü otomatik scroll
+  | 'speed_ladder'   // 🪜 Hız Merdiveni   — artan hızlı RSVP antrenmanı
+  | 'word_burst'     // 💫 Çok Kelime      — çoklu kelime RSVP (2-4 kelime)
+  | 'sentence_step'  // 📝 Cümle Adım      — cümle cümle anlama odaklı okuma
 
 export interface ModeConfig {
   key:               ReadingModeKey
@@ -86,6 +87,11 @@ export const MODE_CONFIGS: Record<ReadingModeKey, ModeConfig> = {
     key: 'word_burst', icon: '💫', label: 'Çok Kelime', color: '#EC4899',
     description: '2-4 kelime aynı anda — göz alanını genişlet, alt sesi azalt',
     defaultWpm: 250,
+  },
+  sentence_step: {
+    key: 'sentence_step', icon: '📝', label: 'Cümle Adım', color: '#6366F1',
+    description: 'Cümle cümle ilerle — anlama odaklı okuma, sınav pasajı pratik',
+    defaultWpm: 150,
   },
 }
 

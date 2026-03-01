@@ -24,99 +24,117 @@ interface ModeOption {
   label:    string
   subtitle: string
   route:    string
-  tag:      'hız' | 'anlama' | 'odak' | 'kelime' | 'tarama' | 'süper'
+  tag:      'hız' | 'anlama' | 'odak' | 'kelime' | 'tarama' | 'süper' | 'günlük'
 }
 
 const MODE_OPTIONS: ModeOption[] = [
+  // ── EN POPÜLER (hız + sınav) ──
   {
     icon: '⚡', label: 'Chunk Okuma',
-    subtitle: 'RSVP • hız bloklarla şarjol',
+    subtitle: 'Kelimeyi grup grup gör • hızını 2× artır',
     route: '/exercise/chunk-rsvp',
     tag: 'hız',
   },
   {
-    icon: '🌊', label: 'Akış Okuma',
-    subtitle: 'Satır pacing • sprint modu',
-    route: '/exercise/flow-reading',
-    tag: 'hız',
-  },
-  {
     icon: '⏱️', label: 'Zamanlı Okuma',
-    subtitle: 'Süre baskısı • WPM rekoru',
+    subtitle: 'Süre baskısı • YKS/TYT sınav simülasyonu',
     route: '/exercise/timed-reading',
     tag: 'hız',
   },
   {
-    icon: '🏕️', label: 'Hızlı Okuma Kampı',
-    subtitle: 'Günlük devre • WPM trend',
-    route: '/exercise/speed-camp',
+    icon: '🌊', label: 'Akış Okuma',
+    subtitle: 'Satır pacing • anlama + hız dengesi',
+    route: '/exercise/flow-reading',
     tag: 'hız',
   },
   {
+    icon: '🪜', label: 'Hız Merdiveni',
+    subtitle: 'Her 30 kelimede +25 WPM • limitini zorla',
+    route: '/exercise/speed-ladder',
+    tag: 'hız',
+  },
+  // ── SÜPER OKUMA ──
+  {
+    icon: '🧬', label: 'Biyonik Okuma',
+    subtitle: 'İlk heceler kalın • beyin kelimeyi tamamlar',
+    route: '/exercise/bionic-reading',
+    tag: 'süper',
+  },
+  {
+    icon: '💫', label: 'Çok Kelime',
+    subtitle: '2-4 kelime aynı anda • göz alanı genişlet',
+    route: '/exercise/word-burst',
+    tag: 'süper',
+  },
+  {
+    icon: '📜', label: 'Oto Kaydırma',
+    subtitle: 'Metin kendi hızında akar • ritim kur',
+    route: '/exercise/auto-scroll',
+    tag: 'hız',
+  },
+  // ── ANLAMA / SINAV ──
+  {
+    icon: '📝', label: 'Cümle Adım',
+    subtitle: 'Cümle cümle ilerle • anlama odaklı',
+    route: '/exercise/sentence-step',
+    tag: 'anlama',
+  },
+  {
+    icon: '🔍', label: 'Anahtar Kelime',
+    subtitle: 'Kritik bilgiyi tara • pasaj tekniği',
+    route: '/exercise/keyword-scan',
+    tag: 'tarama',
+  },
+  {
     icon: '📚', label: 'Akademik Mod',
-    subtitle: 'Derin okuma • ağır metinler',
+    subtitle: 'Derin okuma • ağır paragraf çözme',
     route: '/exercise/academic-mode',
     tag: 'anlama',
   },
   {
-    icon: '🔮', label: 'Tahmin Okuma',
-    subtitle: 'Anlamsal bağlantı • tahmin et',
-    route: '/exercise/prediction-reading',
-    tag: 'anlama',
-  },
-  {
     icon: '🧠', label: 'Hafıza Sabitleme',
-    subtitle: 'Spaced repetition • geri çağırma',
+    subtitle: 'Oku-gizle-hatırla • bilgiyi kalıcı yap',
     route: '/exercise/memory-anchor',
     tag: 'anlama',
   },
   {
+    icon: '🔮', label: 'Tahmin Okuma',
+    subtitle: 'Cümle sonunu tahmin et • anlam bağlantısı',
+    route: '/exercise/prediction-reading',
+    tag: 'anlama',
+  },
+  // ── ODAK ──
+  {
     icon: '👁️', label: 'Göz Genişliği',
-    subtitle: 'Flash gruplar • span artır',
+    subtitle: 'Flash gruplar • daha az göz hareketi',
     route: '/exercise/fixation-trainer',
     tag: 'odak',
   },
   {
     icon: '🎯', label: 'Dikkat Filtresi',
-    subtitle: 'Ritim • odak geliştirme',
+    subtitle: 'Tek satırı gör • odaklanmayı güçlendir',
     route: '/exercise/focus-filter',
     tag: 'odak',
   },
   {
-    icon: '🔍', label: 'Anahtar Kelime Tarama',
-    subtitle: 'Tarama tekniği • hızlı bulma',
-    route: '/exercise/keyword-scan',
-    tag: 'tarama',
+    icon: '🤫', label: 'Sessiz Okuma',
+    subtitle: 'İç sesi bastır • subvokalizasyonu kır',
+    route: '/exercise/subvocal-free',
+    tag: 'odak',
   },
+  // ── KELİME ──
   {
     icon: '📖', label: 'Kelime Haznesi',
-    subtitle: 'MCQ flash • LGS / TYT',
+    subtitle: 'Kelime öğren • bağlamsal anlam • LGS/TYT',
     route: '/exercise/vocabulary',
     tag: 'kelime',
   },
+  // ── GÜNLÜK ──
   {
-    icon: '🧬', label: 'Biyonik Okuma',
-    subtitle: 'Kalın ilk yarı • hızlı tanıma',
-    route: '/exercise/bionic-reading',
-    tag: 'süper',
-  },
-  {
-    icon: '📜', label: 'Oto Kaydırma',
-    subtitle: 'WPM bazlı rehberli okuma',
-    route: '/exercise/auto-scroll',
+    icon: '🏕️', label: 'Hızlı Okuma Kampı',
+    subtitle: 'Günlük antrenman • WPM gelişimini izle',
+    route: '/exercise/speed-camp',
     tag: 'hız',
-  },
-  {
-    icon: '🪜', label: 'Hız Merdiveni',
-    subtitle: 'Artan hızlı RSVP antrenmanı',
-    route: '/exercise/speed-ladder',
-    tag: 'hız',
-  },
-  {
-    icon: '💫', label: 'Çok Kelime',
-    subtitle: '2-4 kelime RSVP • span genişlet',
-    route: '/exercise/word-burst',
-    tag: 'süper',
   },
 ]
 
@@ -126,8 +144,9 @@ const TAG_COLORS: Record<string, string> = {
   anlama: '#2196F3',
   odak:   '#FF9800',
   kelime: '#9C27B0',
-  tarama: '#F44336',
+  tarama: '#EF4444',
   süper:  '#0EA5E9',
+  günlük: '#6366F1',
 }
 const TAG_LABELS: Record<string, string> = {
   hız:    'Hız',
@@ -136,6 +155,7 @@ const TAG_LABELS: Record<string, string> = {
   kelime: 'Kelime',
   tarama: 'Tarama',
   süper:  'Süper',
+  günlük: 'Günlük',
 }
 
 // ─── Props ────────────────────────────────────────────────────

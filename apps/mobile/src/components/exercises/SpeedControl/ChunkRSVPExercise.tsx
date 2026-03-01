@@ -474,6 +474,15 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
     } catch { /* sessiz */ }
   }, [content])
 
+  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
+  useEffect(() => {
+    if (phase === 'result' && content?.source === 'library') {
+      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   if (phase === 'result' && finalMetrics) {
     return (
       <>
