@@ -1747,11 +1747,11 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
                 <Text style={{ fontSize:16, fontWeight:'700', color: t.colors.text }}>+</Text>
               </TouchableOpacity>
             </View>
-            <View style={{ flexDirection:'row', gap:8, marginTop:12, flexWrap:'wrap' }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-evenly', marginTop:12 }}>
               {([80, 120, 180, 250, 350, 500] as const).map(preset => (
                 <TouchableOpacity
                   key={preset}
-                  style={{ borderRadius:10, paddingHorizontal:12, paddingVertical:6,
+                  style={{ borderRadius:10, paddingHorizontal:8, paddingVertical:6,
                     backgroundColor: wpm === preset ? config.color : t.colors.background,
                     borderWidth:1, borderColor: wpm === preset ? config.color : t.colors.border }}
                   onPress={() => setWpm(preset)}

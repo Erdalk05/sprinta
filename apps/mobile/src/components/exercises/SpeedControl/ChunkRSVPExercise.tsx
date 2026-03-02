@@ -654,7 +654,7 @@ function SettingsSheet({ settings, onUpdate, onClose, t, s, currentWPM, onWPMCha
         </View>
 
         <Text style={s.settingsSection}>WPM: {currentWPM}</Text>
-        <View style={s.wpmBtnsRow}>
+        <View style={s.wpmPresetsRow}>
           {[100, 150, 200, 250, 300, 400, 500].map((w) => (
             <TouchableOpacity
               key={w}
@@ -795,6 +795,7 @@ function ms(t: AppTheme) {
       borderRadius: 8, backgroundColor: '#fff', marginLeft: -8,
     },
     wpmBtnsRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 8 },
+    wpmPresetsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', marginBottom: 8 },
     wpmAdjBtn:    {
       backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 999,
       paddingHorizontal: 16, paddingVertical: 6,
