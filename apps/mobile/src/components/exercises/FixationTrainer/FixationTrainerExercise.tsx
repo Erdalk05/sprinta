@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle,
-  withTiming, withSequence, runOnJS,
+  withTiming, withSequence,
 } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
 import { useAppTheme } from '../../../theme/useAppTheme'
@@ -84,6 +84,7 @@ export default function FixationTrainerExercise({
   const sessionStartRef  = useRef(Date.now())
   const answerStartRef   = useRef(0)
   const textIndexRef     = useRef(0)
+  const flashTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reanimated değerleri
   const flashOpacity  = useSharedValue(0)
@@ -109,18 +110,22 @@ export default function FixationTrainerExercise({
     flashOpacity.value  = 0
     answerOpacity.value = 0
 
-    // Göster → tut → kapat → cevap aşamasına geç
+    // Göster → tut → kapat
+    // NOT: Reanimated 4'te withSequence içindeki withTiming callback'i
+    //      güvenilmez — setTimeout ile geçiş yapıyoruz.
     flashOpacity.value = withSequence(
       withTiming(1, { duration: 80 }),
       withTiming(1, { duration: item.flashMs }),
-      withTiming(0, { duration: 80 }, (finished) => {
-        if (finished) {
-          runOnJS(setPhase)('answer')
-          runOnJS((() => { answerStartRef.current = Date.now() }))()
-          answerOpacity.value = withTiming(1, { duration: 180 })
-        }
-      }),
+      withTiming(0, { duration: 80 }),
     )
+
+    // Animasyon toplam süresinin sonunda cevap fazına geç
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => {
+      answerStartRef.current = Date.now()
+      setPhase('answer')
+      answerOpacity.value = withTiming(1, { duration: 180 })
+    }, 80 + item.flashMs + 80 + BLANK_MS)
   }, [flashOpacity, answerOpacity])
 
   // Flash faz tetikleyici
@@ -180,6 +185,7 @@ export default function FixationTrainerExercise({
 
   // ── Tur arası devam ────────────────────────────────────────────
   const handleContinueRound = useCallback(() => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     const txt   = TRAINING_TEXTS[textIndexRef.current % TRAINING_TEXTS.length]
     const items = buildFixations(txt, currentSpan, FIXATION_COUNT)
     setFixations(items)

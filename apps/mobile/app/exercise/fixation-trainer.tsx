@@ -1,16 +1,11 @@
 // Sprint 11 — Göz Genişliği Antrenmanı route wrapper
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
-import { createClient } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import FixationTrainerExercise, {
   type FixationTrainerMetrics,
 } from '../../src/components/exercises/FixationTrainer/FixationTrainerExercise'
-
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-)
+import { supabase } from '../../src/lib/supabase'
 
 export default function FixationTrainerScreen() {
   const router = useRouter()
