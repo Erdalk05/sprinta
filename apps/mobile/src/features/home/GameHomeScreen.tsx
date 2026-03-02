@@ -18,6 +18,7 @@ import { calculateExamProgress } from '@sprinta/shared'
 import { EventBus } from '../rewards/EventBus'
 import { getBadgeById } from '../rewards/RewardEngine'
 import { PerformanceHeader } from './components/PerformanceHeader'
+import { selectMotivation } from '../../utils/motivation'
 import { XPProgressBar } from './components/XPProgressBar'
 import { DailyMissionCard } from './components/DailyMissionCard'
 import { BrainPowerMap } from './components/BrainPowerMap'
@@ -120,8 +121,13 @@ export default function GameHomeScreen() {
   const totalXp    = student?.totalXp    ?? 0
   const streakDays = student?.streakDays ?? 0
 
-  const hour     = new Date().getHours()
-  const greeting = hour < 12 ? 'Günaydın' : hour < 18 ? 'İyi günler' : 'İyi akşamlar'
+  const lastWpm    = null // future: fetch from store
+  const motivation = useMemo(
+    () => selectMotivation(name, streakDays, totalXp, lastWpm),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [name, streakDays, totalXp],
+  )
+  const greeting = motivation.greeting
 
   const examProg   = calculateExamProgress(currentArp, examTarget.toLowerCase())
   const arpDisplay = useCountUp(currentArp, 1200)
@@ -152,12 +158,17 @@ export default function GameHomeScreen() {
           {/* Üst satır: selam + tema toggle */}
           <View style={s.heroTop}>
             <View>
-              <Text style={s.heroGreeting}>{greeting} 👋</Text>
+              <Text style={s.heroGreeting}>{motivation.icon} {greeting}</Text>
               <Text style={s.heroName}>{name}</Text>
             </View>
             <TouchableOpacity onPress={toggleTheme} style={s.themeBtn}>
               <Text style={{ fontSize: 22 }}>{isDark ? '☀️' : '🌙'}</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Motivasyon mesajı */}
+          <View style={s.motivCard}>
+            <Text style={s.motivTxt} numberOfLines={3}>{motivation.message}</Text>
           </View>
 
           {/* ARP büyük sayı — count-up */}
@@ -260,6 +271,22 @@ function ms(t: AppTheme) {
     heroGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
     heroName:     { fontSize: 20, fontWeight: '700', color: '#fff', marginTop: 2 },
     themeBtn:     { padding: 6 },
+
+    // Motivasyon kartı
+    motivCard: {
+      backgroundColor: 'rgba(255,255,255,0.10)',
+      borderRadius:    12,
+      paddingHorizontal: 14,
+      paddingVertical:   10,
+      borderLeftWidth:   3,
+      borderLeftColor:   'rgba(255,255,255,0.50)',
+    },
+    motivTxt: {
+      fontSize:   13,
+      color:      'rgba(255,255,255,0.92)',
+      fontWeight: '500',
+      lineHeight: 19,
+    },
 
     arpBlock:  { alignItems: 'center', paddingVertical: 4 },
     arpLabel:  { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '700', letterSpacing: 2 },
