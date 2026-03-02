@@ -376,8 +376,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   // ── AŞAMA 1: İçerik Seç ────────────────────────────────────────
 
   if (phase === 'select') {
+    const accent = t.module.speed_control.color
     return (
       <SafeAreaView style={s.root}>
+
+        {/* Header */}
         <View style={s.selectHeader}>
           <TouchableOpacity onPress={onExit} style={s.exitBtn}
             hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
@@ -387,71 +390,103 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           <Text style={s.selectSub}>Satır satır, rehber çizgiyle oku</Text>
         </View>
 
-        {content ? (
-          <ScrollView contentContainerStyle={s.selectBody}>
-            <View style={s.contentCard}>
-              <Text style={s.contentIcon}>📄</Text>
-              <View style={s.contentInfo}>
-                <Text style={s.contentTitle}>{content.title}</Text>
-                <Text style={s.contentMeta}>
-                  {content.wordCount} kelime  ·  ~{content.estimatedMinutes} dk
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowImport(true)} style={s.changeBtn}>
-                <Text style={s.changeTxt}>Değiştir</Text>
+        <ScrollView contentContainerStyle={s.selectBody}>
+
+          {/* ── İçerik kartı ───────────────────── */}
+          <TouchableOpacity style={s.contentCard} onPress={() => setShowImport(true)} activeOpacity={0.75}>
+            {content ? (
+              <>
+                <Text style={s.contentIcon}>📄</Text>
+                <View style={s.contentInfo}>
+                  <Text style={s.contentTitle} numberOfLines={2}>{content.title}</Text>
+                  <Text style={s.contentMeta}>{content.wordCount} kelime · ~{content.estimatedMinutes} dk</Text>
+                </View>
+                <View style={[s.changeBtn, { borderColor: accent }]}>
+                  <Text style={[s.changeTxt, { color: accent }]}>Değiştir</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={s.contentIcon}>📚</Text>
+                <View style={s.contentInfo}>
+                  <Text style={s.contentTitle}>İçerik Seç</Text>
+                  <Text style={s.contentMeta}>Kütüphane, metin veya URL</Text>
+                </View>
+                <View style={[s.changeBtn, { borderColor: accent, backgroundColor: accent }]}>
+                  <Text style={[s.changeTxt, { color: '#fff' }]}>Seç →</Text>
+                </View>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* ── OKUMA HIZI kartı ───────────────── */}
+          <View style={s.wpmCard}>
+            <Text style={s.cardLabel}>OKUMA HIZI</Text>
+            <View style={s.wpmAdjRow}>
+              <TouchableOpacity style={s.wpmAdjBtn} onPress={() => changeWPM(-25)}>
+                <Text style={s.wpmAdjTxt}>−</Text>
+              </TouchableOpacity>
+              <Text style={[s.wpmDisplay, { color: accent }]}>
+                {currentWPM}{' '}<Text style={s.wpmUnit}>WPM</Text>
+              </Text>
+              <TouchableOpacity style={s.wpmAdjBtn} onPress={() => changeWPM(+25)}>
+                <Text style={s.wpmAdjTxt}>+</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Settings önizleme */}
-            <View style={s.settingsPrev}>
-              <Text style={s.settingsPrevTitle}>⚙️ Ayarlar</Text>
-              <View style={s.settingsRow}>
-                <Text style={s.settingsLabel}>Cursor Stili</Text>
-                <View style={s.cursorBtns}>
-                  {(['line', 'dot', 'highlight', 'underline'] as const).map((cs) => (
-                    <TouchableOpacity
-                      key={cs}
-                      style={[s.cursorBtn, settings.cursorStyle === cs && { backgroundColor: t.module.speed_control.color }]}
-                      onPress={() => saveSettings({ ...settings, cursorStyle: cs })}
-                    >
-                      <Text style={[s.cursorBtnTxt, settings.cursorStyle === cs && s.cursorBtnTxtActive]}>
-                        {cs === 'line' ? '—' : cs === 'dot' ? '●' : cs === 'highlight' ? '✨' : '_'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={s.settingsRow}>
-                <Text style={s.settingsLabel}>Hedef WPM</Text>
-                <View style={s.wpmRow}>
-                  <TouchableOpacity onPress={() => changeWPM(-25)} style={s.wpmStepBtn}>
-                    <Text style={s.wpmStepTxt}>−25</Text>
-                  </TouchableOpacity>
-                  <Text style={[s.wpmValue, { color: t.module.speed_control.color }]}>{currentWPM}</Text>
-                  <TouchableOpacity onPress={() => changeWPM(+25)} style={s.wpmStepBtn}>
-                    <Text style={s.wpmStepTxt}>+25</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+            <View style={s.wpmPresetsRow}>
+              {([100, 150, 200, 250, 300, 400, 500] as const).map(w => (
+                <TouchableOpacity
+                  key={w}
+                  style={[s.wpmPreset, currentWPM === w && { backgroundColor: accent, borderColor: accent }]}
+                  onPress={() => changeWPM(w - currentWPM)}
+                >
+                  <Text style={[s.wpmPresetTxt, currentWPM === w && s.wpmPresetTxtActive]}>{w}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-
-            <TouchableOpacity style={[s.startBtn, { backgroundColor: t.module.speed_control.color }]} onPress={handleStart}>
-              <Text style={s.startBtnTxt}>Egzersizi Başlat →</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        ) : (
-          <View style={s.selectEmpty}>
-            <Text style={s.emptyEmoji}>📖</Text>
-            <Text style={s.emptyTitle}>İçerik Seç</Text>
-            <Text style={s.emptySub}>Kütüphane, metin veya URL'den okuyacağın içeriği seç.</Text>
-            <TouchableOpacity
-              style={[s.importBtn, { backgroundColor: t.module.speed_control.color }]}
-              onPress={() => setShowImport(true)}
-            >
-              <Text style={s.importBtnTxt}>İçerik Seç →</Text>
-            </TouchableOpacity>
           </View>
-        )}
+
+          {/* ── REHBER STİLİ kartı ─────────────── */}
+          <View style={s.cursorCard}>
+            <Text style={s.cardLabel}>REHBER STİLİ</Text>
+            <View style={s.cursorStyleRow}>
+              {([
+                { id: 'line',      icon: '—',  label: 'Çizgi'     },
+                { id: 'dot',       icon: '●',  label: 'Nokta'     },
+                { id: 'highlight', icon: '✨', label: 'Vurgu'     },
+                { id: 'underline', icon: '_',  label: 'Alt Çizgi' },
+              ] as const).map(cs => (
+                <TouchableOpacity
+                  key={cs.id}
+                  style={[
+                    s.cursorStyleBtn,
+                    settings.cursorStyle === cs.id && { borderColor: accent, backgroundColor: accent + '20' },
+                  ]}
+                  onPress={() => saveSettings({ ...settings, cursorStyle: cs.id })}
+                >
+                  <Text style={s.cursorStyleIcon}>{cs.icon}</Text>
+                  <Text style={[
+                    s.cursorStyleLabel,
+                    settings.cursorStyle === cs.id && { color: accent, fontWeight: '700' },
+                  ]}>
+                    {cs.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* ── Başlat ─────────────────────────── */}
+          <TouchableOpacity
+            style={[s.startBtn, { backgroundColor: content ? accent : t.colors.border }]}
+            onPress={handleStart}
+          >
+            <Text style={[s.startBtnTxt, !content && { color: t.colors.textHint }]}>
+              {content ? 'Egzersizi Başlat →' : 'Önce İçerik Seç'}
+            </Text>
+          </TouchableOpacity>
+
+        </ScrollView>
 
         <ContentImportModal
           visible={showImport}
@@ -835,44 +870,64 @@ function ms(t: AppTheme) {
     root: { flex: 1, backgroundColor: t.colors.background },
 
     // SELECT
-    selectHeader: { alignItems: 'center', paddingTop: 20, paddingBottom: 16, backgroundColor: t.colors.panel },
-    exitBtn:      { paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
-    exitTxt:      { fontSize: 15, color: 'rgba(255,255,255,0.7)' },
-    selectTitle:  { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
-    selectSub:    { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
-    selectBody:   { padding: 20, paddingBottom: 40 },
-    selectEmpty:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    emptyEmoji:   { fontSize: 56, marginBottom: 16 },
-    emptyTitle:   { fontSize: 22, fontWeight: '800', color: t.colors.text, marginBottom: 8 },
-    emptySub:     { fontSize: 14, color: t.colors.textSub, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-    importBtn:    { borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32, alignItems: 'center' },
-    importBtnTxt: { fontSize: 16, fontWeight: '700', color: '#fff' },
+    selectHeader: {
+      alignItems: 'center', paddingTop: 20, paddingBottom: 16,
+      backgroundColor: t.colors.panel,
+    },
+    exitBtn:  { paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
+    exitTxt:  { fontSize: 15, color: 'rgba(255,255,255,0.7)' },
+    selectTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
+    selectSub:   { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+    selectBody:  { padding: 20, paddingBottom: 48, gap: 14 },
 
-    contentCard:  {
+    // Content card
+    contentCard: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       backgroundColor: t.colors.surface, borderRadius: 16, padding: 14,
-      borderWidth: 1, borderColor: t.colors.border, marginBottom: 16,
+      borderWidth: 1, borderColor: t.colors.border,
     },
     contentIcon:  { fontSize: 28 },
     contentInfo:  { flex: 1 },
     contentTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text },
     contentMeta:  { fontSize: 12, color: t.colors.textHint, marginTop: 3 },
-    changeBtn:    { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: t.colors.border },
-    changeTxt:    { fontSize: 12, fontWeight: '600', color: t.colors.textHint },
+    changeBtn:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
+    changeTxt:    { fontSize: 12, fontWeight: '700' },
 
-    settingsPrev: { backgroundColor: t.colors.surface, borderRadius: 16, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: t.colors.border },
-    settingsPrevTitle: { fontSize: 13, fontWeight: '700', color: t.colors.textHint, marginBottom: 12 },
-    settingsRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-    settingsLabel:{ fontSize: 14, color: t.colors.text, fontWeight: '500' },
-    cursorBtns:   { flexDirection: 'row', gap: 6 },
-    cursorBtn:    { width: 36, height: 36, borderRadius: 10, backgroundColor: t.colors.border, alignItems: 'center', justifyContent: 'center' },
-    cursorBtnTxt: { fontSize: 14, color: t.colors.textHint },
-    cursorBtnTxtActive: { color: '#fff', fontWeight: '700' },
-    wpmRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    wpmValue:     { fontSize: 18, fontWeight: '800', minWidth: 52, textAlign: 'center' },
+    // WPM card
+    wpmCard: {
+      backgroundColor: t.colors.surface, borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: t.colors.border,
+    },
+    cardLabel: {
+      fontSize: 11, fontWeight: '800', color: t.colors.textHint,
+      letterSpacing: 1, marginBottom: 12,
+    },
+    wpmAdjRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 12 },
+    wpmAdjBtn:    { width: 44, height: 44, borderRadius: 12, backgroundColor: t.colors.background, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: t.colors.border },
+    wpmAdjTxt:    { fontSize: 24, fontWeight: '700', color: t.colors.text },
+    wpmDisplay:   { fontSize: 32, fontWeight: '900', minWidth: 120, textAlign: 'center' },
+    wpmUnit:      { fontSize: 16, fontWeight: '600', color: t.colors.textHint },
+    wpmPresetsRow:{ flexDirection: 'row', justifyContent: 'space-evenly' },
+    wpmPreset:    { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: t.colors.border, backgroundColor: t.colors.background, minWidth: 38, alignItems: 'center' },
+    wpmPresetTxt: { fontSize: 12, fontWeight: '700', color: t.colors.textHint },
+    wpmPresetTxtActive: { color: '#fff' },
+
+    // Cursor card
+    cursorCard: {
+      backgroundColor: t.colors.surface, borderRadius: 16, padding: 16,
+      borderWidth: 1, borderColor: t.colors.border,
+    },
+    cursorStyleRow:   { flexDirection: 'row', gap: 8 },
+    cursorStyleBtn:   { flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1.5, borderColor: t.colors.border, backgroundColor: t.colors.background, gap: 4 },
+    cursorStyleIcon:  { fontSize: 16 },
+    cursorStyleLabel: { fontSize: 11, fontWeight: '600', color: t.colors.textHint },
 
     startBtn:     { borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
     startBtnTxt:  { fontSize: 17, fontWeight: '700', color: '#fff' },
+
+    // legacy (reading phase reuses these)
+    wpmRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    wpmValue:     { fontSize: 18, fontWeight: '800', minWidth: 52, textAlign: 'center' },
 
     // READING
     readHeader:  {

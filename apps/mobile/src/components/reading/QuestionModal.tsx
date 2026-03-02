@@ -173,7 +173,25 @@ export const QuestionModal = React.memo(function QuestionModal({
     )
   }
 
-  if (!question) return null
+  if (!question) return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <SafeAreaView style={[s.root, { justifyContent: 'center', alignItems: 'center', gap: 20, padding: 32 }]}>
+        <Text style={{ fontSize: 52 }}>📝</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#333', textAlign: 'center' }}>
+          Soru Bulunamadı
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22 }}>
+          Bu metin için henüz anlama sorusu eklenmemiş.{'\n'}Okumaya devam edebilirsin.
+        </Text>
+        <TouchableOpacity
+          onPress={onSkip}
+          style={{ backgroundColor: '#6366F1', borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14 }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Kapat</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </Modal>
+  )
 
   const qColor = TYPE_COLOR[question.question_type]
 

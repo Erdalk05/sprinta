@@ -291,12 +291,56 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
             <Text style={s.heroSub}>Kelime gruplarını hızlıca işle — Bionic okuma destekli</Text>
           </View>
 
-          {/* Ayar çipleri */}
-          <View style={s.chipRow}>
-            <View style={s.chip}><Text style={s.chipTxt}>{settings.chunkSize} kelime/grup</Text></View>
-            <View style={s.chip}><Text style={s.chipTxt}>{currentWPM} WPM</Text></View>
-            <View style={[s.chip, settings.bionicReading && s.chipActive]}>
-              <Text style={[s.chipTxt, settings.bionicReading && s.chipTxtActive]}>Bionic</Text>
+          {/* OKUMA HIZI kartı */}
+          <View style={s.wpmCard}>
+            <Text style={s.wpmCardLabel}>OKUMA HIZI</Text>
+            <View style={s.wpmRow}>
+              <TouchableOpacity
+                style={s.wpmAdjBtnSelect}
+                onPress={() => setCurrentWPM(w => Math.max(60, w - 25))}
+              >
+                <Text style={s.wpmAdjTxtSelect}>−</Text>
+              </TouchableOpacity>
+              <Text style={s.wpmDisplaySelect}>
+                {currentWPM} <Text style={s.wpmUnitSelect}>WPM</Text>
+              </Text>
+              <TouchableOpacity
+                style={s.wpmAdjBtnSelect}
+                onPress={() => setCurrentWPM(w => Math.min(800, w + 25))}
+              >
+                <Text style={s.wpmAdjTxtSelect}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.wpmPresetsSelect}>
+              {([100, 150, 200, 250, 300, 400, 500] as const).map(w => (
+                <TouchableOpacity
+                  key={w}
+                  style={[s.wpmPresetSelect, currentWPM === w && s.wpmPresetSelectActive]}
+                  onPress={() => setCurrentWPM(w)}
+                >
+                  <Text style={[s.wpmPresetSelectTxt, currentWPM === w && s.wpmPresetSelectTxtActive]}>
+                    {w}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Grup Boyutu */}
+          <View style={s.chunkSizeCard}>
+            <Text style={s.wpmCardLabel}>GRUP BOYUTU</Text>
+            <View style={s.chunkSizeBtns}>
+              {([1, 2, 3, 4, 5] as const).map(n => (
+                <TouchableOpacity
+                  key={n}
+                  style={[s.chunkSizeBtn, settings.chunkSize === n && s.chunkSizeBtnActive]}
+                  onPress={() => setSettings(prev => ({ ...prev, chunkSize: n }))}
+                >
+                  <Text style={[s.chunkSizeBtnTxt, settings.chunkSize === n && s.chunkSizeBtnTxtActive]}>
+                    {n}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -637,7 +681,7 @@ function SettingsSheet({ settings, onUpdate, onClose, t, s, currentWPM, onWPMCha
       style={[s.chunkSizeBtn, settings.chunkSize === size && s.chunkSizeBtnActive]}
       onPress={() => onUpdate((p) => ({ ...p, chunkSize: size }))}
     >
-      <Text style={[s.chunkSizeTxt, settings.chunkSize === size && s.chunkSizeTxtActive]}>{size}</Text>
+      <Text style={[s.chunkSizeBtnTxt, settings.chunkSize === size && s.chunkSizeBtnTxtActive]}>{size}</Text>
     </TouchableOpacity>
   )
 
@@ -709,6 +753,46 @@ function ms(t: AppTheme) {
     heroEmoji:    { fontSize: 56, marginBottom: 12 },
     heroTitle:    { fontSize: 26, fontWeight: '900', color: t.colors.text, marginBottom: 6 },
     heroSub:      { fontSize: 14, color: t.colors.textHint, textAlign: 'center' },
+
+    // WPM kartı — select ekranı
+    wpmCard: {
+      backgroundColor: t.colors.surface, borderRadius: 16,
+      padding: 16, borderWidth: 1, borderColor: t.colors.border, gap: 12,
+    },
+    wpmCardLabel: { fontSize: 11, fontWeight: '700', color: t.colors.textHint, letterSpacing: 1.5 },
+    wpmRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    wpmAdjBtnSelect: {
+      width: 44, height: 44, borderRadius: 12,
+      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    wpmAdjTxtSelect:  { fontSize: 20, fontWeight: '700', color: t.colors.text },
+    wpmDisplaySelect: { fontSize: 32, fontWeight: '900', color: SPEED_COLOR },
+    wpmUnitSelect:    { fontSize: 14, color: t.colors.textHint, fontWeight: '600' },
+    wpmPresetsSelect: { flexDirection: 'row', justifyContent: 'space-evenly' },
+    wpmPresetSelect:  {
+      paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8,
+      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+    },
+    wpmPresetSelectActive:    { backgroundColor: SPEED_COLOR, borderColor: SPEED_COLOR },
+    wpmPresetSelectTxt:       { fontSize: 12, fontWeight: '600', color: t.colors.textHint },
+    wpmPresetSelectTxtActive: { color: '#fff' },
+
+    // Grup boyutu kartı — select ekranı
+    chunkSizeCard:    {
+      backgroundColor: t.colors.surface, borderRadius: 16,
+      padding: 16, borderWidth: 1, borderColor: t.colors.border, gap: 12,
+    },
+    chunkSizeBtns:        { flexDirection: 'row', justifyContent: 'space-evenly' },
+    chunkSizeBtn:         {
+      width: 44, height: 44, borderRadius: 12,
+      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    chunkSizeBtnActive:   { backgroundColor: SPEED_COLOR, borderColor: SPEED_COLOR },
+    chunkSizeBtnTxt:      { fontSize: 15, fontWeight: '700', color: t.colors.textHint },
+    chunkSizeBtnTxtActive:{ color: '#fff' },
+
     chipRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip:         {
       borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6,
@@ -868,13 +952,6 @@ function ms(t: AppTheme) {
     toggleThumb:      { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
     toggleThumbOn:    { alignSelf: 'flex-end' },
     chunkSizeRow:     { flexDirection: 'row', gap: 8 },
-    chunkSizeBtn:     {
-      flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center',
-      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
-    },
-    chunkSizeBtnActive: { backgroundColor: SPEED_COLOR, borderColor: SPEED_COLOR },
-    chunkSizeTxt:     { fontSize: 16, fontWeight: '700', color: t.colors.textHint },
-    chunkSizeTxtActive: { color: '#fff' },
     wpmPreset:        {
       paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8,
       backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
