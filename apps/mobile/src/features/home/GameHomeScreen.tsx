@@ -111,7 +111,7 @@ export default function GameHomeScreen() {
   const s = useMemo(() => ms(t), [t])
   const router = useRouter()
   const { isDark, toggleTheme } = useThemeToggle()
-  const { student } = useAuthStore()
+  const { student, logout } = useAuthStore()
   const { earnedBadges } = useGamificationStore()
   const [badgeToast, setBadgeToast] = useState<string | null>(null)
 
@@ -155,15 +155,33 @@ export default function GameHomeScreen() {
 
         {/* ══════════════════ BÖLÜM 1 — Hero ══════════════════════ */}
         <View style={s.hero}>
-          {/* Üst satır: selam + tema toggle */}
+          {/* Üst satır: isim (sol) + butonlar (sağ) */}
           <View style={s.heroTop}>
-            <View>
-              <Text style={s.heroGreeting}>{motivation.icon} {greeting}</Text>
+            {/* Sol: ad + selamlama */}
+            <View style={{ flex: 1 }}>
               <Text style={s.heroName}>{name}</Text>
+              <Text style={s.heroGreeting}>{motivation.icon} {greeting}</Text>
             </View>
-            <TouchableOpacity onPress={toggleTheme} style={s.themeBtn}>
-              <Text style={{ fontSize: 22 }}>{isDark ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
+            {/* Sağ: tema + ayarlar + çıkış */}
+            <View style={s.heroActions}>
+              <TouchableOpacity onPress={toggleTheme} style={s.heroIconBtn} activeOpacity={0.7}>
+                <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/menu' as any)}
+                style={s.heroIconBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 16 }}>⚙️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => { await logout(); router.replace('/login' as any) }}
+                style={s.heroIconBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={s.heroIconBtnTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Motivasyon mesajı */}
@@ -268,9 +286,15 @@ function ms(t: AppTheme) {
     heroTop: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     },
-    heroGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-    heroName:     { fontSize: 20, fontWeight: '700', color: '#fff', marginTop: 2 },
-    themeBtn:     { padding: 6 },
+    heroGreeting:  { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500', marginTop: 3 },
+    heroName:      { fontSize: 28, fontWeight: '900', color: '#fff' },
+    heroActions:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    heroIconBtn:   {
+      width: 34, height: 34, borderRadius: 17,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    heroIconBtnTxt: { fontSize: 14, color: '#fff', fontWeight: '800' },
 
     // Motivasyon kartı
     motivCard: {
