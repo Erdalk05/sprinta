@@ -284,7 +284,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
           <TouchableOpacity onPress={() => setShowSettings(true)}><Text style={s.settingsIcon}>⚙️</Text></TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={s.selectScroll}>
+        <View style={s.selectScroll}>
           <View style={s.heroBox}>
             <Text style={s.heroEmoji}>📦</Text>
             <Text style={s.heroTitle}>Chunk RSVP</Text>
@@ -368,7 +368,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
           >
             <Text style={s.startBtnTxt}>▶ Başlat</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
 
         {/* Settings Bottom Sheet */}
         {showSettings && (
@@ -593,7 +593,7 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, 
           <Text style={{ fontSize:18, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={s.resultScroll}>
+      <View style={s.resultScroll}>
         <Text style={s.resultEmoji}>🎉</Text>
         <Text style={s.resultTitle}>Seans Tamamlandı!</Text>
 
@@ -643,7 +643,7 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, 
             <Text style={s.continueBtnTxt}>İleri →</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   )
 }
@@ -748,8 +748,8 @@ function ms(t: AppTheme) {
     settingsIcon: { fontSize: 20 },
 
     // Select
-    selectScroll: { padding: 20, paddingBottom: 60, gap: 16 },
-    heroBox:      { alignItems: 'center', paddingVertical: 20 },
+    selectScroll: { flex: 1, padding: 16, gap: 12 },
+    heroBox:      { alignItems: 'center', paddingVertical: 10 },
     heroEmoji:    { fontSize: 56, marginBottom: 12 },
     heroTitle:    { fontSize: 26, fontWeight: '900', color: t.colors.text, marginBottom: 6 },
     heroSub:      { fontSize: 14, color: t.colors.textHint, textAlign: 'center' },
@@ -897,27 +897,27 @@ function ms(t: AppTheme) {
     statLabel:    { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
 
     // Result
-    resultScroll: { padding: 24, paddingBottom: 48, alignItems: 'center', gap: 16 },
-    resultEmoji:  { fontSize: 64 },
-    resultTitle:  { fontSize: 26, fontWeight: '900', color: t.colors.text },
+    resultScroll: { flex: 1, padding: 16, alignItems: 'center', gap: 10 },
+    resultEmoji:  { fontSize: 44 },
+    resultTitle:  { fontSize: 22, fontWeight: '900', color: t.colors.text },
     arpCard:      {
-      backgroundColor: SPEED_COLOR, borderRadius: 20, paddingVertical: 24, paddingHorizontal: 40,
+      backgroundColor: SPEED_COLOR, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32,
       alignItems: 'center', width: '100%',
     },
-    arpLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 8 },
-    arpValue:     { fontSize: 72, fontWeight: '900', color: '#fff', lineHeight: 80 },
-    metricsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', width: '100%' },
+    arpLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+    arpValue:     { fontSize: 52, fontWeight: '900', color: '#fff', lineHeight: 58 },
+    metricsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' },
     metricCard:   {
-      backgroundColor: t.colors.surface, borderRadius: 16, padding: 18,
+      backgroundColor: t.colors.surface, borderRadius: 12, padding: 14,
       alignItems: 'center', minWidth: '40%', flex: 1,
     },
-    metricValue:  { fontSize: 24, fontWeight: '900', color: t.colors.text },
-    metricLabel:  { fontSize: 11, color: t.colors.textHint, marginTop: 4 },
+    metricValue:  { fontSize: 20, fontWeight: '900', color: t.colors.text },
+    metricLabel:  { fontSize: 11, color: t.colors.textHint, marginTop: 2 },
     xpBadge:      {
-      backgroundColor: '#F59E0B20', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24,
+      backgroundColor: '#F59E0B20', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 20,
       borderWidth: 1, borderColor: '#F59E0B',
     },
-    xpTxt:        { fontSize: 16, fontWeight: '700', color: '#F59E0B' },
+    xpTxt:        { fontSize: 15, fontWeight: '700', color: '#F59E0B' },
     resultBtns:   { flexDirection: 'row', gap: 12, width: '100%' },
     repeatBtn:    {
       flex: 1, backgroundColor: t.colors.surface, borderRadius: 14,

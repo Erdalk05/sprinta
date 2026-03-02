@@ -390,7 +390,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           <Text style={s.selectSub}>Satır satır, rehber çizgiyle oku</Text>
         </View>
 
-        <ScrollView contentContainerStyle={s.selectBody}>
+        <View style={s.selectBody}>
 
           {/* ── İçerik kartı ───────────────────── */}
           <TouchableOpacity style={s.contentCard} onPress={() => setShowImport(true)} activeOpacity={0.75}>
@@ -486,7 +486,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
             </Text>
           </TouchableOpacity>
 
-        </ScrollView>
+        </View>
 
         <ContentImportModal
           visible={showImport}
@@ -747,11 +747,10 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
     } catch { /* sessiz */ }
   }, [content])
 
-  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
+  // Kütüphane metni tamamlandığında quiz hemen açılır (0 gecikme)
   useEffect(() => {
     if (finalMetrics && content?.source === 'library') {
-      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
-      return () => clearTimeout(timer)
+      fetchAndShowQuiz()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalMetrics])
@@ -777,7 +776,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           <Text style={{ fontSize:18, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={s.resultScroll} showsVerticalScrollIndicator={false}>
+      <View style={s.resultScroll}>
         {/* Başlık */}
         <View style={s.resultHero}>
           <Text style={s.resultEmoji}>🎉</Text>
@@ -817,11 +816,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
         {/* Quiz Butonu */}
         {content?.source === 'library' && (
           <TouchableOpacity
-            style={{ backgroundColor:'#10B981', borderRadius:14, paddingVertical:14,
-              alignItems:'center', marginHorizontal:0, marginBottom:8 }}
+            style={{ backgroundColor:'#10B981', borderRadius:14, paddingVertical:12,
+              alignItems:'center', marginHorizontal:0 }}
             onPress={fetchAndShowQuiz}
           >
-            <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>📝 Anlama Soruları</Text>
+            <Text style={{ color:'#fff', fontWeight:'800', fontSize:15 }}>📝 Anlama Soruları</Text>
           </TouchableOpacity>
         )}
 
@@ -846,17 +845,14 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
             <Text style={s.saveBtnTxt}>İleri →</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
+      {/* Sonuç ekranında tekrar açılabilen quiz — tamamlayınca burada kalır */}
       <QuestionModal
         visible={showQuiz}
         questions={questions}
         textId={content?.libraryTextId ?? ''}
         chapterId={null}
-        onComplete={(_answers: QuestionAnswer[]) => {
-          setShowQuiz(false)
-          onComplete(finalMetrics)
-          onExit()
-        }}
+        onComplete={() => setShowQuiz(false)}
         onSkip={() => setShowQuiz(false)}
       />
     </SafeAreaView>
@@ -878,7 +874,7 @@ function ms(t: AppTheme) {
     exitTxt:  { fontSize: 15, color: 'rgba(255,255,255,0.7)' },
     selectTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
     selectSub:   { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
-    selectBody:  { padding: 20, paddingBottom: 48, gap: 14 },
+    selectBody:  { flex: 1, padding: 16, gap: 12 },
 
     // Content card
     contentCard: {
@@ -1017,25 +1013,25 @@ function ms(t: AppTheme) {
     sheetCloseTxt: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
     // RESULT
-    resultScroll:{ padding: 24, paddingBottom: 48 },
-    resultHero:  { alignItems: 'center', marginBottom: 24, marginTop: 8 },
-    resultEmoji: { fontSize: 56, marginBottom: 8 },
-    resultTitle: { fontSize: 26, fontWeight: '800', color: t.colors.text },
-    resultSub:   { fontSize: 14, color: t.colors.textSub, marginTop: 4 },
-    arpCard:     { borderRadius: 20, padding: 24, marginBottom: 16, alignItems: 'center' },
-    arpLabel:    { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 8 },
-    arpValue:    { fontSize: 72, fontWeight: '900', color: '#fff', lineHeight: 80 },
-    arpNote:     { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 6, fontWeight: '600' },
-    xpBadge:     { backgroundColor: '#FEF3C7', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 20, alignItems: 'center', marginBottom: 20 },
-    xpTxt:       { fontSize: 16, fontWeight: '700', color: '#92400E' },
-    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
-    metricCard:  { flex: 1, minWidth: '44%', backgroundColor: t.colors.surface, borderRadius: 14, padding: 16, alignItems: 'center' },
-    metricValue: { fontSize: 20, fontWeight: '800', color: t.colors.text },
-    metricLabel: { fontSize: 12, color: t.colors.textHint, marginTop: 4, textAlign: 'center' },
-    resultActions: { gap: 12 },
-    repeatBtn:   { borderWidth: 2, borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
-    repeatBtnTxt:{ fontSize: 16, fontWeight: '700' },
-    saveBtn:     { borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
-    saveBtnTxt:  { fontSize: 16, fontWeight: '700', color: '#fff' },
+    resultScroll:{ flex: 1, padding: 16, gap: 10 },
+    resultHero:  { alignItems: 'center', gap: 2 },
+    resultEmoji: { fontSize: 40 },
+    resultTitle: { fontSize: 22, fontWeight: '800', color: t.colors.text },
+    resultSub:   { fontSize: 13, color: t.colors.textSub },
+    arpCard:     { borderRadius: 16, padding: 16, alignItems: 'center' },
+    arpLabel:    { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+    arpValue:    { fontSize: 52, fontWeight: '900', color: '#fff', lineHeight: 58 },
+    arpNote:     { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4, fontWeight: '600' },
+    xpBadge:     { backgroundColor: '#FEF3C7', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center' },
+    xpTxt:       { fontSize: 15, fontWeight: '700', color: '#92400E' },
+    metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    metricCard:  { flex: 1, minWidth: '44%', backgroundColor: t.colors.surface, borderRadius: 12, padding: 12, alignItems: 'center' },
+    metricValue: { fontSize: 18, fontWeight: '800', color: t.colors.text },
+    metricLabel: { fontSize: 11, color: t.colors.textHint, marginTop: 2, textAlign: 'center' },
+    resultActions: { flexDirection: 'row', gap: 10 },
+    repeatBtn:   { flex: 1, borderWidth: 2, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    repeatBtnTxt:{ fontSize: 15, fontWeight: '700' },
+    saveBtn:     { flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+    saveBtnTxt:  { fontSize: 15, fontWeight: '700', color: '#fff' },
   })
 }

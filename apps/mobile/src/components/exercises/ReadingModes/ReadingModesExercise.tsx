@@ -1657,14 +1657,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     }
   }, [content])
 
-  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
-  useEffect(() => {
-    if (phase === 'result' && content?.source === 'library') {
-      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
-      return () => clearTimeout(timer)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
+  // (quiz flow: handleFinish içinde doğrudan açılır — ayrı useEffect yok)
 
   const handleStart = () => {
     if (!content) { setShowImport(true); return }
@@ -1686,9 +1679,14 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       ...result.specific,
     }
     setFinalMetrics(metrics)
-    setPhase('result')
     if (content) saveRecentContent(content, result.avgWPM)
-  }, [content, mode])
+    if (content?.source === 'library') {
+      // Okuma biter bitmez quiz modal'ı aç — sonuç ekranı quiz bittikten sonra
+      fetchAndShowQuiz()
+    } else {
+      setPhase('result')
+    }
+  }, [content, mode, fetchAndShowQuiz])
 
   // ── AŞAMA 1: İçerik Seç ──────────────────────────────────────────
   if (phase === 'select') {
@@ -1696,21 +1694,21 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
         <TopBar title={config.label} onExit={onExit} color={config.color} />
 
-        <ScrollView contentContainerStyle={{ padding:24, gap:20 }}>
+        <View style={{ flex:1, padding:20, gap:14 }}>
           {/* Hero */}
-          <View style={{ alignItems:'center', paddingVertical:16, gap:10 }}>
-            <Text style={{ fontSize:64 }}>{config.icon}</Text>
-            <Text style={{ fontSize:22, fontWeight:'900', color: t.colors.text }}>
+          <View style={{ alignItems:'center', paddingVertical:10, gap:6 }}>
+            <Text style={{ fontSize:52 }}>{config.icon}</Text>
+            <Text style={{ fontSize:20, fontWeight:'900', color: t.colors.text }}>
               {config.label}
             </Text>
-            <Text style={{ fontSize:14, color: t.colors.textHint, textAlign:'center', lineHeight:22 }}>
+            <Text style={{ fontSize:13, color: t.colors.textHint, textAlign:'center', lineHeight:20 }}>
               {config.description}
             </Text>
           </View>
 
           {/* WPM Ayarı */}
           <View style={{ backgroundColor: t.colors.surface, borderRadius:16,
-            padding:20, borderWidth:1, borderColor: t.colors.border }}>
+            padding:14, borderWidth:1, borderColor: t.colors.border }}>
             <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <Text style={{ fontSize:12, fontWeight:'700', color: t.colors.textHint, letterSpacing:1 }}>
                 OKUMA HIZI
@@ -1805,7 +1803,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
           >
             <Text style={{ fontSize:18, fontWeight:'900', color:'#fff' }}>▶ Başlat</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
 
         <ContentImportModal
           visible={showImport}
@@ -1822,20 +1820,36 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       content, config, wpm, onFinish: handleFinish,
       onExit: () => setPhase('select'), t, color: config.color,
     }
+    let readEl: React.ReactElement | null = null
     switch (mode) {
-      case 'timed':        return <TimedView        {...props} />
-      case 'academic':     return <AcademicView     {...props} />
-      case 'keyword':      return <KeywordView      {...props} />
-      case 'memory':       return <MemoryView       {...props} />
-      case 'prediction':   return <PredictionView   {...props} />
-      case 'focus_filter': return <FocusFilterView  {...props} />
-      case 'subvocal':     return <SubvocalView     {...props} />
-      case 'bionic':        return <BionicView        {...props} />
-      case 'auto_scroll':   return <AutoScrollView   {...props} />
-      case 'speed_ladder':  return <SpeedLadderView  {...props} />
-      case 'word_burst':    return <WordBurstView     {...props} />
-      case 'sentence_step': return <SentenceStepView {...props} />
+      case 'timed':        readEl = <TimedView        {...props} />; break
+      case 'academic':     readEl = <AcademicView     {...props} />; break
+      case 'keyword':      readEl = <KeywordView      {...props} />; break
+      case 'memory':       readEl = <MemoryView       {...props} />; break
+      case 'prediction':   readEl = <PredictionView   {...props} />; break
+      case 'focus_filter': readEl = <FocusFilterView  {...props} />; break
+      case 'subvocal':     readEl = <SubvocalView     {...props} />; break
+      case 'bionic':       readEl = <BionicView       {...props} />; break
+      case 'auto_scroll':  readEl = <AutoScrollView   {...props} />; break
+      case 'speed_ladder': readEl = <SpeedLadderView  {...props} />; break
+      case 'word_burst':   readEl = <WordBurstView    {...props} />; break
+      case 'sentence_step':readEl = <SentenceStepView {...props} />; break
     }
+    if (!readEl) return null
+    return (
+      <>
+        {readEl}
+        {/* Okuma biter bitmez quiz overlay olarak açılır */}
+        <QuestionModal
+          visible={showQuiz}
+          questions={questions}
+          textId={content?.libraryTextId ?? ''}
+          chapterId={null}
+          onComplete={() => { setShowQuiz(false); setPhase('result') }}
+          onSkip={() => { setShowQuiz(false); setPhase('result') }}
+        />
+      </>
+    )
   }
 
   // ── AŞAMA 3: Seans Sonu ────────────────────────────────────────────
@@ -1855,15 +1869,13 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
           hasQuiz={content?.source === 'library'}
           t={t}
         />
+        {/* Sonuç ekranında tekrar açılabilen quiz — tamamlayınca burada kalır */}
         <QuestionModal
           visible={showQuiz}
           questions={questions}
           textId={content?.libraryTextId ?? ''}
           chapterId={null}
-          onComplete={(_answers: QuestionAnswer[]) => {
-            setShowQuiz(false)
-            onComplete(finalMetrics)
-          }}
+          onComplete={() => setShowQuiz(false)}
           onSkip={() => setShowQuiz(false)}
         />
       </>
