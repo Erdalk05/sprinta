@@ -50,11 +50,10 @@ function SprintaTabBar({
   const t = useAppTheme()
   const s = createStyles(t)
 
-  const currentName   = state.routes[state.index]?.name ?? ''
-  const isHome        = currentName === 'index'
-  const isMenu        = currentName === 'menu'
-  // calis ekranı aktifken Okuma tab'ı vurgulu görünür
-  const isCalisActive = currentName === 'calis'
+  const currentName      = state.routes[state.index]?.name ?? ''
+  const isHome           = currentName === 'index'
+  const isMenu           = currentName === 'menu'
+  const isSessionsActive = currentName === 'sessions'
 
   // Regular nav tab
   const navTab = (
@@ -116,7 +115,7 @@ function SprintaTabBar({
       {/* FAB placeholder — RadialFab overlay olarak render edilir */}
       <View style={s.fabSlot} pointerEvents="none" />
 
-      {sheetTab('📖', 'Okuma', okumaActive || isCalisActive, onNavigateCalis)}
+      {sheetTab('📚', 'Çalış', okumaActive || isSessionsActive, onNavigateCalis)}
       {navTab('menu', '🎓', 'Üssü', isMenu)}
     </View>
   )
@@ -147,7 +146,7 @@ export default function TabsLayout() {
             onNavigateCalis={() => {
               setEgzersizActive(false)
               setOkumaActive(true)
-              props.navigation.navigate('calis')
+              props.navigation.navigate('sessions')
             }}
             egzersizActive={egzersizActive}
             okumaActive={okumaActive}
@@ -161,7 +160,7 @@ export default function TabsLayout() {
         {/* Navigable but hidden from tab bar */}
         <Tabs.Screen name="calis"    options={{ href: null }} />
         <Tabs.Screen name="coach"    options={{ href: null }} />
-        <Tabs.Screen name="sessions" options={{ href: null }} />
+        <Tabs.Screen name="sessions" options={{ title: 'Çalış' }} />
         <Tabs.Screen name="progress" options={{ href: null }} />
         <Tabs.Screen name="social"   options={{ href: null }} />
         <Tabs.Screen name="profile"  options={{ href: null }} />
