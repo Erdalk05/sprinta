@@ -113,10 +113,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   const [questions, setQuestions] = useState<TextQuestion[]>([])
 
   // Cursor animasyonu
-  const cursorX       = useSharedValue(0)   // 0 → 1 (satır genişliğinin yüzdesi)
-  const dotPulse      = useSharedValue(1)
-  const lineWidth     = useRef(300)         // container genişliği (ölçülür)
-  const textLineWidth = useSharedValue(300) // SON satırın gerçek metin genişliği (onTextLayout ile)
+  const cursorX        = useSharedValue(0)   // 0 → 1 (satır genişliğinin yüzdesi)
+  const cursorEndRatio = useSharedValue(1)   // kısa satırlarda < 1 → boşlukta akmaz
+  const dotPulse       = useSharedValue(1)
+  const lineWidth      = useRef(300)         // container genişliği (ölçülür)
+  const textLineWidth  = useSharedValue(300) // SON satırın gerçek metin genişliği (onTextLayout ile)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -166,6 +167,10 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
     textLineWidth.value = lineWidth.current
     const dur = line.estimatedReadMs
 
+    // Kısa/son satırlarda cursor kelimeler bitince durur — boşlukta akmaz
+    // Tam satır (10 kelime) → endRatio=1.0, 4 kelimelik son satır → endRatio=0.4
+    cursorEndRatio.value = Math.min(1, line.wordCount / settings.wordsPerLine)
+
     // Underline: kelime kelime atlayan adım animasyonu — kelimenin bittiği yerde durur
     // Line (kılavuz): doğrusal hareket — okunan konumu yumuşakça izler
     const easing = settings.cursorStyle === 'underline'
@@ -185,7 +190,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
         false,
       )
     }
-  }, [settings.cursorStyle, cursorX, dotPulse])
+  }, [settings.cursorStyle, settings.wordsPerLine, cursorX, cursorEndRatio, dotPulse])
 
   // ── Satır ilerlemesi ───────────────────────────────────────────
 
@@ -330,20 +335,21 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
 
   // ── Rehber animasyonlu stiller ─────────────────────────────────
 
-  // LINE: soldan sağa kayan sabit genişlikte kılavuz çubuğu
-  // Kelimenin sonu = container sağ kenarı → metin bitmeden önce durur
+  // LINE: soldan sağa kayan kılavuz çubuğu
+  // cursorEndRatio → kısa/son satırlarda kelimeler bitince durur, boşlukta akmaz
   const cursorLineStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: cursorX.value * Math.max(0, lineWidth.current - 28) }],
+    transform: [{ translateX: cursorX.value * cursorEndRatio.value * Math.max(0, lineWidth.current - 28) }],
   }))
 
-  // UNDERLINE: kelime kelime büyüyen alt çizgi — SON satırın gerçek metin genişliğine kadar
+  // UNDERLINE: kelime kelime büyüyen alt çizgi — textLineWidth ile doğal sınır
   // textLineWidth, onTextLayout ile ölçülür → kısa satırlarda metni aşmaz
   const cursorUnderlineStyle = useAnimatedStyle(() => ({
     width: cursorX.value * textLineWidth.value,
   }))
 
+  // DOT: nokta cursor — kısa satırlarda kelimelerin ötesine geçmez
   const cursorDotStyle = useAnimatedStyle(() => ({
-    left: `${cursorX.value * 92}%` as any,
+    left: `${cursorX.value * cursorEndRatio.value * 92}%` as any,
     transform: [{ scale: dotPulse.value }],
   }))
 

@@ -25,14 +25,32 @@ const EXAM_OPTIONS = [
   { value: 'yds',  label: 'YDS' },
 ]
 
-const GRADE_OPTIONS = [
-  { value: 'ortaokul_8', label: '8. Sınıf' },
-  { value: 'lise_9',     label: '9. Sınıf' },
-  { value: 'lise_10',    label: '10. Sınıf' },
-  { value: 'lise_11',    label: '11. Sınıf' },
-  { value: 'lise_12',    label: '12. Sınıf' },
-  { value: 'universite', label: 'Üniversite' },
-  { value: 'yetiskin',   label: 'Mezun' },
+const GRADE_GROUPS = [
+  {
+    group: 'Ortaokul',
+    options: [
+      { value: 'ilkokul_5',  label: '5. Sınıf' },
+      { value: 'ortaokul_6', label: '6. Sınıf' },
+      { value: 'ortaokul_7', label: '7. Sınıf' },
+      { value: 'ortaokul_8', label: '8. Sınıf' },
+    ],
+  },
+  {
+    group: 'Lise',
+    options: [
+      { value: 'lise_9',  label: '9. Sınıf'  },
+      { value: 'lise_10', label: '10. Sınıf' },
+      { value: 'lise_11', label: '11. Sınıf' },
+      { value: 'lise_12', label: '12. Sınıf' },
+    ],
+  },
+  {
+    group: 'Diğer',
+    options: [
+      { value: 'universite', label: 'Üniversite' },
+      { value: 'yetiskin',   label: 'Mezun'       },
+    ],
+  },
 ]
 
 const supabase = createClient(
@@ -160,19 +178,26 @@ export default function RegisterScreen() {
 
           {/* Sınıf seçimi */}
           <Text style={s.sectionLabel}>Sınıf Seviyesi</Text>
-          <View style={s.chipGrid}>
-            {GRADE_OPTIONS.map(opt => {
-              const sel = form.gradeLevel === opt.value
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[s.chip, sel && s.chipSelected]}
-                  onPress={() => { Haptics.selectionAsync(); setForm(f => ({ ...f, gradeLevel: opt.value })) }}
-                >
-                  <Text style={[s.chipTxt, sel && s.chipTxtSelected]}>{opt.label}</Text>
-                </TouchableOpacity>
-              )
-            })}
+          <View style={s.gradeGrid}>
+            {GRADE_GROUPS.map(({ group, options }) => (
+              <View key={group} style={s.gradeGroup}>
+                <Text style={s.gradeGroupLabel}>{group}</Text>
+                <View style={s.chipRow}>
+                  {options.map(opt => {
+                    const sel = form.gradeLevel === opt.value
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[s.chipFlex, sel && s.chipSelected]}
+                        onPress={() => { Haptics.selectionAsync(); setForm(f => ({ ...f, gradeLevel: opt.value })) }}
+                      >
+                        <Text style={[s.chipTxt, sel && s.chipTxtSelected]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+            ))}
           </View>
 
           {/* Sınav seçimi */}
@@ -243,6 +268,23 @@ const s = StyleSheet.create({
   sectionLabel: { ...(typography.label as object), color: colors.textSecondary, marginBottom: 8, marginTop: 4 },
 
   chipGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md },
+
+  // Gruplu sınıf seviyesi grid
+  gradeGrid:       { gap: 10, marginBottom: spacing.md },
+  gradeGroup:      { gap: 6 },
+  gradeGroupLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  chipRow:  { flexDirection: 'row', gap: 8 },
+  chipFlex: {
+    flex: 1, paddingVertical: 9,
+    borderRadius: 8, borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+  },
+
   chip: {
     paddingHorizontal: 12, paddingVertical: 8,
     borderRadius: 8, borderWidth: 1.5,
