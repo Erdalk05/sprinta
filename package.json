@@ -16,6 +16,7 @@
     "db:push": "supabase db push",
     "db:health": "node scripts/db-health.js",
     "db:seed": "supabase db seed",
+    "db:reset-seed": "bash scripts/db-reset-seed.sh",
     "test:user": "bash scripts/create-test-user.sh",
     "android": "expo run:android",
     "ios": "expo run:ios"

@@ -2,24 +2,23 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, RefreshControl, Dimensions,
+  Alert as RNAlert, Modal as RNModal,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../src/lib/supabase'
 import {
   createLeaderboardService,
   type LeaderboardEntry,
   type LeaderboardSort,
+  type Challenge,
+  type ChallengeType,
 } from '@sprinta/api'
 import { type AppTheme } from '../../src/theme'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import { useAuthStore } from '../../src/stores/authStore'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 const lbService = createLeaderboardService(supabase)
 
 const { width: W } = Dimensions.get('window')
@@ -264,68 +263,244 @@ function PodiumCol({ t, entry, rank, value, isMe, tall = false }: {
 // ─── Meydan Okuma ─────────────────────────────────────────────────
 type Styles = ReturnType<typeof ms>
 
+const CHALLENGE_TYPES: { key: ChallengeType; label: string; desc: string; icon: string }[] = [
+  { key: 'weekly_xp', label: 'XP Yarışması',  desc: '7 günde kim daha fazla XP kazanır?',  icon: '⭐' },
+  { key: 'arp_gain',  label: 'ARP Artışı',    desc: "Kim ARP'sini daha çok artırır?",       icon: '📈' },
+  { key: 'streak',    label: 'Seri Yarışması', desc: 'Günlük seriyi kim daha uzun tutar?',  icon: '🔥' },
+]
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`
+}
+
 function ChallengesView({ t, s, student, entries }: { t: AppTheme; s: Styles; student: any; entries: LeaderboardEntry[] }) {
-  const CHALLENGES = useMemo(() => [
-    { key: 'xp',     label: 'XP Yarışması',  desc: '7 günde kim daha fazla XP kazanır?',   gradient: t.gradients.leaderboard as [string, string], icon: '⭐' },
-    { key: 'arp',    label: 'ARP Artışı',     desc: "Kim ARP'sini daha çok artırır?",        gradient: t.gradients.attention   as [string, string], icon: '📈' },
-    { key: 'streak', label: 'Seri Yarışması', desc: 'Günlük seriyi kim daha uzun tutar?',   gradient: t.gradients.streak      as [string, string], icon: '🔥' },
-  ], [t])
+  const [myChallenges,    setMyChallenges]    = useState<Challenge[]>([])
+  const [loadingMine,     setLoadingMine]     = useState(true)
+  const [modalOpponent,   setModalOpponent]   = useState<LeaderboardEntry | null>(null)
+  const [selectedType,    setSelectedType]    = useState<ChallengeType>('weekly_xp')
+  const [sending,         setSending]         = useState(false)
+
+  // Kendi challenge'larını yükle
+  useEffect(() => {
+    if (!student?.id) return
+    lbService.getMyChallenges(student.id)
+      .then(setMyChallenges)
+      .catch(() => {})
+      .finally(() => setLoadingMine(false))
+  }, [student?.id])
+
+  const openModal = useCallback((entry: LeaderboardEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    setSelectedType('weekly_xp')
+    setModalOpponent(entry)
+  }, [])
+
+  const sendChallenge = useCallback(async () => {
+    if (!student?.id || !modalOpponent) return
+    setSending(true)
+    try {
+      await lbService.sendChallenge({
+        challengerId: student.id,
+        opponentId:   modalOpponent.student_id,
+        type:         selectedType,
+      })
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      setModalOpponent(null)
+      // Listeyi yenile
+      const updated = await lbService.getMyChallenges(student.id)
+      setMyChallenges(updated)
+    } catch (e: any) {
+      RNAlert.alert('Hata', e?.message ?? 'Meydan okuma gönderilemedi.')
+    } finally {
+      setSending(false)
+    }
+  }, [student?.id, modalOpponent, selectedType])
+
+  const acceptOrDecline = useCallback(async (c: Challenge, accept: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    try {
+      if (accept) await lbService.acceptChallenge(c.id)
+      else        await lbService.declineChallenge(c.id)
+      const updated = await lbService.getMyChallenges(student.id)
+      setMyChallenges(updated)
+    } catch { /* sessiz */ }
+  }, [student?.id])
+
+  const typeLabel: Record<ChallengeType, string> = {
+    weekly_xp: 'XP Yarışması', arp_gain: 'ARP Artışı', streak: 'Seri',
+  }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-      {/* Nasıl çalışır */}
-      <LinearGradient colors={t.gradients.leaderboard as [string, string]} style={s.howCard}>
-        <Text style={s.howTitle}>⚔️ Meydan Okuma Nasıl Çalışır?</Text>
-        <Text style={s.howText}>
-          Sıralamada gördüğün bir öğrenciyi seç, 7 günlük rekabet başlasın.
-          Süre sonunda daha yüksek puan alan kazanır ve XP bonusu alır!
-        </Text>
-      </LinearGradient>
+    <>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-      <Text style={s.sectionTitle}>🎯 Yarışma Türleri</Text>
-      <View style={s.challengeGrid}>
-        {CHALLENGES.map((c) => (
-          <LinearGradient key={c.key} colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctCard}>
-            <Text style={{ fontSize: 28, marginBottom: 8 }}>{c.icon}</Text>
-            <Text style={s.ctLabel}>{c.label}</Text>
-            <Text style={s.ctDesc}>{c.desc}</Text>
-          </LinearGradient>
-        ))}
-      </View>
+        {/* Nasıl çalışır */}
+        <LinearGradient colors={t.gradients.leaderboard as [string, string]} style={s.howCard}>
+          <Text style={s.howTitle}>⚔️ Meydan Okuma Nasıl Çalışır?</Text>
+          <Text style={s.howText}>
+            Sıralamada bir rakip seç, tür belirle ve 7 günlük rekabeti başlat.
+            Kazanan +200 XP bonus alır!
+          </Text>
+        </LinearGradient>
 
-      <Text style={[s.sectionTitle, { marginTop: 8 }]}>👊 Rakip Seç</Text>
-      {entries.filter((e) => e.student_id !== student?.id).slice(0, 8).map((e) => {
-        const grad = EXAM_GRADIENT[e.exam_target] ?? [t.colors.primary, t.colors.accent]
-        return (
-          <View key={e.student_id} style={s.opponentRow}>
-            <LinearGradient colors={grad} style={s.avatar}>
-              <Text style={s.avatarTxt}>{e.full_name.charAt(0).toUpperCase()}</Text>
-            </LinearGradient>
-            <View style={s.rowInfo}>
-              <Text style={s.rowName}>{e.full_name}</Text>
-              <Text style={s.rowMeta}>ARP {e.current_arp} · {e.streak_days} gün 🔥</Text>
+        {/* Aktif / bekleyen challenge'larım */}
+        {myChallenges.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>⚔️ Meydan Okumalarım</Text>
+            {myChallenges.map((c) => {
+              const isChallenger  = c.challenger_id === student?.id
+              const otherName     = entries.find(e =>
+                e.student_id === (isChallenger ? c.opponent_id : c.challenger_id)
+              )?.full_name ?? '...'
+              const isPending     = c.status === 'pending' && !isChallenger
+              return (
+                <View key={c.id} style={[s.opponentRow, { borderLeftWidth: 3, borderLeftColor:
+                  c.status === 'active' ? '#10B981' : '#F59E0B',
+                }]}>
+                  <View style={s.rowInfo}>
+                    <Text style={s.rowName}>{typeLabel[c.challenge_type as ChallengeType]} vs {otherName}</Text>
+                    <Text style={s.rowMeta}>
+                      {c.status === 'pending' ? '⏳ Bekliyor' : '🔴 Aktif'}
+                      {c.ends_at ? ` · ${fmtDate(c.ends_at)}'de biter` : ''}
+                    </Text>
+                  </View>
+                  {isPending && (
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => acceptOrDecline(c, true)}
+                        style={[s.challengeBtn, { backgroundColor: '#10B981' }]}
+                      >
+                        <Text style={s.challengeBtnTxt}>Kabul</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => acceptOrDecline(c, false)}
+                        style={[s.challengeBtn, { backgroundColor: '#EF4444' }]}
+                      >
+                        <Text style={s.challengeBtnTxt}>Reddet</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {!isPending && c.status === 'active' && (
+                    <View style={s.scorePair}>
+                      <Text style={s.scoreMe}>{Math.round(isChallenger ? c.challenger_score : c.opponent_score)}</Text>
+                      <Text style={[s.rowMeta, { color: t.colors.textHint }]}> vs </Text>
+                      <Text style={s.scoreOpp}>{Math.round(isChallenger ? c.opponent_score : c.challenger_score)}</Text>
+                    </View>
+                  )}
+                </View>
+              )
+            })}
+          </>
+        )}
+
+        {/* Yarışma türleri */}
+        <Text style={s.sectionTitle}>🎯 Yarışma Türleri</Text>
+        <View style={s.challengeGrid}>
+          {CHALLENGE_TYPES.map((c) => {
+            const grad = c.key === 'weekly_xp'
+              ? t.gradients.leaderboard : c.key === 'arp_gain'
+              ? t.gradients.attention : t.gradients.streak
+            return (
+              <LinearGradient key={c.key} colors={grad as [string, string]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctCard}>
+                <Text style={{ fontSize: 28, marginBottom: 8 }}>{c.icon}</Text>
+                <Text style={s.ctLabel}>{c.label}</Text>
+                <Text style={s.ctDesc}>{c.desc}</Text>
+              </LinearGradient>
+            )
+          })}
+        </View>
+
+        {/* Rakip listesi */}
+        <Text style={[s.sectionTitle, { marginTop: 8 }]}>👊 Rakip Seç</Text>
+        {entries.filter((e) => e.student_id !== student?.id).slice(0, 8).map((e) => {
+          const grad = EXAM_GRADIENT[e.exam_target] ?? [t.colors.primary, t.colors.accent]
+          const hasActive = myChallenges.some(c =>
+            (c.challenger_id === e.student_id || c.opponent_id === e.student_id)
+            && ['pending','active'].includes(c.status)
+          )
+          return (
+            <View key={e.student_id} style={s.opponentRow}>
+              <LinearGradient colors={grad} style={s.avatar}>
+                <Text style={s.avatarTxt}>{e.full_name.charAt(0).toUpperCase()}</Text>
+              </LinearGradient>
+              <View style={s.rowInfo}>
+                <Text style={s.rowName}>{e.full_name}</Text>
+                <Text style={s.rowMeta}>ARP {e.current_arp} · {e.streak_days} gün 🔥</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => openModal(e)}
+                disabled={hasActive}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={hasActive ? ['#9CA3AF','#9CA3AF'] : t.gradients.cta as [string, string]}
+                  style={s.challengeBtn}
+                >
+                  <Text style={s.challengeBtnTxt}>{hasActive ? 'Aktif' : 'Meydan Oku'}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
+          )
+        })}
+
+        {entries.length === 0 && (
+          <View style={s.center}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}>🤝</Text>
+            <Text style={s.emptyTitle}>Rakip bulunamadı</Text>
+            <Text style={s.emptySub}>Sıralama listesi yüklenince rakipler burada görünecek.</Text>
+          </View>
+        )}
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      {/* ── Meydan Okuma Modal ── */}
+      <RNModal
+        visible={modalOpponent !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalOpponent(null)}
+      >
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalOpponent(null)} />
+        {modalOpponent && (
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={[s.sectionTitle, { marginHorizontal: 16 }]}>
+              ⚔️ {modalOpponent.full_name}'e Meydan Oku
+            </Text>
+            <Text style={[s.rowMeta, { marginHorizontal: 16, marginBottom: 12 }]}>
+              Yarışma türünü seç — 7 gün sürer, kazanan +200 XP alır
+            </Text>
+            {CHALLENGE_TYPES.map((ct) => (
+              <TouchableOpacity
+                key={ct.key}
+                style={[s.typeRow, selectedType === ct.key && { borderColor: t.colors.primary, backgroundColor: t.colors.primary + '12' }]}
+                onPress={() => setSelectedType(ct.key)}
+              >
+                <Text style={{ fontSize: 22 }}>{ct.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.rowName, { color: t.colors.text }]}>{ct.label}</Text>
+                  <Text style={s.rowMeta}>{ct.desc}</Text>
+                </View>
+                {selectedType === ct.key && <Text style={{ color: t.colors.primary, fontWeight: '800' }}>✓</Text>}
+              </TouchableOpacity>
+            ))}
             <TouchableOpacity
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
-              activeOpacity={0.85}
+              style={[s.sendChallengeBtn, sending && { opacity: 0.6 }]}
+              onPress={sendChallenge}
+              disabled={sending}
             >
-              <LinearGradient colors={t.gradients.cta as [string, string]} style={s.challengeBtn}>
-                <Text style={s.challengeBtnTxt}>Meydan Oku</Text>
+              <LinearGradient colors={t.gradients.cta as [string, string]} style={s.sendGradient}>
+                <Text style={s.sendChallengeTxt}>
+                  {sending ? 'Gönderiliyor…' : '⚔️ Meydan Oku!'}
+                </Text>
               </LinearGradient>
             </TouchableOpacity>
+            <View style={{ height: 24 }} />
           </View>
-        )
-      })}
-
-      {entries.length === 0 && (
-        <View style={s.center}>
-          <Text style={{ fontSize: 48, marginBottom: 12 }}>🤝</Text>
-          <Text style={s.emptyTitle}>Rakip bulunamadı</Text>
-          <Text style={s.emptySub}>Sıralama listesi yüklenince rakipler burada görünecek.</Text>
-        </View>
-      )}
-      <View style={{ height: 40 }} />
-    </ScrollView>
+        )}
+      </RNModal>
+    </>
   )
 }
 
@@ -427,5 +602,35 @@ function ms(t: AppTheme) {
     },
     challengeBtn: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
     challengeBtnTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
+
+    // Skor gösterimi
+    scorePair: { flexDirection: 'row', alignItems: 'center' },
+    scoreMe:   { fontSize: 14, fontWeight: '900', color: t.colors.primary },
+    scoreOpp:  { fontSize: 14, fontWeight: '900', color: '#EF4444' },
+
+    // Meydan Okuma Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+    modalSheet: {
+      backgroundColor: t.colors.surface,
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      paddingBottom: 40, maxHeight: '80%',
+    },
+    modalHandle: {
+      width: 36, height: 4, backgroundColor: t.colors.divider,
+      borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16,
+    },
+    typeRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      marginHorizontal: 16, marginBottom: 10,
+      padding: 14, borderRadius: 14,
+      borderWidth: 1.5, borderColor: t.colors.border,
+      backgroundColor: t.colors.background,
+    },
+    sendChallengeBtn: { marginHorizontal: 16, marginTop: 8 },
+    sendGradient: {
+      borderRadius: 14, paddingVertical: 18,
+      alignItems: 'center',
+    },
+    sendChallengeTxt: { fontSize: 16, fontWeight: '900', color: '#fff' },
   })
 }

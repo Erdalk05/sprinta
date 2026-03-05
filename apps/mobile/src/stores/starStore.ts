@@ -4,14 +4,10 @@
  */
 
 import { create } from 'zustand'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
 import { createStarService } from '@sprinta/api'
 import type { GamificationState } from '@sprinta/api'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-)
 const starSvc = createStarService(supabase)
 
 interface StarStoreState {

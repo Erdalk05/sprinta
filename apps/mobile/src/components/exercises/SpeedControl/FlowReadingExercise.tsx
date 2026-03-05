@@ -20,6 +20,9 @@ import Animated, {
 import * as Haptics from 'expo-haptics'
 import { useAppTheme } from '../../../theme/useAppTheme'
 import type { AppTheme } from '../../../theme'
+import { READING_THEMES } from '../../../constants/readingThemes'
+import { useThemeStore } from '../../../stores/themeStore'
+import { ReadingThemePicker } from '../../ui/ReadingThemePicker'
 import ContentImportModal, {
   ImportedContent, saveRecentContent,
 } from '../shared/ContentImportModal'
@@ -89,8 +92,10 @@ const LINE_OPACITIES = [0.12, 0.30, 1.0, 0.45, 0.22] // past2, past1, current, n
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
 export default function FlowReadingExercise({ onComplete, onExit, initialContent }: Props) {
-  const t = useAppTheme()
-  const s = useMemo(() => ms(t), [t])
+  const t            = useAppTheme()
+  const readingTheme = useThemeStore((s) => s.readingTheme)
+  const rt           = READING_THEMES[readingTheme]
+  const s            = useMemo(() => ms(t, rt.background, rt.text), [t, readingTheme])
 
   const [phase, setPhase]               = useState<Phase>('select')
   const [settings, setSettings]         = useState<Settings>(DEFAULT_SETTINGS)
@@ -120,6 +125,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   const textLineWidth  = useSharedValue(300) // SON satırın gerçek metin genişliği (onTextLayout ile)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Stale closure önleyici ref'ler
+  const linesRef      = useRef<typeof lines>([])
+  const isPlayingRef  = useRef(false)
+  const lineIdxRef    = useRef(0)
 
   // ── Ayarları yükle ─────────────────────────────────────────────
 
@@ -204,14 +214,14 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   }, [lines.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scheduleNext = useCallback((idx: number) => {
-    if (idx >= lines.length) { finishSession(); return }
-    const line = lines[idx]
+    if (idx >= linesRef.current.length) { finishSession(); return }
+    const line = linesRef.current[idx]
     if (!line) return
 
     // WPM geçmişi
     const now      = Date.now()
     const elapsed  = startTime ? now - startTime : 0
-    const wordsRead = lines.slice(0, idx + 1).reduce((s, l) => s + l.wordCount, 0)
+    const wordsRead = linesRef.current.slice(0, idx + 1).reduce((s, l) => s + l.wordCount, 0)
     const instWPM  = calculateRealTimeWPM(wordsRead, elapsed)
     if (instWPM > 0) setWpmHistory((h) => [...h.slice(-29), instWPM])
 
@@ -221,12 +231,12 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
     timerRef.current = setTimeout(() => {
       setLineIdx((prev) => {
         const next = prev + 1
-        if (next < lines.length) scheduleNext(next)
+        if (next < linesRef.current.length) scheduleNext(next)
         else finishSession()
         return next
       })
     }, line.estimatedReadMs)
-  }, [lines, startTime, startCursorForLine]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startTime, startCursorForLine]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isPlaying && phase === 'reading') {
@@ -267,15 +277,21 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
 
   // ── WPM kontrolü ──────────────────────────────────────────────
 
-  const changeWPM = (delta: number) => {
+  const changeWPM = useCallback((delta: number) => {
     const next = Math.max(100, Math.min(600, currentWPM + delta))
     setCurrentWPM(next)
     if (content) {
       const raw = parseTextToLines(content.text, settings.wordsPerLine)
       const withDur = applyLineDurations(raw, next, settings.readingMode, settings.smartSlowing)
+      linesRef.current = withDur  // ref'i hemen güncelle
       setLines(withDur)
+      if (isPlayingRef.current) {
+        if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+        cancelAnimation(cursorX)
+        scheduleNext(lineIdxRef.current)
+      }
     }
-  }
+  }, [content, currentWPM, settings, cursorX, scheduleNext])
 
   const WPM_PRESETS = [100, 150, 200, 250, 300, 400, 500]
 
@@ -374,6 +390,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   const liveARP      = wpmHistory.length > 0
     ? computeFlowSessionARP(liveWPM, 70, regressionCount, 1).arp
     : 0
+
+  // Ref sync — her render'da, erken return'lerden önce
+  linesRef.current     = lines
+  isPlayingRef.current = isPlaying
+  lineIdxRef.current   = lineIdx
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER
@@ -510,8 +531,11 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
       <SafeAreaView style={s.root}>
         {/* Header */}
         <View style={s.readHeader}>
-          <TouchableOpacity onPress={() => { setIsPlaying(false); setPhase('select') }} style={s.exitBtn}
-            hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+          <TouchableOpacity
+            onPress={() => { setIsPlaying(false); onExit() }}
+            hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+            style={s.exitBtn}
+          >
             <Text style={s.exitTxt}>✕</Text>
           </TouchableOpacity>
           <Text style={s.readTitle} numberOfLines={1}>{content?.title ?? 'Akış Okuma'}</Text>
@@ -520,6 +544,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
               {settings.readingMode === 'sprint' ? 'Sprint' : 'Cruise'}
             </Text>
           </TouchableOpacity>
+          <ReadingThemePicker />
           <TouchableOpacity onPress={() => setShowSettings(true)} style={s.settingsBtn}>
             <Text style={s.settingsBtnTxt}>⚙️</Text>
           </TouchableOpacity>
@@ -655,7 +680,13 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           <View style={s.settingsOverlay}>
             <TouchableOpacity style={s.settingsDim} onPress={() => setShowSettings(false)} />
             <View style={s.settingsSheet}>
-              <Text style={s.sheetTitle}>⚙️ Akış Okuma Ayarları</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={s.sheetTitle}>⚙️ Akış Okuma Ayarları</Text>
+                <TouchableOpacity onPress={() => setShowSettings(false)} hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+                  style={{ width:28, height:28, borderRadius:14, backgroundColor: 'rgba(128,128,128,0.15)', alignItems:'center', justifyContent:'center' }}>
+                  <Text style={{ fontSize:14, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
               <Text style={s.sheetSection}>Rehber Stili</Text>
               <View style={s.sheetRow}>
@@ -867,7 +898,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
 
 // ─── Stiller ───────────────────────────────────────────────────────
 
-function ms(t: AppTheme) {
+function ms(t: AppTheme, rtBg: string, rtText: string) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: t.colors.background },
 
@@ -876,8 +907,12 @@ function ms(t: AppTheme) {
       alignItems: 'center', paddingTop: 20, paddingBottom: 16,
       backgroundColor: t.colors.panel,
     },
-    exitBtn:  { paddingHorizontal: 16, paddingVertical: 10, alignSelf: 'flex-start' },
-    exitTxt:  { fontSize: 15, color: 'rgba(255,255,255,0.7)' },
+    exitBtn:  {
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: 'rgba(128,128,128,0.18)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    exitTxt:  { fontSize: 15, color: t.colors.text, fontWeight: '700' },
     selectTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
     selectSub:   { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
     selectBody:  { flex: 1, padding: 16, gap: 12 },
@@ -935,18 +970,19 @@ function ms(t: AppTheme) {
     readHeader:  {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       paddingHorizontal: 16, paddingVertical: 12,
-      backgroundColor: t.colors.panel, borderBottomWidth: 1, borderBottomColor: t.colors.divider,
+      backgroundColor: '#1D3A80',   // canlı lacivert header
+      borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)',
     },
-    readTitle:   { flex: 1, fontSize: 15, fontWeight: '700', color: '#fff' },
+    readTitle:   { flex: 1, fontSize: 15, fontWeight: '700', color: '#DBEAFE' },  // pastel mavi başlık
     modeBtn:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: t.colors.surface + '40' },
     modeBtnTxt:  { fontSize: 12, fontWeight: '700' },
     settingsBtn: { padding: 6 },
     settingsBtnTxt: { fontSize: 18 },
 
-    progressWrap: { paddingHorizontal: 16, paddingVertical: 6 },
-    progressTrack:{ height: 3, backgroundColor: t.colors.divider, borderRadius: 2, overflow: 'hidden' },
+    progressWrap: { paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#132558' },
+    progressTrack:{ height: 3, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 2, overflow: 'hidden' },
     progressFill: { height: 3, borderRadius: 2 },
-    progressTxt:  { fontSize: 11, color: t.colors.textHint, marginTop: 4 },
+    progressTxt:  { fontSize: 11, color: '#93C5FD', marginTop: 4 },  // pastel mavi
 
     textArea:    { flex: 1, paddingHorizontal: 20, justifyContent: 'center', gap: 4 },
     lineSlot:    { minHeight: 32, justifyContent: 'center' },
@@ -965,34 +1001,36 @@ function ms(t: AppTheme) {
     controls:    {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 20, paddingVertical: 10,
-      borderTopWidth: 1, borderTopColor: t.colors.divider,
+      backgroundColor: '#1A3070',   // canlı lacivert kontrol paneli
+      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)',
     },
     ctrlBtn:     { padding: 8 },
-    ctrlBtnTxt:  { fontSize: 13, fontWeight: '600', color: t.colors.textHint },
+    ctrlBtnTxt:  { fontSize: 13, fontWeight: '600', color: '#93C5FD' },  // pastel mavi ok
     playBtn:     { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
     playBtnTxt:  { fontSize: 20, color: '#fff' },
     wpmSlider:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
     wpmStepBtn:  { padding: 8 },
-    wpmStepTxt:  { fontSize: 14, fontWeight: '700', color: t.colors.textHint },
+    wpmStepTxt:  { fontSize: 14, fontWeight: '700', color: '#93C5FD' },  // pastel mavi ±
     wpmValueLive:{ fontSize: 15, fontWeight: '800', minWidth: 70, textAlign: 'center' },
 
-    presetScroll: { maxHeight: 36, borderTopWidth: 1, borderTopColor: t.colors.divider },
+    presetScroll: { maxHeight: 36, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', backgroundColor: '#132558' },
     presetContent:{ paddingHorizontal: 12, gap: 6, alignItems: 'center' },
     presetBtn:   {
       paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-      backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     },
-    presetTxt:   { fontSize: 12, color: t.colors.textHint, fontWeight: '600' },
+    presetTxt:   { fontSize: 12, color: '#BFDBFE', fontWeight: '600' },  // açık mavi preset yazı
     presetTxtActive: { color: '#fff' },
 
     statsBar:    {
       flexDirection: 'row', justifyContent: 'space-around',
       paddingVertical: 8, paddingBottom: Platform.OS === 'ios' ? 4 : 8,
-      backgroundColor: t.colors.surface, borderTopWidth: 1, borderTopColor: t.colors.border,
+      backgroundColor: '#0F1F50',   // en derin lacivert — istatistik şeridi
+      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)',
     },
     statCell:    { alignItems: 'center' },
-    statValue:   { fontSize: 15, fontWeight: '800', color: t.colors.text },
-    statLabel:   { fontSize: 9, color: t.colors.textHint, marginTop: 1, letterSpacing: 0.5 },
+    statValue:   { fontSize: 15, fontWeight: '800', color: '#DBEAFE' },  // pastel mavi değer
+    statLabel:   { fontSize: 9, color: '#93C5FD', marginTop: 1, letterSpacing: 0.5 },  // canlı mavi etiket
 
     // Settings sheet
     settingsOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 100 },

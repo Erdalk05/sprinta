@@ -341,14 +341,14 @@ function ms(t: AppTheme) {
     goalTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     goalTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text },
     goalBadge: { backgroundColor: t.colors.greenLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-    goalBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#25D366' },
+    goalBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#1877F2' },
     goalBar:   { height: 5, backgroundColor: t.colors.border, borderRadius: 3, overflow: 'hidden', marginBottom: 10 },
-    goalBarFill: { height: 5, backgroundColor: '#25D366', borderRadius: 3 },
+    goalBarFill: { height: 5, backgroundColor: '#1877F2', borderRadius: 3 },
     goalBottom:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     goalPct:   { fontSize: 12, color: t.colors.textSub },
-    goalDone:  { fontSize: 12, color: '#25D366', fontWeight: '700' },
-    goalBtn:   { borderWidth: 1.5, borderColor: '#25D366', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-    goalBtnTxt:{ fontSize: 12, fontWeight: '700', color: '#25D366' },
+    goalDone:  { fontSize: 12, color: '#1877F2', fontWeight: '700' },
+    goalBtn:   { borderWidth: 1.5, borderColor: '#1877F2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+    goalBtnTxt:{ fontSize: 12, fontWeight: '700', color: '#1877F2' },
 
     // Haftalık
     sectionTitle: { fontSize: 14, fontWeight: '700', color: t.colors.text, marginHorizontal: 16, marginTop: 20, marginBottom: 10 },
@@ -371,8 +371,8 @@ function ms(t: AppTheme) {
     },
     lastTitle: { fontSize: 15, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
     lastMeta:  { fontSize: 12, color: t.colors.textSub, marginBottom: 14 },
-    lastBtn:   { borderWidth: 1.5, borderColor: '#25D366', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-end' },
-    lastBtnTxt:{ fontSize: 13, fontWeight: '700', color: '#25D366' },
+    lastBtn:   { borderWidth: 1.5, borderColor: '#1877F2', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-end' },
+    lastBtnTxt:{ fontSize: 13, fontWeight: '700', color: '#1877F2' },
 
     // Rozetler
     badgeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

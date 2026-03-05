@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../src/lib/supabase'
 import { colors, moduleColors } from '../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../src/constants/modules'
 import { useDiagnosticStore } from '../../src/stores/diagnosticStore'
@@ -10,10 +10,6 @@ import { useAuthStore } from '../../src/stores/authStore'
 import { createDiagnosticService } from '@sprinta/api'
 import { calculateExamProgress } from '@sprinta/shared'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 const diagnosticService = createDiagnosticService(supabase)
 
 export default function DiagnosticResultScreen() {

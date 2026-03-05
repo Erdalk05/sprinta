@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../src/lib/supabase'
 import { createUserContentService } from '@sprinta/api'
 import type { UserContent } from '@sprinta/api'
 import { useAppTheme } from '../src/theme/useAppTheme'
@@ -15,10 +15,6 @@ import { useAuthStore } from '../src/stores/authStore'
 import { useContentProcessor } from '../src/hooks/useContentProcessor'
 
 // ─── Supabase ─────────────────────────────────────────────────────
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-)
 const contentSvc = createUserContentService(supabase)
 
 // ─── Tab tipleri ─────────────────────────────────────────────────

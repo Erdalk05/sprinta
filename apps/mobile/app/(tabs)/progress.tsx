@@ -4,23 +4,21 @@ import {
   StyleSheet, SafeAreaView, ActivityIndicator, Dimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { createClient } from '@supabase/supabase-js'
+import Svg, { Polygon, Line, Text as SvgText, Circle } from 'react-native-svg'
+import { supabase } from '../../src/lib/supabase'
 import { type AppTheme } from '../../src/theme'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import { useAuthStore } from '../../src/stores/authStore'
 import { calculateExamProgress, getLevelFromXp, LEVEL_NAMES } from '@sprinta/shared'
-import { createBadgeService } from '@sprinta/api'
-import type { Badge } from '@sprinta/api'
+import { createBadgeService, createExamService } from '@sprinta/api'
+import type { Badge, UserExamProfile } from '@sprinta/api'
 import { BadgeCard } from '../../src/components/gamification/BadgeCard'
 import { GradientCard } from '../../src/components/ui/GradientCard'
 import { ProgressRing } from '../../src/components/ui/ProgressRing'
 import { LineChart } from '../../src/components/ui/LineChart'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 const badgeService = createBadgeService(supabase)
+const examSvc      = createExamService(supabase) // SPRINT 10
 
 const { width: SCREEN_W } = Dimensions.get('window')
 const CHART_W = SCREEN_W - 64
@@ -33,6 +31,71 @@ interface DailyStat {
   sessions_count: number
   total_minutes: number
   xp_earned: number
+}
+
+// ─── Skill Radar (SVG pentagon) ───────────────────────
+
+const RADAR_SIZE  = 180
+const RADAR_CX    = RADAR_SIZE / 2
+const RADAR_CY    = RADAR_SIZE / 2
+const RADAR_R     = 70
+const RADAR_AXES  = ['Ana Fikir', 'Çıkarım', 'Ayrıntı', 'Kelime', 'Ton']
+const RADAR_ANGLE = (2 * Math.PI) / 5
+
+function radarPoint(idx: number, value: number): [number, number] {
+  const angle = idx * RADAR_ANGLE - Math.PI / 2
+  return [
+    RADAR_CX + RADAR_R * value * Math.cos(angle),
+    RADAR_CY + RADAR_R * value * Math.sin(angle),
+  ]
+}
+
+function SkillRadar({ profile, color }: { profile: UserExamProfile | null; color: string }) {
+  const vals = profile
+    ? [
+        profile.main_idea_accuracy,
+        profile.inference_accuracy,
+        profile.detail_accuracy,
+        profile.vocabulary_accuracy,
+        profile.tone_accuracy,
+      ]
+    : [0.5, 0.5, 0.5, 0.5, 0.5]
+
+  const pts      = vals.map((v, i) => radarPoint(i, Math.max(0.05, v)))
+  const polyPts  = pts.map(([x, y]) => `${x},${y}`).join(' ')
+  const bgPts    = RADAR_AXES.map((_, i) => radarPoint(i, 1)).map(([x, y]) => `${x},${y}`).join(' ')
+  const midPts   = RADAR_AXES.map((_, i) => radarPoint(i, 0.5)).map(([x, y]) => `${x},${y}`).join(' ')
+
+  return (
+    <Svg width={RADAR_SIZE} height={RADAR_SIZE}>
+      {/* Arka plan ağı */}
+      <Polygon points={bgPts} fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={1} />
+      <Polygon points={midPts} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={1} strokeDasharray="3,3" />
+      {/* Eksen çizgileri */}
+      {RADAR_AXES.map((_, i) => {
+        const [x, y] = radarPoint(i, 1)
+        return <Line key={i} x1={RADAR_CX} y1={RADAR_CY} x2={x} y2={y}
+          stroke="rgba(0,0,0,0.06)" strokeWidth={1} />
+      })}
+      {/* Değer alanı */}
+      <Polygon points={polyPts} fill={color + '30'} stroke={color} strokeWidth={2} />
+      {/* Veri noktaları */}
+      {pts.map(([x, y], i) => (
+        <Circle key={i} cx={x} cy={y} r={4} fill={color} />
+      ))}
+      {/* Eksen etiketleri */}
+      {RADAR_AXES.map((label, i) => {
+        const [lx, ly] = radarPoint(i, 1.22)
+        return (
+          <SvgText key={i} x={lx} y={ly + 4}
+            fontSize={9} fontWeight="600" fill="rgba(0,0,0,0.5)"
+            textAnchor="middle">
+            {label}
+          </SvgText>
+        )
+      })}
+    </Svg>
+  )
 }
 
 function computeSkills(arp: number, stats: DailyStat[]) {
@@ -57,6 +120,8 @@ export default function ProgressScreen() {
   const [loading, setLoading]     = useState(true)
   const [earnedBadges, setEarned] = useState<Badge[]>([])
   const [lockedBadges, setLocked] = useState<Badge[]>([])
+  // SPRINT 10 ADD — sınav profili (skill radar için)
+  const [examProfile, setExamProfile] = useState<UserExamProfile | null>(null)
 
   const currentArp = student?.currentArp ?? 0
   const examTarget = student?.examTarget?.toLowerCase() ?? 'tyt'
@@ -82,11 +147,13 @@ export default function ProgressScreen() {
         .gte('date', since)
         .order('date', { ascending: true }),
       badgeService.getStudentBadges(student.id),
-    ]).then(([{ data }, { earned, locked }]) => {
+      examSvc.getExamProfile(),  // SPRINT 10
+    ]).then(([{ data }, { earned, locked }, examResult]) => {
       clearTimeout(timer)
       setStats((data as DailyStat[]) ?? [])
       setEarned(earned)
       setLocked(locked)
+      if (examResult.data) setExamProfile(examResult.data)  // SPRINT 10
       setLoading(false)
     }).catch(() => { clearTimeout(timer); setLoading(false) })
     return () => clearTimeout(timer)
@@ -181,6 +248,36 @@ export default function ProgressScreen() {
           <SkillBar t={t} label="Derin Kavrama"     value={skills.comprehension} color={t.module.deep_comprehension.color}  icon="🧠" />
           <SkillBar t={t} label="Dikkat Gücü"       value={skills.attention}     color={t.module.attention_power.color}     icon="🎯" />
           <SkillBar t={t} label="Sürdürülebilirlik" value={skills.endurance}     color={t.module.mental_reset.color}        icon="🌿" />
+        </View>
+
+        {/* SPRINT 10 ADD — Sınav Beceri Radarı */}
+        <Text style={s.sectionTitle}>🎯 Sınav Beceri Radarı</Text>
+        <View style={[s.skillCard, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+          <SkillRadar profile={examProfile} color={t.colors.primary} />
+          <View style={{ flex: 1, paddingLeft: 16, gap: 10 }}>
+            {[
+              { label: 'Ana Fikir', val: examProfile?.main_idea_accuracy  ?? 0, color: '#3B82F6' },
+              { label: 'Çıkarım',   val: examProfile?.inference_accuracy  ?? 0, color: '#8B5CF6' },
+              { label: 'Ayrıntı',   val: examProfile?.detail_accuracy     ?? 0, color: '#10B981' },
+              { label: 'Kelime',    val: examProfile?.vocabulary_accuracy ?? 0, color: '#F59E0B' },
+              { label: 'Ton',       val: examProfile?.tone_accuracy       ?? 0, color: '#EC4899' },
+            ].map(({ label, val, color }) => (
+              <View key={label}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <Text style={{ fontSize: 11, color: t.colors.textHint }}>{label}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color }}>%{Math.round(val * 100)}</Text>
+                </View>
+                <View style={{ height: 4, backgroundColor: t.colors.border, borderRadius: 2, overflow: 'hidden' }}>
+                  <View style={{ height: 4, borderRadius: 2, width: `${Math.min(100, Math.round(val * 100))}%` as any, backgroundColor: color }} />
+                </View>
+              </View>
+            ))}
+            {!examProfile && (
+              <Text style={{ fontSize: 11, color: t.colors.textHint, lineHeight: 16 }}>
+                Soruları yanıtladıkça{'\n'}beceri profili oluşur.
+              </Text>
+            )}
+          </View>
         </View>
 
         <Text style={s.sectionTitle}>📅 {period} Özeti</Text>

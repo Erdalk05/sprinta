@@ -13,6 +13,8 @@ import Animated, {
 import * as Haptics from 'expo-haptics'
 import { useAppTheme } from '../../../theme/useAppTheme'
 import type { AppTheme } from '../../../theme'
+import { READING_THEMES } from '../../../constants/readingThemes'
+import { useThemeStore } from '../../../stores/themeStore'
 import ContentImportModal, { ImportedContent, saveRecentContent } from '../shared/ContentImportModal'
 import {
   tokenizeToChunks, applyDurations, calculateRealTimeWPM,
@@ -71,8 +73,10 @@ const DEFAULT_SETTINGS: Settings = {
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
 export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }: Props) {
-  const t = useAppTheme()
-  const s = useMemo(() => ms(t), [t])
+  const t            = useAppTheme()
+  const readingTheme = useThemeStore((s) => s.readingTheme)
+  const rt           = READING_THEMES[readingTheme]
+  const s            = useMemo(() => ms(t, rt.background, rt.text), [t, readingTheme])
 
   const [phase, setPhase]           = useState<Phase>(initialContent ? 'select' : 'select')
   const [settings, setSettings]     = useState<Settings>(DEFAULT_SETTINGS)
@@ -99,6 +103,12 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
 
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Her render'da güncellenen ref'ler (stale closure'ı önler)
+  const chunksRef      = useRef<typeof chunks>([])
+  const isPlayingRef   = useRef(false)
+  const chunkIdxRef    = useRef(0)
+  const trackWidthRef  = useRef(0)
 
   // Animasyon
   const opacity   = useSharedValue(1)
@@ -133,8 +143,8 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
   }, [])
 
   const scheduleNext = useCallback((idx: number) => {
-    if (idx >= chunks.length) { finishSession(); return }
-    const chunk = chunks[idx]
+    if (idx >= chunksRef.current.length) { finishSession(); return }
+    const chunk = chunksRef.current[idx]
     if (!chunk) return
 
     // Yeni chunk → animasyon
@@ -144,19 +154,19 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
     // WPM geçmişi güncelle
     const now = Date.now()
     const elapsed = startTime ? now - startTime : 0
-    const wordsRead = chunks.slice(0, idx + 1).reduce((s, c) => s + c.words.length, 0)
+    const wordsRead = chunksRef.current.slice(0, idx + 1).reduce((s, c) => s + c.words.length, 0)
     const instantWPM = calculateRealTimeWPM(wordsRead, elapsed)
     if (instantWPM > 0) setWpmHistory((h) => [...h.slice(-29), instantWPM])
 
     timerRef.current = setTimeout(() => {
       setChunkIdx((prev) => {
         const next = prev + 1
-        if (next < chunks.length) scheduleNext(next)
+        if (next < chunksRef.current.length) scheduleNext(next)
         else finishSession()
         return next
       })
     }, chunk.displayDuration)
-  }, [chunks, startTime, opacity])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startTime, opacity])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isPlaying && phase === 'reading') {
@@ -177,12 +187,20 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [isPlaying, startTime])
 
-  // WPM değişince chunk sürelerini yeniden hesapla
-  useEffect(() => {
-    if (chunks.length > 0) {
-      setChunks((prev) => applyDurations(prev, currentWPM, settings.smartSlowing))
+  // adjustWPM: hem chunk sürelerini günceller hem oynarken timer'ı yeniden başlatır
+  const adjustWPM = useCallback((newWPM: number) => {
+    const clamped = Math.max(100, Math.min(800, Math.round(newWPM / 25) * 25))
+    if (chunksRef.current.length === 0) { setCurrentWPM(clamped); return }
+    const newChunks = applyDurations(chunksRef.current, clamped, settings.smartSlowing)
+    chunksRef.current = newChunks  // ref'i hemen güncelle
+    setChunks(newChunks)
+    setCurrentWPM(clamped)
+    Haptics.selectionAsync()
+    if (isPlayingRef.current) {
+      stopTimer()
+      scheduleNext(chunkIdxRef.current)
     }
-  }, [currentWPM, settings.smartSlowing]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [settings.smartSlowing, stopTimer, scheduleNext])
 
   const togglePause = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -252,6 +270,36 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
     setPhase('result')
     saveRecentContent(content!, avgWPM)
   }, [chunks, wpmHistory, currentWPM, regressionCount, settings, content, startTime, stopTimer])
+
+  // ── AŞAMA 3: Seans Sonu (hook'lar erken return'den önce olmalı) ──
+  const fetchAndShowQuiz = useCallback(async () => {
+    const textId = content?.libraryTextId
+    if (!textId) return
+    try {
+      const { data } = await (supabase as any)
+        .from('text_questions')
+        .select('*')
+        .eq('text_id', textId)
+        .order('order_index')
+        .limit(5)
+      setQuestions((data as TextQuestion[]) ?? [])
+      setShowQuiz(true)
+    } catch { /* sessiz */ }
+  }, [content])
+
+  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
+  useEffect(() => {
+    if (phase === 'result' && content?.source === 'library') {
+      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
+  // ── Ref sync (her render'da güncellenir, erken return'lerden önce) ──
+  chunksRef.current    = chunks
+  isPlayingRef.current = isPlaying
+  chunkIdxRef.current  = chunkIdx
 
   // ── Progress ───────────────────────────────────────────────────
 
@@ -391,6 +439,13 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
       <SafeAreaView style={[s.container, s.readingBg]}>
         {/* Header */}
         <View style={s.readingHeader}>
+          <TouchableOpacity
+            onPress={() => { stopTimer(); setIsPlaying(false); onExit() }}
+            hitSlop={{ top:10, bottom:10, left:10, right:10 }}
+            style={s.closeBtn}
+          >
+            <Text style={s.closeBtnTxt}>✕</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={togglePause}>
             <Text style={s.readingBack}>Chunk RSVP</Text>
           </TouchableOpacity>
@@ -414,12 +469,14 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
         </View>
 
         {/* Progress Bar */}
-        <View style={s.progressTrack}>
-          <View style={[s.progressFill, { width: `${progress * 100}%` as `${number}%` }]} />
+        <View style={s.progressPanel}>
+          <View style={s.progressTrack}>
+            <View style={[s.progressFill, { width: `${progress * 100}%` as `${number}%` }]} />
+          </View>
+          <Text style={s.progressInfo}>
+            {wordsRead}/{totalWords} kelime  ·  {formatTime(remainingSec)} kaldı
+          </Text>
         </View>
-        <Text style={s.progressInfo}>
-          {wordsRead}/{totalWords} kelime  ·  {formatTime(remainingSec)} kaldı
-        </Text>
 
         {/* Chunk Display */}
         <View style={s.chunkStage}>
@@ -443,54 +500,67 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
           </Animated.View>
         </View>
 
-        {/* Kontrol Çubuğu */}
-        <View style={s.controls}>
-          <TouchableOpacity style={s.controlBtn} onPress={goBack}>
-            <Text style={s.controlBtnTxt}>←</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.playBtn} onPress={togglePause} activeOpacity={0.8}>
-            <Text style={s.playBtnTxt}>{isPlaying ? '⏸' : '▶'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.controlBtn} onPress={goForward} disabled={settings.readingMode !== 'sprint'}>
-            <Text style={[s.controlBtnTxt, settings.readingMode !== 'sprint' && { opacity: 0.3 }]}>→</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* WPM Slider */}
-        <View style={s.wpmSliderRow}>
-          <Text style={s.wpmLabel}>100</Text>
-          <View style={s.wpmSliderTrack}>
-            <View style={[s.wpmSliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
-            <TouchableOpacity
-              style={[s.wpmThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]}
-              onPress={() => {}}
-            />
+        {/* Alt Panel: Kontroller + WPM + İstatistikler */}
+        <View style={s.bottomPanel}>
+          {/* Kontrol Çubuğu */}
+          <View style={s.controls}>
+            <TouchableOpacity style={s.controlBtn} onPress={goBack}>
+              <Text style={s.controlBtnTxt}>←</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.playBtn} onPress={togglePause} activeOpacity={0.8}>
+              <Text style={s.playBtnTxt}>{isPlaying ? '⏸' : '▶'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.controlBtn} onPress={goForward} disabled={settings.readingMode !== 'sprint'}>
+              <Text style={[s.controlBtnTxt, settings.readingMode !== 'sprint' && { opacity: 0.3 }]}>→</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={s.wpmLabel}>800</Text>
-        </View>
-        <View style={s.wpmBtnsRow}>
-          <TouchableOpacity style={s.wpmAdjBtn} onPress={() => { Haptics.selectionAsync(); setCurrentWPM((w) => Math.max(100, w - 25)) }}>
-            <Text style={s.wpmAdjTxt}>−25</Text>
-          </TouchableOpacity>
-          <Text style={s.wpmDisplay}>{currentWPM} WPM</Text>
-          <TouchableOpacity style={s.wpmAdjBtn} onPress={() => { Haptics.selectionAsync(); setCurrentWPM((w) => Math.min(800, w + 25)) }}>
-            <Text style={s.wpmAdjTxt}>+25</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Canlı İstatistikler */}
-        <View style={s.statsBar}>
-          {[
-            { label: 'WPM', value: String(displayWPM) },
-            { label: 'Chunk', value: `${settings.chunkSize}/${chunks.length}` },
-            { label: 'Süre', value: formatTime(Math.floor(elapsedMs / 1000)) },
-            { label: 'ARP', value: String(computeSessionARP(displayWPM, 70, regressionCount, Math.floor(elapsedMs / 1000)).arp) },
-          ].map((item) => (
-            <View key={item.label} style={s.statItem}>
-              <Text style={s.statValue}>{item.value}</Text>
-              <Text style={s.statLabel}>{item.label}</Text>
+          {/* WPM Slider */}
+          <View style={s.wpmSliderRow}>
+            <Text style={s.wpmLabel}>100</Text>
+            <View
+              style={s.wpmSliderTrack}
+              onLayout={(e) => { trackWidthRef.current = e.nativeEvent.layout.width }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => {
+                const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
+                adjustWPM(100 + pct * 700)
+              }}
+              onResponderMove={(e) => {
+                const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
+                adjustWPM(100 + pct * 700)
+              }}
+            >
+              <View style={[s.wpmSliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
+              <View style={[s.wpmThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
             </View>
-          ))}
+            <Text style={s.wpmLabel}>800</Text>
+          </View>
+          <View style={s.wpmBtnsRow}>
+            <TouchableOpacity style={s.wpmAdjBtn} onPress={() => adjustWPM(currentWPM - 25)}>
+              <Text style={s.wpmAdjTxt}>−25</Text>
+            </TouchableOpacity>
+            <Text style={s.wpmDisplay}>{currentWPM} WPM</Text>
+            <TouchableOpacity style={s.wpmAdjBtn} onPress={() => adjustWPM(currentWPM + 25)}>
+              <Text style={s.wpmAdjTxt}>+25</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Canlı İstatistikler */}
+          <View style={s.statsBar}>
+            {[
+              { label: 'WPM', value: String(displayWPM) },
+              { label: 'Chunk', value: `${settings.chunkSize}/${chunks.length}` },
+              { label: 'Süre', value: formatTime(Math.floor(elapsedMs / 1000)) },
+              { label: 'ARP', value: String(computeSessionARP(displayWPM, 70, regressionCount, Math.floor(elapsedMs / 1000)).arp) },
+            ].map((item) => (
+              <View key={item.label} style={s.statItem}>
+                <Text style={s.statValue}>{item.value}</Text>
+                <Text style={s.statLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Settings Sheet */}
@@ -500,32 +570,6 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
       </SafeAreaView>
     )
   }
-
-  // ── AŞAMA 3: Seans Sonu ───────────────────────────────────────
-
-  const fetchAndShowQuiz = useCallback(async () => {
-    const textId = content?.libraryTextId
-    if (!textId) return
-    try {
-      const { data } = await (supabase as any)
-        .from('text_questions')
-        .select('*')
-        .eq('text_id', textId)
-        .order('order_index')
-        .limit(5)
-      setQuestions((data as TextQuestion[]) ?? [])
-      setShowQuiz(true)
-    } catch { /* sessiz */ }
-  }, [content])
-
-  // Kütüphane metni tamamlandığında quiz otomatik açılır (1 sn sonra)
-  useEffect(() => {
-    if (phase === 'result' && content?.source === 'library') {
-      const timer = setTimeout(() => fetchAndShowQuiz(), 1000)
-      return () => clearTimeout(timer)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase])
 
   if (phase === 'result' && finalMetrics) {
     return (
@@ -727,11 +771,11 @@ function SettingsSheet({ settings, onUpdate, onClose, t, s, currentWPM, onWPMCha
 
 // ─── Stiller ───────────────────────────────────────────────────────
 
-function ms(t: AppTheme) {
+function ms(t: AppTheme, rtBg: string, rtText: string) {
   const SPEED_COLOR = '#6C3EE8'
   return StyleSheet.create({
     container:    { flex: 1, backgroundColor: t.colors.background },
-    readingBg:    { backgroundColor: t.isDark ? '#0D1117' : '#1A1A2E' },
+    readingBg:    { backgroundColor: t.colors.background },
 
     // Top bar
     topBar:       {
@@ -831,70 +875,78 @@ function ms(t: AppTheme) {
     startBtnDisabled: { opacity: 0.4 },
     startBtnTxt:  { fontSize: 18, fontWeight: '800', color: '#fff' },
 
-    // Reading
+    // Reading — mor modül rengi tabanlı canlı paneller
     readingHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 10,
+      backgroundColor: '#4A1FA8',   // derin canlı mor
     },
-    readingBack:  { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+    readingBack:  { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
     modeRow:      { flexDirection: 'row', gap: 4 },
     modePill:     {
       borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
-      backgroundColor: 'rgba(255,255,255,0.1)',
+      backgroundColor: 'rgba(255,255,255,0.18)',
     },
     modePillActive: { backgroundColor: SPEED_COLOR },
-    modePillTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+    modePillTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
     modePillTxtActive: { color: '#fff' },
 
-    progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 16 },
-    progressFill:  { height: 3, backgroundColor: SPEED_COLOR, borderRadius: 2 },
-    progressInfo:  { fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: 6, marginBottom: 4 },
+    progressPanel: {
+      backgroundColor: '#3D1890',   // biraz daha derin mor
+      paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8,
+    },
+    progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 2 },
+    progressFill:  { height: 3, backgroundColor: '#C4A8FF', borderRadius: 2 },  // açık lila fill
+    progressInfo:  { fontSize: 11, color: 'rgba(255,255,255,0.78)', textAlign: 'center', marginTop: 6 },
 
     chunkStage:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
     chunkBox:     { alignItems: 'center', justifyContent: 'center' },
-    chunkText:    { fontSize: 28, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', lineHeight: 40 },
+    chunkText:    { fontSize: 28, fontWeight: '700', color: t.colors.text, textAlign: 'center', lineHeight: 40 },
     chunkWordsRow:{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
-    chunkWord:    { fontSize: 28, color: '#FFFFFF', lineHeight: 40 },
+    chunkWord:    { fontSize: 28, color: t.colors.text, lineHeight: 40 },
     bionicBold:   { fontWeight: '900' },
     bionicLight:  { fontWeight: '300' },
 
-    controls:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 12 },
+    bottomPanel:  { backgroundColor: '#2E1280' },  // koyu-canlı mor-lacivert
+    controls:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 12 },
     controlBtn:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-    controlBtnTxt:{ fontSize: 22, color: 'rgba(255,255,255,0.7)' },
+    controlBtnTxt:{ fontSize: 22, color: '#D4B8FF' },  // açık lila ok tuşları
     playBtn:      {
       width: 60, height: 60, borderRadius: 30,
       backgroundColor: SPEED_COLOR, alignItems: 'center', justifyContent: 'center',
     },
     playBtnTxt:   { fontSize: 24 },
 
-    wpmSliderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8, marginBottom: 4 },
-    wpmLabel:     { fontSize: 11, color: 'rgba(255,255,255,0.4)', width: 30 },
+    wpmSliderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
+    wpmLabel:     { fontSize: 11, color: '#B8A0E8', width: 30 },  // pastel mor etiket
     wpmSliderTrack: {
-      flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.15)',
+      flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)',
       borderRadius: 2, position: 'relative',
     },
-    wpmSliderFill:{ height: 4, backgroundColor: SPEED_COLOR, borderRadius: 2 },
+    wpmSliderFill:{ height: 4, backgroundColor: '#A78BFA', borderRadius: 2 },  // canlı lila fill
     wpmThumb:     {
       position: 'absolute', top: -6, width: 16, height: 16,
-      borderRadius: 8, backgroundColor: '#fff', marginLeft: -8,
+      borderRadius: 8, backgroundColor: '#E9D5FF', marginLeft: -8,  // pastel mor thumb
     },
-    wpmBtnsRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 8 },
+    wpmBtnsRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 4, paddingBottom: 8 },
     wpmPresetsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', marginBottom: 8 },
     wpmAdjBtn:    {
-      backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999,
       paddingHorizontal: 16, paddingVertical: 6,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
     },
-    wpmAdjTxt:    { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
+    wpmAdjTxt:    { fontSize: 14, fontWeight: '700', color: '#E9D5FF' },  // pastel mor
     wpmDisplay:   { fontSize: 16, fontWeight: '800', color: '#fff', minWidth: 90, textAlign: 'center' },
 
     statsBar:     {
       flexDirection: 'row', justifyContent: 'space-around',
-      backgroundColor: 'rgba(255,255,255,0.05)',
+      backgroundColor: '#231060',  // en derin mor — istatistik şeridi
       paddingVertical: 10, paddingHorizontal: 8,
+      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
     },
     statItem:     { alignItems: 'center' },
-    statValue:    { fontSize: 14, fontWeight: '800', color: '#fff' },
-    statLabel:    { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+    statValue:    { fontSize: 14, fontWeight: '800', color: '#E9D5FF' },  // pastel mor değer
+    statLabel:    { fontSize: 10, color: '#A78BFA', marginTop: 2 },  // canlı lila etiket
 
     // Result
     resultScroll: { flex: 1, padding: 16, alignItems: 'center', gap: 10 },

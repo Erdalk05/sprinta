@@ -65,7 +65,7 @@ const Y_CLOSE = SCREEN_H          // tamamen gizli
 const GUTTER   = 16
 const GAP      = 12
 const CARD_W   = (SCREEN_W - GUTTER * 2 - GAP) / 2
-const WA_GREEN = '#25D366'
+const BRAND_BLUE = '#1877F2'
 
 const SPRING       = { damping: 22, stiffness: 220, mass: 0.85 }
 const SPRING_CLOSE = { damping: 26, stiffness: 300, mass: 0.75 }
@@ -414,12 +414,12 @@ function makeStyles(t: AppTheme) {
     cardSub:   { fontSize: 11, color: t.colors.textSub, marginBottom: 8, lineHeight: 15 },
     cardPill: {
       alignSelf:         'flex-start',
-      backgroundColor:   WA_GREEN + '18',
+      backgroundColor:   BRAND_BLUE + '18',
       borderRadius:      999,
       paddingHorizontal: 8,
       paddingVertical:   3,
     },
-    cardDur:   { fontSize: 10, fontWeight: '600', color: WA_GREEN },
+    cardDur:   { fontSize: 10, fontWeight: '600', color: BRAND_BLUE },
 
     // Detail
     detailWrap: {
@@ -433,7 +433,7 @@ function makeStyles(t: AppTheme) {
       borderRadius:    26,
       backgroundColor: t.colors.greenLight,
       borderWidth:     2,
-      borderColor:     WA_GREEN + '30',
+      borderColor:     BRAND_BLUE + '30',
       alignItems:      'center',
       justifyContent:  'center',
       marginBottom:    18,
@@ -448,14 +448,14 @@ function makeStyles(t: AppTheme) {
       textAlign: 'center', marginBottom: 6,
     },
     detailDur: {
-      fontSize: 12, color: WA_GREEN, fontWeight: '700', marginBottom: 18,
+      fontSize: 12, color: BRAND_BLUE, fontWeight: '700', marginBottom: 18,
     },
     detailDesc: {
       fontSize: 14, color: t.colors.text,
       lineHeight: 22, textAlign: 'center', marginBottom: 28,
     },
     startBtn: {
-      backgroundColor:   WA_GREEN,
+      backgroundColor:   BRAND_BLUE,
       borderRadius:      999,
       paddingHorizontal: 36,
       paddingVertical:   14,
@@ -472,8 +472,8 @@ function makeStyles(t: AppTheme) {
       paddingHorizontal: 8,
     },
     navBtn:     { flexDirection: 'row', alignItems: 'center', padding: 8, gap: 4 },
-    navArrow:   { fontSize: 22, color: WA_GREEN, fontWeight: '700' },
-    navBtnTxt:  { fontSize: 14, fontWeight: '700', color: WA_GREEN },
+    navArrow:   { fontSize: 22, color: BRAND_BLUE, fontWeight: '700' },
+    navBtnTxt:  { fontSize: 14, fontWeight: '700', color: BRAND_BLUE },
     navCounter: { fontSize: 13, color: t.colors.textHint },
   })
 }

@@ -100,7 +100,7 @@ function TopBar({
 
 function ProgressBar({ value, color }: { value: number; color: string }) {
   return (
-    <View style={{ height:3, backgroundColor:'rgba(255,255,255,0.12)', marginHorizontal:16 }}>
+    <View style={{ height:3, backgroundColor:'rgba(128,128,128,0.22)', marginHorizontal:16 }}>
       <View style={{ height:3, backgroundColor:color, borderRadius:2,
         width:`${Math.min(100, Math.round(value * 100))}%` as `${number}%` }} />
     </View>

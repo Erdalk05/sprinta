@@ -50,10 +50,11 @@ function SprintaTabBar({
   const t = useAppTheme()
   const s = createStyles(t)
 
-  const currentName      = state.routes[state.index]?.name ?? ''
-  const isHome           = currentName === 'index'
-  const isMenu           = currentName === 'menu'
-  const isSessionsActive = currentName === 'sessions'
+  const currentName   = state.routes[state.index]?.name ?? ''
+  const isHome        = currentName === 'index'
+  const isMenu        = currentName === 'menu'
+  // calis ekranı aktifken Okuma tab'ı vurgulu görünür
+  const isCalisActive = currentName === 'calis'
 
   // Regular nav tab
   const navTab = (
@@ -115,7 +116,7 @@ function SprintaTabBar({
       {/* FAB placeholder — RadialFab overlay olarak render edilir */}
       <View style={s.fabSlot} pointerEvents="none" />
 
-      {sheetTab('📚', 'Çalış', okumaActive || isSessionsActive, onNavigateCalis)}
+      {sheetTab('📖', 'Okuma', okumaActive || isCalisActive, onNavigateCalis)}
       {navTab('menu', '🎓', 'Üssü', isMenu)}
     </View>
   )
@@ -146,7 +147,7 @@ export default function TabsLayout() {
             onNavigateCalis={() => {
               setEgzersizActive(false)
               setOkumaActive(true)
-              props.navigation.navigate('sessions')
+              props.navigation.navigate('calis')
             }}
             egzersizActive={egzersizActive}
             okumaActive={okumaActive}
@@ -160,10 +161,11 @@ export default function TabsLayout() {
         {/* Navigable but hidden from tab bar */}
         <Tabs.Screen name="calis"    options={{ href: null }} />
         <Tabs.Screen name="coach"    options={{ href: null }} />
-        <Tabs.Screen name="sessions" options={{ title: 'Çalış' }} />
+        <Tabs.Screen name="sessions" options={{ href: null }} />
         <Tabs.Screen name="progress" options={{ href: null }} />
         <Tabs.Screen name="social"   options={{ href: null }} />
         <Tabs.Screen name="profile"  options={{ href: null }} />
+        <Tabs.Screen name="practice" options={{ href: null }} />
       </Tabs>
 
       {/* Radial FAB — Tabs'ın üzerinde */}

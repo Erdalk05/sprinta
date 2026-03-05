@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createClient } from '@supabase/supabase-js'
 import { createAuthService } from '@sprinta/api'
+import { supabase } from '../lib/supabase'
 
 interface Student {
   id: string
@@ -41,11 +41,6 @@ interface AuthState {
   refreshProfile: () => Promise<void>
   updateProfile: (updates: Partial<Student>) => void
 }
-
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const authService = createAuthService(supabase)
 

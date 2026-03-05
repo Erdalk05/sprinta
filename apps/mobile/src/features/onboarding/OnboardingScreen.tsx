@@ -17,7 +17,7 @@ import { EventBus } from '../rewards/EventBus'
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
 
-const CONFETTI_COLORS = ['#25D366', '#128C7E', '#075E54', '#DCF8C6', '#FFD700', '#FF6B6B']
+const CONFETTI_COLORS = ['#1877F2', '#2B3FD4', '#1A2B6B', '#40C8F0', '#FFD700', '#FF6B6B']
 const TOPIC_LABELS: Record<string, string> = {
   reading_speed:   'Okuma Hızı',
   comprehension:   'Anlama',

@@ -187,6 +187,33 @@ export default function SessionsScreen() {
         </View>
 
         {/* ══════════════════════════════════════════════════════
+            Paragraf Soru Pratiği
+        ══════════════════════════════════════════════════════ */}
+        <TouchableOpacity
+          style={[s.heroCard, { borderColor: '#1D4ED850', marginTop: 8 }]}
+          onPress={() => navigate('/(tabs)/practice')}
+          activeOpacity={0.85}
+        >
+          <View style={s.heroLeft}>
+            <View style={[s.heroBadge, { backgroundColor: '#1D4ED820' }]}>
+              <Text style={[s.heroBadgeTxt, { color: '#1D4ED8' }]}>📝 TYT / LGS</Text>
+            </View>
+            <Text style={s.heroTitle}>Paragraf Soru Pratiği</Text>
+            <Text style={s.heroDesc}>
+              55 metin · TYT/LGS tarzı ABCD şıkları · Net skor · ARP'a yansır
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[s.heroBtn, { backgroundColor: '#1D4ED8' }]}
+            onPress={() => navigate('/(tabs)/practice')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.heroBtnIcon}>📝</Text>
+            <Text style={s.heroBtnTxt}>Başla</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* ══════════════════════════════════════════════════════
             BÖLÜM 2 — Göz & Dikkat Egzersizleri
         ══════════════════════════════════════════════════════ */}
         <Text style={s.sectionLabel}>KARTAL GÖZÜ</Text>

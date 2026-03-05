@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../src/lib/supabase'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import type { AppTheme } from '../../src/theme'
 import { useAuthStore } from '../../src/stores/authStore'
@@ -10,10 +10,6 @@ import { useGamificationStore } from '../../src/stores/gamificationStore'
 import { XPBar } from '../../src/components/gamification/XPBar'
 import { BadgeCard } from '../../src/components/gamification/BadgeCard'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 interface SessionStats {
   totalSessions: number

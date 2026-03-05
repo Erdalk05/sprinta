@@ -167,7 +167,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(37,211,102,0.3)',
   },
   xpLabel: { fontSize: 12, color: '#8696A0', letterSpacing: 1, textTransform: 'uppercase' },
-  xpValue: { fontSize: 52, fontWeight: '900', color: '#25D366' },
+  xpValue: { fontSize: 52, fontWeight: '900', color: '#1877F2' },
   xpSub:   { fontSize: 12, color: '#8696A0' },
 
   row: { flexDirection: 'row', gap: 10, marginBottom: 14 },
@@ -215,10 +215,10 @@ const s = StyleSheet.create({
   exCat:    { fontSize: 11, marginTop: 2 },
   exScore:  { alignItems: 'flex-end' },
   exGrade:  { fontSize: 20, fontWeight: '900' },
-  exXp:     { fontSize: 10, color: '#25D366' },
+  exXp:     { fontSize: 10, color: '#1877F2' },
 
   btn: {
-    backgroundColor: '#25D366', borderRadius: 16,
+    backgroundColor: '#1877F2', borderRadius: 16,
     paddingVertical: 16, alignItems: 'center', marginTop: 10,
   },
   btnTxt: { fontSize: 17, fontWeight: '800', color: '#0A0F1F' },

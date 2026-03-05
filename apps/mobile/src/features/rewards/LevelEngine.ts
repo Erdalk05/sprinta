@@ -13,8 +13,8 @@ const XP_MULTIPLIER = 1.4
 
 const LEVELS: LevelInfo[] = [
   { level: 1, title: 'Başlangıç',  minARP: 0,   maxARP: 150, color: '#8696A0', emoji: '🌱', nextLevelXP: Math.round(BASE_XP * Math.pow(XP_MULTIPLIER, 1)) },
-  { level: 2, title: 'Gelişen',    minARP: 150, maxARP: 300, color: '#25D366', emoji: '⚡', nextLevelXP: Math.round(BASE_XP * Math.pow(XP_MULTIPLIER, 2)) },
-  { level: 3, title: 'Uzman',      minARP: 300, maxARP: 400, color: '#128C7E', emoji: '🏆', nextLevelXP: Math.round(BASE_XP * Math.pow(XP_MULTIPLIER, 3)) },
+  { level: 2, title: 'Gelişen',    minARP: 150, maxARP: 300, color: '#1877F2', emoji: '⚡', nextLevelXP: Math.round(BASE_XP * Math.pow(XP_MULTIPLIER, 2)) },
+  { level: 3, title: 'Uzman',      minARP: 300, maxARP: 400, color: '#2B3FD4', emoji: '🏆', nextLevelXP: Math.round(BASE_XP * Math.pow(XP_MULTIPLIER, 3)) },
 ]
 
 export function getLevelInfo(arp: number): LevelInfo {

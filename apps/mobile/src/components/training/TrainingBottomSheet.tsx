@@ -417,7 +417,7 @@ function ts(t: AppTheme) {
       fontSize: 15, fontWeight: '800', color: t.colors.text, marginBottom: 3,
     },
     dailySub:   { fontSize: 11, color: t.colors.textHint },
-    dailyArrow: { fontSize: 20, color: '#25D366', fontWeight: '900' },
+    dailyArrow: { fontSize: 20, color: '#1877F2', fontWeight: '900' },
 
     // 2-column grid row
     gridRow: {

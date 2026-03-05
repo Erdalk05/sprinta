@@ -1,49 +1,87 @@
+// Sprinta — İş Bankası + Facebook Mavi Renk Sistemi
+
+export const lightColors = {
+  primary:             '#1877F2',
+  primaryDark:         '#1A2B6B',
+  primaryLight:        '#2B3FD4',
+  background:          '#F0F2F5',
+  surface:             '#FFFFFF',
+  surfaceVariant:      '#F5F6FA',
+  headerGradientStart: '#1A2B6B',
+  headerGradientEnd:   '#2B3FD4',
+  accent:              '#40C8F0',
+  warning:             '#F5A623',
+  success:             '#22C55E',
+  error:               '#DC2626',
+  textPrimary:         '#1C1C1E',
+  textSecondary:       '#6B7280',
+  textOnPrimary:       '#FFFFFF',
+  textOnDark:          '#FFFFFF',
+  tabActive:           '#1877F2',
+  tabInactive:         '#9CA3AF',
+  tabBackground:       '#FFFFFF',
+  cardBorder:          'rgba(24,119,242,0.15)',
+  divider:             '#E5E7EB',
+  overlay:             'rgba(26,43,107,0.6)',
+}
+
+export const darkColors = {
+  primary:             '#4096FF',
+  primaryDark:         '#0D1B4B',
+  primaryLight:        '#1A2B6B',
+  background:          '#0D1B4B',
+  surface:             '#1A2B6B',
+  surfaceVariant:      'rgba(255,255,255,0.08)',
+  headerGradientStart: '#0D1B4B',
+  headerGradientEnd:   '#1A2B6B',
+  accent:              '#40C8F0',
+  warning:             '#F5A623',
+  success:             '#22C55E',
+  error:               '#FF6B6B',
+  textPrimary:         '#FFFFFF',
+  textSecondary:       'rgba(255,255,255,0.6)',
+  textOnPrimary:       '#FFFFFF',
+  textOnDark:          '#FFFFFF',
+  tabActive:           '#4096FF',
+  tabInactive:         'rgba(255,255,255,0.4)',
+  tabBackground:       '#0D1B4B',
+  cardBorder:          'rgba(255,255,255,0.12)',
+  divider:             'rgba(255,255,255,0.1)',
+  overlay:             'rgba(0,0,0,0.7)',
+}
+
+// Backward compat export (legacy kullanımlar için)
 export const colors = {
-  // WhatsApp Ana Palette
-  primary: '#25D366',
-  primaryDark: '#128C7E',
-  primaryDarker: '#075E54',
-  primaryLight: '#DCF8C6',
-
-  // Nötr
-  white: '#FFFFFF',
-  background: '#ECE5DD',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F0F0F0',
-
-  // Metin
-  textPrimary: '#111111',
-  textSecondary: '#667781',
-  textDisabled: '#8696A0',
+  primary:       '#1877F2',
+  primaryDark:   '#1A2B6B',
+  primaryDarker: '#0D1B4B',
+  primaryLight:  '#2B3FD4',
+  white:         '#FFFFFF',
+  background:    '#F0F2F5',
+  surface:       '#FFFFFF',
+  surfaceAlt:    '#F5F6FA',
+  textPrimary:   '#1C1C1E',
+  textSecondary: '#6B7280',
+  textDisabled:  '#9CA3AF',
   textOnPrimary: '#FFFFFF',
-
-  // Durum
-  success: '#25D366',
-  error: '#E53935',
-  warning: '#F39C12',
-  info: '#2196F3',
-
-  // Modül Gradientleri
+  success:       '#22C55E',
+  error:         '#DC2626',
+  warning:       '#F5A623',
+  info:          '#40C8F0',
+  border:        '#E5E7EB',
+  borderFocus:   '#1877F2',
+  borderError:   '#DC2626',
+  text:          '#1C1C1E',
+  textTertiary:  '#9CA3AF',
   modules: {
-    speed:         ['#25D366', '#128C7E'] as [string, string],
-    comprehension: ['#667781', '#2C3E50'] as [string, string],
-    attention:     ['#F39C12', '#E74C3C'] as [string, string],
-    mental:        ['#8E44AD', '#3498DB'] as [string, string],
-    eye:           ['#16A085', '#27AE60'] as [string, string],
-    vocabulary:    ['#E67E22', '#D35400'] as [string, string],
-    strategy:      ['#2980B9', '#1ABC9C'] as [string, string],
-    simulation:    ['#C0392B', '#8E44AD'] as [string, string],
+    speed:         ['#1877F2', '#2B3FD4'] as [string, string],
+    comprehension: ['#1A2B6B', '#2B3FD4'] as [string, string],
+    attention:     ['#F5A623', '#DC2626'] as [string, string],
+    mental:        ['#8B5CF6', '#3B82F6'] as [string, string],
+    eye:           ['#0891B2', '#1877F2'] as [string, string],
+    vocabulary:    ['#F59E0B', '#D97706'] as [string, string],
+    strategy:      ['#1877F2', '#40C8F0'] as [string, string],
+    simulation:    ['#DC2626', '#8B5CF6'] as [string, string],
   },
-
-  // ARP Kart Gradyantı
-  arpGradient: ['#075E54', '#128C7E'] as [string, string],
-
-  // Border
-  border: '#E5E5E5',
-  borderFocus: '#25D366',
-  borderError: '#E53935',
-
-  // Backward compat aliases
-  text: '#111111',
-  textTertiary: '#8696A0',
+  arpGradient: ['#1A2B6B', '#2B3FD4'] as [string, string],
 } as const

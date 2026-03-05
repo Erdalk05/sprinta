@@ -55,7 +55,7 @@ export default function MiniScoreCard({
           {Array.from({ length: totalExercises }).map((_, i) => (
             <View
               key={i}
-              style={[s.dot, i < exerciseNum && { backgroundColor: '#25D366' }]}
+              style={[s.dot, i < exerciseNum && { backgroundColor: '#1877F2' }]}
             />
           ))}
         </View>
@@ -154,7 +154,7 @@ const s = StyleSheet.create({
   chipLbl: { fontSize: 10, color: '#8696A0', marginTop: 2 },
   xpRow:    { flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 },
   xpLabel:  { fontSize: 14, color: '#8696A0' },
-  xpValue:  { fontSize: 28, fontWeight: '900', color: '#25D366' },
+  xpValue:  { fontSize: 28, fontWeight: '900', color: '#1877F2' },
   motive:   { fontSize: 13, color: '#8696A0', textAlign: 'center', marginBottom: 20, lineHeight: 18 },
   btn: {
     width: '100%', backgroundColor: '#00F5FF',

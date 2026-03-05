@@ -9,16 +9,12 @@ import {
   ActivityIndicator, Keyboard,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../src/lib/supabase'
 import { createAICoachService, type AICoachMode, type AIChatMessage } from '@sprinta/api'
 import { useAppTheme } from '../../src/theme/useAppTheme'
 import type { AppTheme } from '../../src/theme'
 import { useAuthStore } from '../../src/stores/authStore'
 
-const supabase  = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 const aiService = createAICoachService(supabase)
 
 // ─── Mesaj tipi ──────────────────────────────────────────────────

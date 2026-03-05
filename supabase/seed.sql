@@ -22,6 +22,8 @@ BEGIN
     raw_app_meta_data, raw_user_meta_data,
     created_at, updated_at,
     confirmation_token, recovery_token,
+    email_change, email_change_token_new, email_change_token_current,
+    phone, phone_change, reauthentication_token,
     is_super_admin, is_sso_user, is_anonymous
   ) VALUES (
     v_user_id,
@@ -33,6 +35,8 @@ BEGIN
     '{"provider":"email","providers":["email"]}'::jsonb,
     '{"full_name":"Test Kullanici"}'::jsonb,
     v_now, v_now, '', '',
+    '', '', '',
+    '', '', '',
     false, false, false
   );
 
