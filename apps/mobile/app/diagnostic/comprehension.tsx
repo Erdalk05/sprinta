@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native'
 import { useRouter } from 'expo-router'
 import { DIAGNOSTIC_CONTENT } from '../../src/data/diagnosticContent'
@@ -14,15 +14,18 @@ const SUB    = '#94A3B8'
 const GREEN  = '#10B981'
 
 function DiagProgressBar({ step, total }: { step: number; total: number }) {
-  const width = useSharedValue((step / total) * 100)
-  const fillStyle = useAnimatedStyle(() => ({ width: `${width.value}%` as never }))
+  const progress  = useSharedValue(step / total)
+  const fillStyle = useAnimatedStyle(() => ({ flex: progress.value }))
+  const restStyle = useAnimatedStyle(() => ({ flex: 1 - progress.value }))
 
-  // update on step change
-  width.value = withTiming((step / total) * 100, { duration: 400 })
+  useEffect(() => {
+    progress.value = withTiming(step / total, { duration: 400 })
+  }, [step])
 
   return (
-    <View style={pb.track}>
+    <View style={[pb.track, { flexDirection: 'row' }]}>
       <Animated.View style={[pb.fill, fillStyle]} />
+      <Animated.View style={restStyle} />
     </View>
   )
 }

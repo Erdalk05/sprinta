@@ -33,7 +33,7 @@ const dots = StyleSheet.create({
 const FEATURES = [
   { emoji: '🚀', title: 'Hızlı Okuma',    desc: 'Kanıtlanmış tekniklerle 3× daha hızlı' },
   { emoji: '🧠', title: 'Derin Anlama',    desc: 'Kavrama gücünü %40 artır' },
-  { emoji: '🎯', title: 'Kişisel Yol',    desc: 'Sana özel ARP tabanlı antrenman' },
+  { emoji: '🎯', title: 'Kişisel Hız Skoru (ARP)', desc: 'Her öğrencinin okuma hızı ve anlama düzeyi farklıdır. ARP senin başlangıç seviyeni ölçer ve sana özel bir antrenman planı oluşturur.' },
 ]
 
 export default function WelcomeScreen() {
@@ -82,7 +82,7 @@ export default function WelcomeScreen() {
           <Animated.View style={titleStyle}>
             <Text style={s.title}>Sprinta'ya{'\n'}Hoş Geldin!</Text>
             <Text style={s.subtitle}>
-              Okuma hızını ve anlama gücünü{'\n'}bilimsel yöntemlerle geliştir.
+              YKS, KPSS, LGS…{'\n'}Aynı sürede 3 kat fazla konu bitir.
             </Text>
           </Animated.View>
 

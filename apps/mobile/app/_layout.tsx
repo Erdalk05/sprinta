@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LogBox } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated'
@@ -7,8 +8,16 @@ import { useOnboardingStore } from '../src/features/onboarding/onboardingStore'
 import { initRewardEngine } from '../src/features/rewards/RewardEngine'
 import { notificationService } from '../src/services/notificationService'
 
-// Reanimated strict mode uyarılarını kapat (kursorun render sırasında okunması)
+// Reanimated strict mode uyarılarını kapat
 configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false })
+// Geliştirme ortamı uyarı banner'ını kapat
+LogBox.ignoreLogs([
+  'Sending `onAnimatedValueUpdate`',
+  'Non-serializable values were found',
+  'VirtualizedLists should never be nested',
+  '[Reanimated]',
+  'Warning: Each child',
+])
 
 export default function RootLayout() {
   const router = useRouter()
