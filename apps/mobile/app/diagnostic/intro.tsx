@@ -1,18 +1,49 @@
+import { useEffect } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { colors } from '../../src/constants/colors'
 import { useDiagnosticStore } from '../../src/stores/diagnosticStore'
+import Animated, {
+  useSharedValue, useAnimatedStyle,
+  withTiming, withSpring, withDelay,
+} from 'react-native-reanimated'
+
+const BG     = '#080E1F'
+const SURF   = '#111827'
+const ACCENT = '#6366F1'
+const TEXT   = '#F1F5F9'
+const SUB    = '#94A3B8'
+const BORDER = '#1E293B'
+
+function DiagProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <View style={pb.track}>
+      <View style={[pb.fill, { width: `${(step / total) * 100}%` }]} />
+    </View>
+  )
+}
+const pb = StyleSheet.create({
+  track: { height: 3, backgroundColor: BORDER, marginHorizontal: 24, borderRadius: 2 },
+  fill:  { height: 3, backgroundColor: ACCENT, borderRadius: 2 },
+})
 
 const STEPS = [
-  { icon: '📖', title: 'Okuma Testi', desc: 'Bir metin okuyacaksın. Kendi hızınla oku.' },
-  { icon: '❓', title: 'Anlama Soruları', desc: '5 soru ile metni ne kadar kavradığını ölçeceğiz.' },
-  { icon: '📊', title: 'ARP Puanın', desc: 'Kişisel başlangıç ARP değerin hesaplanacak.' },
+  { icon: '📖', title: 'Okuma Testi',      desc: 'Bir metin okuyacaksın. Kendi hızınla oku.' },
+  { icon: '❓', title: 'Anlama Soruları',  desc: '5 soru ile metni ne kadar kavradığını ölçeceğiz.' },
+  { icon: '📊', title: 'ARP Puanın',       desc: 'Kişisel başlangıç ARP değerin hesaplanacak.' },
 ]
 
 export default function DiagnosticIntroScreen() {
   const router = useRouter()
   const { reset } = useDiagnosticStore()
+
+  const op = useSharedValue(0)
+  const y  = useSharedValue(20)
+  useEffect(() => {
+    op.value = withDelay(100, withTiming(1, { duration: 500 }))
+    y.value  = withDelay(100, withSpring(0, { damping: 18, stiffness: 100 }))
+  }, [])
+  const anim = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateY: y.value }] }))
 
   const handleStart = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -21,85 +52,82 @@ export default function DiagnosticIntroScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.emoji}>🎯</Text>
-        <Text style={styles.title}>Tanılama Testi</Text>
-        <Text style={styles.subtitle}>
-          Sana özel antrenman planı oluşturmak için başlangıç seviyeni belirliyoruz.
-          Yaklaşık 5 dakika sürecek.
+    <SafeAreaView style={s.safe}>
+      <View style={s.topBar}>
+        <Text style={s.topLabel}>Tanılama Testi</Text>
+        <Text style={s.topStep}>Adım 1 / 3</Text>
+      </View>
+      <DiagProgressBar step={1} total={3} />
+
+      <Animated.View style={[anim, s.content]}>
+        <Text style={s.emoji}>🎯</Text>
+        <Text style={s.title}>Ne Yapacağız?</Text>
+        <Text style={s.subtitle}>
+          Sana özel antrenman planı oluşturmak için başlangıç{'\n'}seviyeni belirliyoruz. ~5 dakika sürecek.
         </Text>
 
-        <View style={styles.stepsContainer}>
+        <View style={s.stepsContainer}>
           {STEPS.map((step, i) => (
-            <View key={i} style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>{i + 1}</Text>
+            <View key={i} style={s.stepRow}>
+              <View style={s.stepNum}>
+                <Text style={s.stepNumText}>{i + 1}</Text>
               </View>
-              <View style={styles.stepIcon}>
-                <Text style={styles.stepIconText}>{step.icon}</Text>
+              <View style={s.stepIconBox}>
+                <Text style={{ fontSize: 20 }}>{step.icon}</Text>
               </View>
-              <View style={styles.stepInfo}>
-                <Text style={styles.stepTitle}>{step.title}</Text>
-                <Text style={styles.stepDesc}>{step.desc}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.stepTitle}>{step.title}</Text>
+                <Text style={s.stepDesc}>{step.desc}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        <View style={styles.tipBox}>
-          <Text style={styles.tipText}>
+        <View style={s.tipBox}>
+          <Text style={s.tipText}>
             💡 Normal hızında oku — bu bir yarış değil, başlangıç noktanı bulmak için.
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.startButton} onPress={handleStart} activeOpacity={0.85}>
-          <Text style={styles.startText}>Teste Başla →</Text>
+      <View style={s.footer}>
+        <TouchableOpacity style={s.startBtn} onPress={handleStart} activeOpacity={0.85}>
+          <Text style={s.startTxt}>Teste Başla →</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, padding: 24, paddingTop: 32 },
-  emoji: { fontSize: 64, textAlign: 'center', marginBottom: 16 },
-  title: {
-    fontSize: 28, fontWeight: '800', color: colors.text,
-    textAlign: 'center', marginBottom: 12,
+const s = StyleSheet.create({
+  safe:           { flex: 1, backgroundColor: BG },
+  topBar:         {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, paddingVertical: 16,
   },
-  subtitle: {
-    fontSize: 15, color: colors.textSecondary, textAlign: 'center',
-    lineHeight: 22, marginBottom: 36,
+  topLabel:       { fontSize: 16, fontWeight: '700', color: TEXT },
+  topStep:        { fontSize: 13, color: ACCENT, fontWeight: '600' },
+  content:        { flex: 1, paddingHorizontal: 24, paddingTop: 28 },
+  emoji:          { fontSize: 56, textAlign: 'center', marginBottom: 16 },
+  title:          { fontSize: 26, fontWeight: '800', color: TEXT, textAlign: 'center', marginBottom: 10 },
+  subtitle:       { fontSize: 15, color: SUB, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  stepsContainer: { gap: 18, marginBottom: 24 },
+  stepRow:        { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepNum:        {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center',
   },
-  stepsContainer: { gap: 20, marginBottom: 28 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  stepNumber: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: colors.primary,
+  stepNumText:    { fontSize: 13, fontWeight: '800', color: '#FFF' },
+  stepIconBox:    {
+    width: 42, height: 42, borderRadius: 10,
+    backgroundColor: SURF, borderWidth: 1, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
-  stepNumberText: { fontSize: 13, fontWeight: '800', color: colors.white },
-  stepIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  stepIconText: { fontSize: 22 },
-  stepInfo: { flex: 1 },
-  stepTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  stepDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
-  tipBox: {
-    backgroundColor: '#EDE9FE', borderRadius: 12, padding: 14,
-  },
-  tipText: { fontSize: 14, color: '#5B21B6', lineHeight: 20 },
-  footer: { padding: 24, paddingBottom: 36 },
-  startButton: {
-    backgroundColor: colors.primary, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center',
-  },
-  startText: { fontSize: 17, fontWeight: '700', color: colors.white },
+  stepTitle:      { fontSize: 15, fontWeight: '700', color: TEXT, marginBottom: 2 },
+  stepDesc:       { fontSize: 13, color: SUB, lineHeight: 18 },
+  tipBox:         { backgroundColor: '#1E1B4B', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: ACCENT + '30' },
+  tipText:        { fontSize: 14, color: '#A5B4FC', lineHeight: 20 },
+  footer:         { padding: 24, paddingBottom: 32 },
+  startBtn:       { backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  startTxt:       { fontSize: 17, fontWeight: '700', color: '#FFF' },
 })

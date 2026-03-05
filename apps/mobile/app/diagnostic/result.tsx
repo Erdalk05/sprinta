@@ -1,53 +1,107 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator } from 'react-native'
+import {
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
+  ScrollView, ActivityIndicator,
+} from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { supabase } from '../../src/lib/supabase'
-import { colors, moduleColors } from '../../src/constants/colors'
+import { moduleColors } from '../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../src/constants/modules'
 import { useDiagnosticStore } from '../../src/stores/diagnosticStore'
 import { useAuthStore } from '../../src/stores/authStore'
 import { createDiagnosticService } from '@sprinta/api'
 import { calculateExamProgress } from '@sprinta/shared'
+import Animated, {
+  useSharedValue, useAnimatedStyle,
+  withTiming, withDelay, withSpring,
+} from 'react-native-reanimated'
+
+const BG     = '#080E1F'
+const SURF   = '#111827'
+const CARD   = '#141C2E'
+const ACCENT = '#6366F1'
+const TEXT   = '#F1F5F9'
+const SUB    = '#94A3B8'
+const BORDER = '#1E293B'
+const GREEN  = '#10B981'
 
 const diagnosticService = createDiagnosticService(supabase)
+
+function useCountUp(target: number, duration = 1400) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    if (target <= 0) return
+    const steps = 60
+    const inc   = target / steps
+    let step    = 0
+    const timer = setInterval(() => {
+      step++
+      setValue(Math.min(target, Math.round(inc * step)))
+      if (step >= steps) clearInterval(timer)
+    }, duration / steps)
+    return () => clearInterval(timer)
+  }, [target])
+  return value
+}
 
 export default function DiagnosticResultScreen() {
   const router = useRouter()
   const { result, markSaved, reset } = useDiagnosticStore()
-  const { student, refreshProfile } = useAuthStore()
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const { student, refreshProfile }  = useAuthStore()
+  const [saving,    setSaving]    = useState(false)
+  const [saved,     setSaved]     = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Animasyonlar
+  const cardOp  = useSharedValue(0)
+  const cardY   = useSharedValue(30)
+  const metrOp  = useSharedValue(0)
+  const recOp   = useSharedValue(0)
+  const btnOp   = useSharedValue(0)
+
+  const displayARP = useCountUp(result?.baselineArp ?? 0, 1400)
+
   useEffect(() => {
-    if (!result || !student) return
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    handleSave()
+    cardOp.value = withDelay(100, withTiming(1, { duration: 600 }))
+    cardY.value  = withDelay(100, withSpring(0, { damping: 18, stiffness: 90 }))
+    metrOp.value = withDelay(500, withTiming(1, { duration: 500 }))
+    recOp.value  = withDelay(800, withTiming(1, { duration: 400 }))
+    btnOp.value  = withDelay(1000, withTiming(1, { duration: 400 }))
+
+    if (result && student) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      handleSave()
+    }
   }, [])
+
+  const cardStyle = useAnimatedStyle(() => ({ opacity: cardOp.value, transform: [{ translateY: cardY.value }] }))
+  const metrStyle = useAnimatedStyle(() => ({ opacity: metrOp.value }))
+  const recStyle  = useAnimatedStyle(() => ({ opacity: recOp.value }))
+  const btnStyle  = useAnimatedStyle(() => ({ opacity: btnOp.value }))
 
   const handleSave = async () => {
     if (!result || !student || saving || saved) return
     setSaving(true)
     try {
       const { success, error } = await diagnosticService.saveInitialDiagnostic({
-        studentId: student.id,
-        baselineWpm: result.baselineWpm,
-        baselineComprehension: result.baselineComprehension,
-        baselineArp: result.baselineArp,
-        durationSeconds: result.durationSeconds,
-        primaryWeakness: result.primaryWeakness,
-        secondaryWeakness: result.secondaryWeakness,
-        recommendedPath: result.recommendedPath,
+        studentId:              student.id,
+        baselineWpm:            result.baselineWpm,
+        baselineComprehension:  result.baselineComprehension,
+        baselineArp:            result.baselineArp,
+        durationSeconds:        result.durationSeconds,
+        primaryWeakness:        result.primaryWeakness,
+        secondaryWeakness:      result.secondaryWeakness,
+        recommendedPath:        result.recommendedPath,
       })
       if (success) {
         markSaved()
         setSaved(true)
-        refreshProfile() // arka planda çalış, bekleme
+        refreshProfile()
       } else {
         setSaveError(error ?? 'Kaydedilemedi')
       }
-    } catch (e) {
+    } catch {
       setSaveError('Bağlantı hatası')
     } finally {
       setSaving(false)
@@ -62,160 +116,183 @@ export default function DiagnosticResultScreen() {
 
   if (!result) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Sonuç bulunamadı.</Text>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
-          <Text style={styles.link}>Ana Sayfaya Dön</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={s.safe}>
+        <View style={s.emptyWrap}>
+          <Text style={s.emptyText}>Sonuç bulunamadı.</Text>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)')}>
+            <Text style={s.emptyLink}>Ana Sayfaya Dön</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     )
   }
 
-  const examTarget = student?.examTarget?.toLowerCase() ?? 'tyt'
+  const examTarget   = student?.examTarget?.toLowerCase() ?? 'tyt'
   const examProgress = calculateExamProgress(result.baselineArp, examTarget)
+  const progressPct  = Math.max(1, examProgress.progressPercent) // en az 1% göster
 
   const arpLevel =
-    examProgress.level === 'elite' ? '🏆 Elite Seviye' :
-    examProgress.level === 'target' ? '🎯 Hedef Seviye' :
-    examProgress.level === 'min' ? '📈 Minimum Seviye' : '🌱 Başlangıç Seviyesi'
+    examProgress.level === 'elite'  ? { label: '🏆 Elite Seviye',      color: '#F59E0B' } :
+    examProgress.level === 'target' ? { label: '🎯 Hedef Seviye',      color: GREEN } :
+    examProgress.level === 'min'    ? { label: '📈 Minimum Seviye',    color: '#3B82F6' } :
+                                      { label: '🌱 Başlangıç Seviyesi', color: SUB }
 
-  const primaryMod = result.primaryWeakness ? MODULE_CONFIGS[result.primaryWeakness] : null
-  const primaryColor = result.primaryWeakness ? moduleColors[result.primaryWeakness] : colors.primary
+  const primaryMod   = result.primaryWeakness ? MODULE_CONFIGS[result.primaryWeakness] : null
+  const primaryColor = result.primaryWeakness ? moduleColors[result.primaryWeakness] : ACCENT
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Başlık */}
-        <View style={styles.hero}>
-          <Text style={styles.heroEmoji}>🎉</Text>
-          <Text style={styles.heroTitle}>Tanılama Tamamlandı!</Text>
-          <Text style={styles.heroSub}>İşte başlangıç profil değerlerin</Text>
+    <SafeAreaView style={s.safe}>
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Hero */}
+        <View style={s.hero}>
+          <Text style={s.heroEmoji}>🎉</Text>
+          <Text style={s.heroTitle}>Tanılama Tamamlandı!</Text>
+          <Text style={s.heroSub}>İşte başlangıç profil değerlerin</Text>
         </View>
 
-        {/* ARP Kartı */}
-        <View style={styles.arpCard}>
-          <Text style={styles.arpLabel}>Başlangıç ARP Puanın</Text>
-          <Text style={styles.arpValue}>{result.baselineArp}</Text>
-          <Text style={styles.arpLevel}>{arpLevel}</Text>
-
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${examProgress.progressPercent}%` }]} />
+        {/* ARP Kart */}
+        <Animated.View style={[s.arpCard, cardStyle]}>
+          <Text style={s.arpLabel}>Başlangıç ARP Puanın</Text>
+          <Text style={s.arpValue}>{displayARP}</Text>
+          <View style={[s.levelBadge, { backgroundColor: arpLevel.color + '25', borderColor: arpLevel.color + '50' }]}>
+            <Text style={[s.levelBadgeTxt, { color: arpLevel.color }]}>{arpLevel.label}</Text>
           </View>
-          <Text style={styles.progressLabel}>
-            {examTarget.toUpperCase()} hedefine %{examProgress.progressPercent}
+
+          {/* Progress bar */}
+          <View style={s.progressTrack}>
+            <View style={[s.progressFill, { width: `${progressPct}%` as never }]} />
+          </View>
+          <Text style={s.progressLabel}>
+            {examTarget.toUpperCase()} hedefine %{progressPct}
           </Text>
-        </View>
+        </Animated.View>
 
-        {/* Temel Metrikler */}
-        <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>{result.baselineWpm}</Text>
-            <Text style={styles.metricLabel}>WPM</Text>
-            <Text style={styles.metricSub}>Okuma Hızı</Text>
+        {/* Metrikler */}
+        <Animated.View style={[s.metricsRow, metrStyle]}>
+          <View style={s.metricCard}>
+            <Text style={s.metricValue}>{result.baselineWpm}</Text>
+            <Text style={s.metricUnit}>WPM</Text>
+            <Text style={s.metricLabel}>Okuma Hızı</Text>
           </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricValue}>%{result.baselineComprehension}</Text>
-            <Text style={styles.metricLabel}>Kavrama</Text>
-            <Text style={styles.metricSub}>Anlama Oranı</Text>
+          <View style={s.metricCard}>
+            <Text style={s.metricValue}>%{result.baselineComprehension}</Text>
+            <Text style={s.metricUnit}>Kavrama</Text>
+            <Text style={s.metricLabel}>Anlama Oranı</Text>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Öneri Yolu */}
+        {/* Öneri modülü */}
         {primaryMod && (
-          <View style={[styles.recommendBox, { borderColor: primaryColor }]}>
-            <Text style={styles.recommendTitle}>💡 Önerilen Başlangıç Modülü</Text>
-            <View style={styles.recommendRow}>
-              <Text style={styles.recommendEmoji}>{primaryMod.icon}</Text>
-              <View>
-                <Text style={[styles.recommendName, { color: primaryColor }]}>{primaryMod.label}</Text>
-                <Text style={styles.recommendDesc}>{primaryMod.description}</Text>
+          <Animated.View style={[recStyle, s.recommendBox, { borderColor: primaryColor + '60' }]}>
+            <Text style={s.recommendTitle}>💡 Önerilen Başlangıç Modülü</Text>
+            <View style={s.recommendRow}>
+              <View style={[s.recommendIconWrap, { backgroundColor: primaryColor + '20' }]}>
+                <Text style={s.recommendIcon}>{primaryMod.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.recommendName, { color: primaryColor }]}>{primaryMod.label}</Text>
+                <Text style={s.recommendDesc}>{primaryMod.description}</Text>
               </View>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* Kayıt durumu */}
         {saving && (
-          <View style={styles.savingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.savingText}>Sonuçlar kaydediliyor...</Text>
+          <View style={s.savingRow}>
+            <ActivityIndicator size="small" color={ACCENT} />
+            <Text style={s.savingTxt}>Sonuçlar kaydediliyor...</Text>
           </View>
         )}
         {saveError && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorBoxText}>⚠️ {saveError}</Text>
+          <View style={s.errorBox}>
+            <Text style={s.errorTxt}>⚠️ {saveError}</Text>
             <TouchableOpacity onPress={handleSave}>
-              <Text style={styles.retryText}>Tekrar Dene</Text>
+              <Text style={s.retryTxt}>Tekrar Dene</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* CTA */}
-        <TouchableOpacity
-          style={[styles.continueButton, (saving && !saved) && styles.buttonDisabled]}
-          onPress={handleContinue}
-          disabled={false}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.continueText}>
-            {saved ? 'Antrenmanına Başla →' : 'Devam Et →'}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View style={btnStyle}>
+          <TouchableOpacity
+            style={[s.ctaBtn, saving && !saved && s.ctaBtnDisabled]}
+            onPress={handleContinue}
+            activeOpacity={0.85}
+          >
+            <Text style={s.ctaTxt}>
+              {saved ? '🚀 Antrenmanına Başla →' : 'Devam Et →'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
       </ScrollView>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 24, paddingBottom: 48 },
-  hero: { alignItems: 'center', marginBottom: 28, marginTop: 8 },
-  heroEmoji: { fontSize: 60, marginBottom: 12 },
-  heroTitle: { fontSize: 26, fontWeight: '800', color: colors.text, marginBottom: 6 },
-  heroSub: { fontSize: 15, color: colors.textSecondary },
-  arpCard: {
-    backgroundColor: colors.primary, borderRadius: 20,
-    padding: 24, marginBottom: 16, alignItems: 'center',
+const s = StyleSheet.create({
+  safe:             { flex: 1, backgroundColor: BG },
+  scroll:           { padding: 24, paddingBottom: 48 },
+  // Empty state
+  emptyWrap:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyText:        { fontSize: 16, color: SUB },
+  emptyLink:        { fontSize: 15, color: ACCENT, fontWeight: '600' },
+  // Hero
+  hero:             { alignItems: 'center', marginBottom: 24, marginTop: 8 },
+  heroEmoji:        { fontSize: 56, marginBottom: 10 },
+  heroTitle:        { fontSize: 24, fontWeight: '800', color: TEXT, marginBottom: 4 },
+  heroSub:          { fontSize: 15, color: SUB },
+  // ARP card
+  arpCard:          {
+    backgroundColor: CARD, borderRadius: 20,
+    padding: 24, marginBottom: 14, alignItems: 'center',
+    borderWidth: 1.5, borderColor: ACCENT + '40',
   },
-  arpLabel: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 8 },
-  arpValue: { fontSize: 72, fontWeight: '900', color: colors.white, lineHeight: 80 },
-  arpLevel: { fontSize: 16, color: 'rgba(255,255,255,0.9)', fontWeight: '600', marginBottom: 16, marginTop: 4 },
-  progressTrack: {
-    width: '100%', height: 6,
-    backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 3, overflow: 'hidden',
+  arpLabel:         { fontSize: 13, color: SUB, marginBottom: 6 },
+  arpValue:         { fontSize: 80, fontWeight: '900', color: TEXT, lineHeight: 90 },
+  levelBadge:       {
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5,
+    borderWidth: 1, marginBottom: 16, marginTop: 4,
   },
-  progressFill: { height: 6, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 3 },
-  progressLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 6 },
-  metricsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  metricCard: {
-    flex: 1, backgroundColor: colors.surface,
+  levelBadgeTxt:    { fontSize: 14, fontWeight: '700' },
+  progressTrack:    { width: '100%', height: 6, backgroundColor: SURF, borderRadius: 3, overflow: 'hidden' },
+  progressFill:     { height: 6, backgroundColor: ACCENT, borderRadius: 3 },
+  progressLabel:    { fontSize: 12, color: SUB, marginTop: 8 },
+  // Metrikler
+  metricsRow:       { flexDirection: 'row', gap: 12, marginBottom: 14 },
+  metricCard:       {
+    flex: 1, backgroundColor: CARD,
     borderRadius: 16, padding: 18, alignItems: 'center',
+    borderWidth: 1, borderColor: BORDER,
   },
-  metricValue: { fontSize: 28, fontWeight: '900', color: colors.text },
-  metricLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginTop: 4 },
-  metricSub: { fontSize: 11, color: colors.textTertiary, marginTop: 2 },
-  recommendBox: {
-    borderWidth: 2, borderRadius: 16, padding: 16, marginBottom: 20,
+  metricValue:      { fontSize: 30, fontWeight: '900', color: TEXT },
+  metricUnit:       { fontSize: 13, fontWeight: '700', color: ACCENT, marginTop: 2 },
+  metricLabel:      { fontSize: 11, color: SUB, marginTop: 2 },
+  // Öneri
+  recommendBox:     {
+    backgroundColor: CARD, borderWidth: 1.5,
+    borderRadius: 16, padding: 16, marginBottom: 20,
   },
-  recommendTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginBottom: 10 },
-  recommendRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  recommendEmoji: { fontSize: 36 },
-  recommendName: { fontSize: 17, fontWeight: '800', marginBottom: 4 },
-  recommendDesc: { fontSize: 13, color: colors.textSecondary },
-  savingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginBottom: 16 },
-  savingText: { fontSize: 14, color: colors.textSecondary },
-  errorBox: {
-    backgroundColor: '#FEE2E2', borderRadius: 12, padding: 14,
-    alignItems: 'center', gap: 8, marginBottom: 16,
+  recommendTitle:   { fontSize: 12, fontWeight: '700', color: SUB, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recommendRow:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  recommendIconWrap:{ width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  recommendIcon:    { fontSize: 26 },
+  recommendName:    { fontSize: 17, fontWeight: '800', marginBottom: 3 },
+  recommendDesc:    { fontSize: 13, color: SUB },
+  // Saving
+  savingRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginBottom: 14 },
+  savingTxt:        { fontSize: 14, color: SUB },
+  errorBox:         {
+    backgroundColor: '#2D0A0A', borderRadius: 12, padding: 14,
+    alignItems: 'center', gap: 8, marginBottom: 14,
+    borderWidth: 1, borderColor: '#7F1D1D',
   },
-  errorBoxText: { fontSize: 14, color: '#991B1B' },
-  retryText: { fontSize: 14, fontWeight: '700', color: colors.error },
-  continueButton: {
-    backgroundColor: colors.primary, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  continueText: { fontSize: 17, fontWeight: '700', color: colors.white },
-  errorText: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginTop: 100 },
-  link: { fontSize: 15, color: colors.primary, textAlign: 'center', marginTop: 16 },
+  errorTxt:         { fontSize: 14, color: '#FCA5A5' },
+  retryTxt:         { fontSize: 14, fontWeight: '700', color: '#F87171' },
+  // CTA
+  ctaBtn:           { backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  ctaBtnDisabled:   { opacity: 0.6 },
+  ctaTxt:           { fontSize: 17, fontWeight: '700', color: '#FFF' },
 })

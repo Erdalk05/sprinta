@@ -1,17 +1,44 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
-import { colors } from '../../src/constants/colors'
 import { DIAGNOSTIC_CONTENT } from '../../src/data/diagnosticContent'
 import { useDiagnosticStore } from '../../src/stores/diagnosticStore'
+
+const BG     = '#080E1F'
+const SURF   = '#111827'
+const ACCENT = '#6366F1'
+const TEXT   = '#F1F5F9'
+const SUB    = '#94A3B8'
+const BORDER = '#1E293B'
+
+function DiagProgressBar({ step, total }: { step: number; total: number }) {
+  return (
+    <View style={pb.track}>
+      <View style={[pb.fill, { width: `${(step / total) * 100}%` }]} />
+    </View>
+  )
+}
+const pb = StyleSheet.create({
+  track: { height: 3, backgroundColor: BORDER, marginHorizontal: 24, borderRadius: 2 },
+  fill:  { height: 3, backgroundColor: ACCENT, borderRadius: 2 },
+})
+
+function formatTime(seconds: number) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
 
 export default function DiagnosticReadingScreen() {
   const router = useRouter()
   const { startReading, finishReading } = useDiagnosticStore()
+  const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
     startReading()
+    const timer = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(timer)
   }, [])
 
   const handleDone = () => {
@@ -27,67 +54,64 @@ export default function DiagnosticReadingScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Başlık */}
-      <View style={styles.header}>
-        <View style={styles.step}>
-          <Text style={styles.stepText}>Adım 1 / 3</Text>
+    <SafeAreaView style={s.safe}>
+      <View style={s.topBar}>
+        <Text style={s.topLabel}>Okuma Testi</Text>
+        <View style={s.timer}>
+          <Text style={s.timerText}>{formatTime(elapsed)}</Text>
         </View>
-        <Text style={styles.headerTitle}>Okuma Testi</Text>
-        <Text style={styles.headerSub}>Kendi hızında oku, bitince butona bas</Text>
+        <Text style={s.topStep}>Adım 1 / 3</Text>
       </View>
+      <DiagProgressBar step={1} total={3} />
 
-      {/* Metin */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.articleTitle}>{DIAGNOSTIC_CONTENT.title}</Text>
-        <Text style={styles.articleText}>{DIAGNOSTIC_CONTENT.passage}</Text>
-        <View style={{ height: 100 }} />
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={s.articleTitle}>{DIAGNOSTIC_CONTENT.title}</Text>
+        <Text style={s.articleText}>{DIAGNOSTIC_CONTENT.passage}</Text>
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Bitti butonu */}
-      <View style={styles.footer}>
-        <Text style={styles.wordCount}>{DIAGNOSTIC_CONTENT.wordCount} kelime</Text>
-        <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.85}>
-          <Text style={styles.doneText}>Okumayı Bitirdim →</Text>
+      <View style={s.footer}>
+        <View style={s.footerInfo}>
+          <Text style={s.wordCount}>📄 {DIAGNOSTIC_CONTENT.wordCount} kelime</Text>
+          <Text style={s.footerHint}>Kendi hızında oku, bitince butona bas</Text>
+        </View>
+        <TouchableOpacity style={s.doneBtn} onPress={handleDone} activeOpacity={0.85}>
+          <Text style={s.doneTxt}>Okumayı Bitirdim →</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    padding: 20, paddingTop: 24,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-    alignItems: 'center', gap: 6,
+const s = StyleSheet.create({
+  safe:          { flex: 1, backgroundColor: BG },
+  topBar:        {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, paddingVertical: 16,
   },
-  step: {
-    backgroundColor: colors.primary + '15', borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 4,
+  topLabel:      { fontSize: 15, fontWeight: '700', color: TEXT, flex: 1 },
+  timer:         {
+    backgroundColor: SURF, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderWidth: 1, borderColor: BORDER,
   },
-  stepText: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  headerSub: { fontSize: 13, color: colors.textSecondary },
-  scroll: { flex: 1 },
-  content: { padding: 24 },
-  articleTitle: {
-    fontSize: 20, fontWeight: '800', color: colors.text,
-    marginBottom: 20, lineHeight: 28,
-  },
-  articleText: {
-    fontSize: 17, lineHeight: 30, color: colors.text,
-    letterSpacing: 0.1,
-  },
-  footer: {
+  timerText:     { fontSize: 15, fontWeight: '700', color: ACCENT, fontVariant: ['tabular-nums'] },
+  topStep:       { fontSize: 13, color: ACCENT, fontWeight: '600', flex: 1, textAlign: 'right' },
+  scroll:        { flex: 1 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 28 },
+  articleTitle:  { fontSize: 20, fontWeight: '800', color: TEXT, marginBottom: 20, lineHeight: 28 },
+  articleText:   { fontSize: 17, lineHeight: 30, color: TEXT, letterSpacing: 0.15, opacity: 0.92 },
+  footer:        {
     padding: 20, paddingBottom: 32,
-    borderTopWidth: 1, borderTopColor: colors.border,
-    gap: 12,
+    borderTopWidth: 1, borderTopColor: BORDER, gap: 10,
   },
-  wordCount: { fontSize: 12, color: colors.textTertiary, textAlign: 'center' },
-  doneButton: {
-    backgroundColor: colors.primary, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center',
-  },
-  doneText: { fontSize: 17, fontWeight: '700', color: colors.white },
+  footerInfo:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  wordCount:     { fontSize: 13, color: SUB },
+  footerHint:    { fontSize: 12, color: SUB + 'AA' },
+  doneBtn:       { backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 18, alignItems: 'center' },
+  doneTxt:       { fontSize: 17, fontWeight: '700', color: '#FFF' },
 })
