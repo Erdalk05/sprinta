@@ -19,7 +19,6 @@ export function createDiagnosticService(supabase: SupabaseClient<any>) {
    */
   async function saveInitialDiagnostic(params: SaveDiagnosticParams): Promise<{ success: boolean; error?: string }> {
     const {
-      studentId,
       baselineWpm,
       baselineComprehension,
       baselineArp,
@@ -28,6 +27,14 @@ export function createDiagnosticService(supabase: SupabaseClient<any>) {
       secondaryWeakness,
       recommendedPath,
     } = params
+
+    // 0. Öğrenci kaydını DB'den doğrula (stale cache veya trigger hatası için fallback)
+    const { data: resolvedStudentId, error: rpcError } = await supabase
+      .rpc('get_or_create_student_id')
+    if (rpcError || !resolvedStudentId) {
+      return { success: false, error: rpcError?.message ?? 'Öğrenci kaydı bulunamadı' }
+    }
+    const studentId = resolvedStudentId as string
 
     // 1. diagnostics tablosuna kaydet
     const { error: diagError } = await supabase.from('diagnostics').insert({

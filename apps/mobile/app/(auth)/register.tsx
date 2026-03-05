@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useAuthStore } from '../../src/stores/authStore'
 import { useOnboardingStore } from '../../src/features/onboarding/onboardingStore'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../src/lib/supabase'
 import { Button } from '../../src/components/ui/Button'
 import { Input } from '../../src/components/ui/Input'
 import { colors } from '../../src/theme/colors'
@@ -52,11 +52,6 @@ const GRADE_GROUPS = [
     ],
   },
 ]
-
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 export default function RegisterScreen() {
   const router = useRouter()
