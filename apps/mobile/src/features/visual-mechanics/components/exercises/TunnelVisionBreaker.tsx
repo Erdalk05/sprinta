@@ -4,26 +4,28 @@
  * Gözü merkezden kaldırmadan çevresel farkındalıkla tıkla.
  */
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { buildDifficultyParams } from '../../engines/difficultyEngine'
 import type { DifficultyLevel } from '../../constants/exerciseConfig'
 import type { RawMetrics } from '../../engines/scoringEngine'
 import { ExerciseProgressBar } from '../ExerciseProgressBar'
+import { useSoundFeedback } from '../../hooks/useSoundFeedback'
 
-const { width: W, height: H } = Dimensions.get('window')
 const DARK_BG  = '#0A0F1F'
 const CORNER_C = '#EF4444'
 const MARGIN   = 28
 const CORNER_R = 26
 
-// 4 köşe + 4 kenar orta = 8 ekstra konum
-const CORNERS = [
-  { id: 0, left: MARGIN,             top: MARGIN },
-  { id: 1, left: W - MARGIN * 3,     top: MARGIN },
-  { id: 2, left: MARGIN,             top: H * 0.68 },
-  { id: 3, left: W - MARGIN * 3,     top: H * 0.68 },
-]
+// Arena boyutuna göre dinamik hesapla
+function getCorners(arenaW: number, arenaH: number) {
+  return [
+    { id: 0, left: MARGIN,                          top: MARGIN },
+    { id: 1, left: arenaW - MARGIN - CORNER_R * 2,  top: MARGIN },
+    { id: 2, left: MARGIN,                          top: arenaH - MARGIN - CORNER_R * 2 },
+    { id: 3, left: arenaW - MARGIN - CORNER_R * 2,  top: arenaH - MARGIN - CORNER_R * 2 },
+  ]
+}
 
 interface Props {
   level: DifficultyLevel
@@ -33,6 +35,7 @@ interface Props {
 
 export default function TunnelVisionBreaker({ level, onComplete, onExit }: Props) {
   const params   = useMemo(() => buildDifficultyParams(level), [level])
+  const { playHit, playMiss, playAppear, resetCombo } = useSoundFeedback()
   const flashMs  = Math.max(600, Math.round(1600 / params.animationSpeedMultiplier))
   // Level 3-4: iki köşe aynı anda
   const multiFlash = level >= 3
@@ -41,12 +44,15 @@ export default function TunnelVisionBreaker({ level, onComplete, onExit }: Props
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [actives, setActives] = useState<number[]>([])
   const [hits, setHits]       = useState(0)
+  const [arenaSize, setArenaSize] = useState({ w: 0, h: 0 })
+  const corners = useMemo(() => getCorners(arenaSize.w, arenaSize.h), [arenaSize])
 
   const spawnNext = useCallback(() => {
     const count = multiFlash ? 2 : 1
-    const shuffled = [...CORNERS].sort(() => Math.random() - 0.5)
+    const shuffled = [...corners].sort(() => Math.random() - 0.5)
     const ids = shuffled.slice(0, count).map(c => c.id)
     setActives(ids)
+    playAppear()
     m.current.total += count
     m.current.spawnAt = Date.now()
     timerRef.current = setTimeout(() => {
@@ -66,6 +72,7 @@ export default function TunnelVisionBreaker({ level, onComplete, onExit }: Props
     const dur = params.durationSeconds * 1000
     const avg = m.current.rts.length
       ? Math.round(m.current.rts.reduce((a, b) => a + b, 0) / m.current.rts.length) : 600
+    resetCombo()
     onComplete({
       correctFocusDurationMs: Math.round((m.current.hits / Math.max(m.current.total, 1)) * dur),
       totalDurationMs: dur, reactionTimeMs: avg,
@@ -79,6 +86,7 @@ export default function TunnelVisionBreaker({ level, onComplete, onExit }: Props
     m.current.hits++; m.current.rts.push(Math.min(Date.now() - m.current.spawnAt, 1500))
     setHits(h => h + 1)
     Haptics.selectionAsync()
+    playHit()
     const remaining = actives.filter(a => a !== id)
     if (remaining.length === 0) {
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -100,14 +108,20 @@ export default function TunnelVisionBreaker({ level, onComplete, onExit }: Props
         <ExerciseProgressBar durationSeconds={params.durationSeconds} onComplete={handleTimerEnd} />
       </View>
 
-      <View style={s.arena}>
+      <View
+        style={s.arena}
+        onLayout={(e: LayoutChangeEvent) => {
+          const { width, height } = e.nativeEvent.layout
+          setArenaSize({ w: width, h: height })
+        }}
+      >
         {/* Köşe hedefleri */}
-        {CORNERS.map(c => {
+        {corners.map(c => {
           const isActive = actives.includes(c.id)
           return (
             <TouchableOpacity
               key={c.id}
-              style={[s.corner, { left: c.left, top: c.top - 140, opacity: isActive ? 1 : 0 }]}
+              style={[s.corner, { left: c.left, top: c.top, opacity: isActive ? 1 : 0 }]}
               onPress={() => handleCorner(c.id)}
               activeOpacity={0.7}
             />
