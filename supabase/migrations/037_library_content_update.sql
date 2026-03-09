@@ -4,6 +4,11 @@
 -- Sınav hazırlık odaklı, öğretici ve akıcı içerik
 -- ================================================================
 
+-- Eksik kolonları ekle (IF NOT EXISTS — Docker'da zaten varsa güvenle atlar)
+ALTER TABLE text_library ADD COLUMN IF NOT EXISTS status text DEFAULT 'published';
+ALTER TABLE text_library ADD COLUMN IF NOT EXISTS reading_time_minutes int;
+ALTER TABLE text_library ADD COLUMN IF NOT EXISTS estimated_wpm int;
+
 -- ─── LGS METİNLERİNİ GÜNCELLE ────────────────────────────────
 
 -- Hücrenin Yapısı ve Organelleri
@@ -13,7 +18,7 @@ Hücreler yapısal olarak iki ana gruba ayrılır: prokaryot ve ökaryot. Prokar
 
 Hücrenin dışını çevreleyen hücre zarı, seçici geçirgen bir yapıya sahiptir. Bu zar, hücreye hangi maddelerin girip çıkacağını kontrol eder; böylece hücre iç ortamının dengede kalmasını sağlar. Bitki hücrelerinde hücre zarının dışında, selülozdan yapılı sert bir hücre duvarı da bulunur.
 
-Çekirdek, hücrenin yönetim merkezidir. İçinde DNA'dan oluşan kromozomlar barınır; kalıtsal bilginin taşınması ve protein sentezinin yönlendirilmesi bu yapı sayesinde gerçekleşir. Çekirdeği saran çift katlı zar, çekirdekçik adı verilen yoğun bir bölge içerir; burada ribozomlar için gerekli RNA sentezlenir.
+Çekirdek, hücrenin yönetim merkezidir. İçinde DNA''dan oluşan kromozomlar barınır; kalıtsal bilginin taşınması ve protein sentezinin yönlendirilmesi bu yapı sayesinde gerçekleşir. Çekirdeği saran çift katlı zar, çekirdekçik adı verilen yoğun bir bölge içerir; burada ribozomlar için gerekli RNA sentezlenir.
 
 Mitokondri, hücrenin enerji santralidir. Hücresel solunum yoluyla besinlerden ATP üretir; bu enerji molekülü tüm hücresel faaliyetlerin yakıtıdır. Mitokondrinin kendine ait DNA''sı ve ribozomları olduğundan, bilim insanları bu organelin evrimsel süreçte bağımsız bir bakteri atadan geldiğini öne sürer (endosimbiyoz teorisi).
 
@@ -97,7 +102,7 @@ Türkiye, iklim ve coğrafya çeşitliliği nedeniyle küresel biyoçeşitlilik 
 
 Ekosistem hizmetleri denilen kavram, insanlığın doğadan elde ettiği yararları kapsar: temiz su, temiz hava, tozlaşma, iklim düzenlemesi ve gıda üretimi bunların başında gelir. Bu hizmetlerin ekonomik değerinin küresel GSYİH''nin kat kat üzerinde olduğu tahmin edilmektedir. Dolayısıyla biyoçeşitliliği korumak, hem ekolojik hem de ekonomik açıdan vazgeçilmez bir yükümlülüktür.' WHERE id = '7a0f841d-fb03-4d58-9ad3-b754d0a898ee';
 
--- Türkiye'nin Coğrafi Bölgeleri
+-- Türkiye''nin Coğrafi Bölgeleri
 UPDATE text_library SET word_count = 452, body = 'Türkiye, 7 coğrafi bölgeye ayrılmaktadır: Karadeniz, Marmara, Ege, Akdeniz, İç Anadolu, Doğu Anadolu ve Güneydoğu Anadolu. Bu bölgeler iklim, bitki örtüsü, nüfus yoğunluğu ve ekonomik faaliyetler bakımından birbirinden belirgin biçimde ayrılır.
 
 Karadeniz Bölgesi, dağların denize paralel uzanması nedeniyle bol yağış alır. Yıl boyunca nemli ve ılıman iklim egemendir. Bölge, Türkiye''nin fındık üretiminin neredeyse tamamını karşılar; çay ve mısır da önemli ürünler arasındadır. Ormanlar bölgenin büyük bölümünü kaplar.
@@ -133,7 +138,7 @@ Urartular, M.Ö. 9-6. yüzyıllar arasında Doğu Anadolu ve Van Gölü çevresi
 
 Persler, M.Ö. 6. yüzyıldan itibaren Anadolu''yu kontrol altına aldı; ardından Büyük İskender (M.Ö. 334) Anadolu''yu ele geçirerek Helenistik kültürün yayılmasını sağladı. Roma ve Bizans dönemleri, Anadolu''nun tarihsel katmanlarını daha da zenginleştirdi. Tüm bu uygarlıklar, bugün Anadolu topraklarını dünyanın en büyük açık hava müzesi haline getirmiştir.' WHERE id = '81c8b9ef-bdc2-4597-8ad7-94b2f475d883';
 
--- Osmanlı'nın Yükseliş Dönemi
+-- Osmanlı''nın Yükseliş Dönemi
 UPDATE text_library SET word_count = 448, body = 'Osmanlı Devleti, 1299 yılında Osman Bey tarafından kurulan küçük bir beylikten zamanla dünyanın en güçlü imparatorluklarından birine dönüşmüştür. Yükseliş dönemi, Orhan Gazi''den başlayarak II. Selim''e kadar süren üç asırlık muhteşem bir süreci kapsar.
 
 Orhan Gazi döneminde Bursa başkent yapıldı ve ilk düzenli ordu birlikleri olan yayalar ile müsellemler oluşturuldu. Bizans''ın Rumeli topraklarına geçiş, bu dönemde Çimpe Kalesi''nin alınmasıyla (1354) gerçekleşti; bu adım Osmanlı''nın Avrupa kıtasındaki varlığının başlangıcıydı.
@@ -327,6 +332,6 @@ WHERE exam_type IN ('KPSS', 'ALES', 'General')
   AND word_count < 400;
 
 -- ─── GERÇEK KELIME SAYISINI GÜNCELLE (Güncellenmiş LGS/TYT metinleri) ──
--- Zaten yukarıda her UPDATE'te word_count dahil edildi
+-- Zaten yukarıda her UPDATE''te word_count dahil edildi
 -- Doğrulama sorgusu (çalıştırmak için psql''de açın):
 -- SELECT exam_type, category, word_count FROM text_library ORDER BY exam_type, category;

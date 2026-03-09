@@ -6,7 +6,7 @@
 -- =====================================================
 
 CREATE TABLE articles (
-  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- NULL = global (tüm kiracılar okuyabilir), UUID = kiracıya özel
   tenant_id        UUID REFERENCES tenants(id) ON DELETE CASCADE,

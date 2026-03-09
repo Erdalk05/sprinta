@@ -91,7 +91,7 @@ CREATE TYPE content_difficulty AS ENUM ('cok_kolay', 'kolay', 'orta', 'zor', 'co
 -- STUDENTS — Ana öğrenci tablosu
 -- =====================================================
 CREATE TABLE students (
-  id                         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user_id               UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   tenant_id                  UUID,  -- REFERENCES tenants(id) sonradan eklenir
   email                      TEXT NOT NULL UNIQUE,
@@ -133,7 +133,7 @@ CREATE TABLE students (
 -- COGNITIVE_PROFILES
 -- =====================================================
 CREATE TABLE cognitive_profiles (
-  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id                UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
 
   sustainable_wpm           INTEGER DEFAULT 0,

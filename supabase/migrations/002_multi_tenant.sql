@@ -7,7 +7,7 @@
 -- TENANTS
 -- =====================================================
 CREATE TABLE tenants (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   type              tenant_type NOT NULL DEFAULT 'school',
   name              TEXT NOT NULL,
   slug              TEXT NOT NULL UNIQUE,
@@ -44,7 +44,7 @@ ALTER TABLE students
 -- TENANT_SETTINGS
 -- =====================================================
 CREATE TABLE tenant_settings (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id             UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
 
   ai_enabled            BOOLEAN DEFAULT true,
@@ -71,7 +71,7 @@ CREATE TABLE tenant_settings (
 -- TENANT_ADMINS
 -- =====================================================
 CREATE TABLE tenant_admins (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id         UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   auth_user_id      UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email             TEXT NOT NULL UNIQUE,
@@ -92,7 +92,7 @@ CREATE TABLE tenant_admins (
 -- SUPER_ADMINS
 -- =====================================================
 CREATE TABLE super_admins (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user_id      UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email             TEXT NOT NULL UNIQUE,
   full_name         TEXT NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE super_admins (
 -- CONTENT_LIBRARY
 -- =====================================================
 CREATE TABLE content_library (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title                 TEXT NOT NULL,
   body                  TEXT NOT NULL,
   source                TEXT,
@@ -133,7 +133,7 @@ CREATE TABLE content_library (
 -- EXERCISES
 -- =====================================================
 CREATE TABLE exercises (
-  id                        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   module_code               module_code NOT NULL,
   exercise_type             exercise_type NOT NULL,
   name                      TEXT NOT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE exercises (
 -- SESSIONS
 -- =====================================================
 CREATE TABLE sessions (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   exercise_id         UUID NOT NULL REFERENCES exercises(id),
   content_id          UUID REFERENCES content_library(id),
@@ -192,7 +192,7 @@ CREATE TABLE sessions (
 -- DIAGNOSTICS
 -- =====================================================
 CREATE TABLE diagnostics (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id            UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   diagnostic_type       diagnostic_type NOT NULL DEFAULT 'initial',
 
@@ -217,7 +217,7 @@ CREATE TABLE diagnostics (
 -- DAILY_STATS
 -- =====================================================
 CREATE TABLE daily_stats (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   date                DATE NOT NULL,
 
@@ -241,7 +241,7 @@ CREATE TABLE daily_stats (
 -- TENANT_DAILY_STATS
 -- =====================================================
 CREATE TABLE tenant_daily_stats (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id             UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   date                  DATE NOT NULL,
 
@@ -267,7 +267,7 @@ CREATE TABLE tenant_daily_stats (
 -- STUDENT_RISK_SCORES
 -- =====================================================
 CREATE TABLE student_risk_scores (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id            UUID NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
   tenant_id             UUID REFERENCES tenants(id) ON DELETE CASCADE,
 
@@ -288,7 +288,7 @@ CREATE TABLE student_risk_scores (
 -- FATIGUE_LOGS
 -- =====================================================
 CREATE TABLE fatigue_logs (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id        UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   session_id        UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
 
@@ -303,7 +303,7 @@ CREATE TABLE fatigue_logs (
 -- BADGES
 -- =====================================================
 CREATE TABLE badges (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code              TEXT NOT NULL UNIQUE,
   name              TEXT NOT NULL,
   description       TEXT NOT NULL,
@@ -323,7 +323,7 @@ CREATE TABLE badges (
 -- STUDENT_BADGES
 -- =====================================================
 CREATE TABLE student_badges (
-  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id        UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   badge_id          UUID NOT NULL REFERENCES badges(id),
   earned_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -335,7 +335,7 @@ CREATE TABLE student_badges (
 -- SUBSCRIPTIONS
 -- =====================================================
 CREATE TABLE subscriptions (
-  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id            UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
 
   status                subscription_status NOT NULL DEFAULT 'trialing',

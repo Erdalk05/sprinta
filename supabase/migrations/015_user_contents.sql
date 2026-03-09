@@ -6,7 +6,7 @@
 
 -- ─── user_contents ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_contents (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
 
   -- Kaynak türü
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.user_contents (
 
 -- ─── user_content_chunks ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_content_chunks (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content_id      UUID NOT NULL REFERENCES public.user_contents(id) ON DELETE CASCADE,
   user_id         UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
 
