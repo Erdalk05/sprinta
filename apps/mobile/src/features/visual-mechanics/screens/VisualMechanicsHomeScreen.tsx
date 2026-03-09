@@ -11,6 +11,8 @@ import type { GamificationState } from '@sprinta/api'
 import { createEyeTrainingService } from '@sprinta/api'
 import type { EyeMetrics } from '@sprinta/shared'
 import { supabase } from '../../../lib/supabase'
+import * as Haptics from 'expo-haptics'
+import { useEyeSoundFeedback } from '../../../components/exercises/EyeTraining/useEyeSoundFeedback'
 import {
   View,
   Text,
@@ -88,9 +90,59 @@ const CARD_W    = (SW - GRID_PAD * 2 - GRID_GAP) / 2
 // ── Tip ─────────────────────────────────────────────────────────
 type ScreenState =
   | { mode: 'home' }
-  | { mode: 'intro';    exerciseId: ExerciseId }
-  | { mode: 'exercise'; exerciseId: ExerciseId; level: DifficultyLevel }
-  | { mode: 'result';   exerciseId: ExerciseId; level: DifficultyLevel; score: ExerciseScore }
+  | { mode: 'intro';      exerciseId: ExerciseId }
+  | { mode: 'countdown';  exerciseId: ExerciseId; level: DifficultyLevel }
+  | { mode: 'exercise';   exerciseId: ExerciseId; level: DifficultyLevel }
+  | { mode: 'result';     exerciseId: ExerciseId; level: DifficultyLevel; score: ExerciseScore }
+
+// ── VM Geri Sayım Ekranı (yeşil zemin) ──────────────────────────
+function VMCountdownScreen({ onDone }: { onDone: () => void }) {
+  const [count, setCount] = useState<number | null>(null)
+  const { playTick, playAppear } = useEyeSoundFeedback()
+
+  useEffect(() => {
+    const t = setTimeout(() => setCount(3), 700)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (count === null) return
+    if (count === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      playAppear()
+      const t = setTimeout(onDone, 350)
+      return () => clearTimeout(t)
+    }
+    Haptics.impactAsync(count === 1 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium)
+    playTick()
+    const t = setTimeout(() => setCount(c => (c ?? 1) - 1), 1000)
+    return () => clearTimeout(t)
+  }, [count])
+
+  return (
+    <View style={{
+      flex: 1, backgroundColor: '#0F3D18',
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      {/* Hafif radyal parlaklık efekti */}
+      <View style={{
+        position: 'absolute', width: 280, height: 280, borderRadius: 140,
+        backgroundColor: 'rgba(0,200,83,0.08)',
+      }} />
+      <Text style={{
+        color: '#00C853', fontSize: 120, fontWeight: '900', lineHeight: 130,
+        textShadowColor: 'rgba(0,200,83,0.4)', textShadowRadius: 24,
+      }}>
+        {count === null ? '' : count > 0 ? count : '🚀'}
+      </Text>
+      <Text style={{
+        color: 'rgba(255,255,255,0.55)', fontSize: 20, marginTop: 8, letterSpacing: 2,
+      }}>
+        {count === null ? '' : 'HAZIRLAN'}
+      </Text>
+    </View>
+  )
+}
 
 // ── Daily AI Training kartı ─────────────────────────────────────
 function DailyTrainingCard({
@@ -253,7 +305,7 @@ export const VisualMechanicsHomeScreen: React.FC<Props> = ({ onBack }) => {
   const handleStart = useCallback((level: DifficultyLevel) => {
     if (screen.mode !== 'intro') return
     startExercise(screen.exerciseId)
-    setScreen({ mode: 'exercise', exerciseId: screen.exerciseId, level })
+    setScreen({ mode: 'countdown', exerciseId: screen.exerciseId, level })
   }, [screen, startExercise])
 
   const handleExerciseComplete = useCallback((metrics: RawMetrics) => {
@@ -311,8 +363,19 @@ export const VisualMechanicsHomeScreen: React.FC<Props> = ({ onBack }) => {
   const handleRetry = useCallback(() => {
     if (screen.mode !== 'result') return
     startExercise(screen.exerciseId)
-    setScreen({ mode: 'exercise', exerciseId: screen.exerciseId, level: screen.level })
+    setScreen({ mode: 'countdown', exerciseId: screen.exerciseId, level: screen.level })
   }, [screen, startExercise])
+
+  // ── Geri sayım ──────────────────────────────────────────────
+  if (screen.mode === 'countdown') {
+    return (
+      <SafeAreaView style={st.fill}>
+        <VMCountdownScreen
+          onDone={() => setScreen({ mode: 'exercise', exerciseId: screen.exerciseId, level: screen.level })}
+        />
+      </SafeAreaView>
+    )
+  }
 
   // ── Egzersiz router ─────────────────────────────────────────
   if (screen.mode === 'exercise') {
