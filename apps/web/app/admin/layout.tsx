@@ -19,6 +19,7 @@ const NAV_SECTIONS = [
     items: [
       { href: '/admin/texts',          icon: '📚', label: 'Kitaplar'     },
       { href: '/admin/texts/create',   icon: '➕', label: 'Yeni Kitap'   },
+      { href: '/admin/questions',      icon: '❓', label: 'Sorular'      },
       { href: '/admin/analytics',      icon: '📈', label: 'Analitik'     },
     ],
   },
