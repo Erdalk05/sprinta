@@ -9,6 +9,8 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { PurchasesService } from '../../../../packages/api-client/src/services/purchases';
 import type { PurchasesPackage } from 'react-native-purchases';
+import { useAuthStore } from '../../src/stores/authStore';
+import { supabase } from '../../src/lib/supabase';
 
 const FEATURES = [
   '✅ 4 modülün tamamı',
@@ -22,6 +24,7 @@ const FEATURES = [
 
 export default function PaywallScreen() {
   const router = useRouter();
+  const { student, refreshProfile } = useAuthStore();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +49,10 @@ export default function PaywallScreen() {
 
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (student?.id) {
+        await supabase.from('students').update({ is_premium: true }).eq('id', student.id);
+        await refreshProfile();
+      }
       Alert.alert('🎉 Premium Aktif!', 'Tüm özellikler açıldı.');
       router.back();
     } else if (result.error !== 'cancelled') {
@@ -61,6 +68,10 @@ export default function PaywallScreen() {
     if (result.success) {
       const isPremium = await PurchasesService.isPremium();
       if (isPremium) {
+        if (student?.id) {
+          await supabase.from('students').update({ is_premium: true }).eq('id', student.id);
+          await refreshProfile();
+        }
         Alert.alert('✅', 'Aboneliğin geri yüklendi!');
         router.back();
       } else {
