@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert, Linking } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { supabase } from '../../src/lib/supabase'
@@ -67,6 +67,48 @@ export default function ProfileScreen() {
     fetchStats()
   }, [student])
 
+  const handleNotifications = () => {
+    Haptics.selectionAsync()
+    Linking.openSettings()
+  }
+
+  const handleChangePassword = () => {
+    Haptics.selectionAsync()
+    Alert.alert(
+      'Şifre Sıfırlama',
+      `${student?.email} adresine sıfırlama bağlantısı gönderilsin mi?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Gönder',
+          onPress: async () => {
+            const { error } = await supabase.auth.resetPasswordForEmail(student?.email ?? '')
+            if (error) {
+              Alert.alert('Hata', 'E-posta gönderilemedi.')
+            } else {
+              Alert.alert('✅ Gönderildi', 'E-postanı kontrol et ve bağlantıya tıkla.')
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  const handleHelp = () => {
+    Haptics.selectionAsync()
+    Alert.alert(
+      'Yardım & Destek',
+      'Sorun mu yaşıyorsun?\n\n📧 destek@sprinta.app\n\nYa da aşağıdan destek sayfasını ziyaret et.',
+      [
+        { text: 'Kapat', style: 'cancel' },
+        {
+          text: 'Destek Sayfası',
+          onPress: () => Linking.openURL('https://sprinta.app/destek'),
+        },
+      ],
+    )
+  }
+
   const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabından çıkmak istediğine emin misin?', [
       { text: 'İptal', style: 'cancel' },
@@ -91,8 +133,8 @@ export default function ProfileScreen() {
     .toUpperCase()
 
   const diagBg = student.hasCompletedDiagnostic
-    ? (t.isDark ? '#0D3320' : '#D1FAE5')
-    : (t.isDark ? '#3A2E0D' : '#FEF3C7')
+    ? (t.isDark ? '#0F2357' : '#E8F0FE')
+    : (t.isDark ? '#1A3594' : '#FEF9E7')
 
   return (
     <SafeAreaView style={s.container}>
@@ -172,15 +214,15 @@ export default function ProfileScreen() {
         {/* Ayarlar Bölümü */}
         <Text style={s.sectionTitle}>Hesap</Text>
         <View style={s.card}>
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7}>
+          <TouchableOpacity style={s.menuRow} onPress={handleNotifications} activeOpacity={0.7}>
             <Text style={s.menuLabel}>🔔 Bildirimler</Text>
             <Text style={s.menuArrow}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.menuRow, s.menuBorder]} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.menuRow, s.menuBorder]} onPress={handleChangePassword} activeOpacity={0.7}>
             <Text style={s.menuLabel}>🔒 Şifre Değiştir</Text>
             <Text style={s.menuArrow}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.menuRow, s.menuBorder]} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.menuRow, s.menuBorder]} onPress={handleHelp} activeOpacity={0.7}>
             <Text style={s.menuLabel}>❓ Yardım</Text>
             <Text style={s.menuArrow}>›</Text>
           </TouchableOpacity>
@@ -234,7 +276,7 @@ function ms(t: AppTheme) {
     name:         { fontSize: 22, fontWeight: '800', color: t.colors.text, marginBottom: 4 },
     email:        { fontSize: 14, color: t.colors.textSub, marginBottom: 10 },
     premiumBadge: {
-      backgroundColor: t.isDark ? '#2D2010' : '#FEF3C7',
+      backgroundColor: t.isDark ? '#1A3594' : '#E8F0FE',
       borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6,
     },
     premiumText:  { fontSize: 13, fontWeight: '700', color: t.isDark ? '#F59E0B' : '#92400E' },
