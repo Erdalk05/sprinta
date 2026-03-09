@@ -26,14 +26,46 @@ serve(async (req) => {
     return new Response('ok', { headers: CORS })
   }
 
+  // ── Auth kontrolü ──────────────────────────────────────────────
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: 'Yetkisiz erişim' }), {
+      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
+  const userClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  )
+  const { data: { user }, error: authErr } = await userClient.auth.getUser()
+  if (authErr || !user) {
+    return new Response(JSON.stringify({ error: 'Geçersiz oturum' }), {
+      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
+  // ───────────────────────────────────────────────────────────────
+
   try {
     const body: RequestBody = await req.json()
     const { studentId, mode, message, history = [] } = body
 
+    // studentId'nin çağıran kullanıcıya ait olduğunu doğrula
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+    const { data: ownership } = await supabase
+      .from('students')
+      .select('id')
+      .eq('id', studentId)
+      .eq('auth_user_id', user.id)
+      .single()
+    if (!ownership) {
+      return new Response(JSON.stringify({ error: 'Bu öğrenciye erişim yetkiniz yok' }), {
+        status: 403, headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
 
     // ── Öğrenci bağlamını yükle ──────────────────────────────────
     const [{ data: student }, { data: profile }, { data: recentStats }, { data: activeProgram }] =

@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } fr
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '../../../src/lib/supabase'
 import { colors, moduleColors } from '../../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { useSessionStore } from '../../../src/stores/sessionStore'
@@ -15,10 +15,6 @@ import { BadgeAwardModal } from '../../../src/components/gamification/BadgeAward
 import { LevelUpModal } from '../../../src/components/gamification/LevelUpModal'
 import type { Badge } from '@sprinta/api'
 
-const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL!,
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
-)
 const badgeService = createBadgeService(supabase)
 const pipeline = createPerformancePipeline(supabase)
 const ucSvc = createUserContentService(supabase)
@@ -85,14 +81,17 @@ export default function ResultScreen() {
           xp_earned: perf.xpEarned,
         })
         if (!sessionError) {
+          // arpHistory → cognitiveProfile sıralı; dailyStats paralel
           const arpHistory = await pipeline.getArpHistory(student.id)
-          await pipeline.updateCognitiveProfile(student.id, metrics, perf.arp, arpHistory)
-          await pipeline.upsertDailyStats({
-            studentId: student.id,
-            xpEarned: perf.xpEarned,
-            durationSeconds: metrics.durationSeconds,
-            arp: perf.arp,
-          })
+          await Promise.allSettled([
+            pipeline.updateCognitiveProfile(student.id, metrics, perf.arp, arpHistory),
+            pipeline.upsertDailyStats({
+              studentId: student.id,
+              xpEarned: perf.xpEarned,
+              durationSeconds: metrics.durationSeconds,
+              arp: perf.arp,
+            }),
+          ])
         } else {
           console.error('Session kaydedilemedi:', sessionError.message)
         }
@@ -112,37 +111,41 @@ export default function ResultScreen() {
       }).catch((e) => console.error('Chunk işaretlenemedi:', e))
     }
 
-    // Streak güncelle ve rozet kontrol et
-    await badgeService.updateStreak(student.id)
-    EventBus.emit('STREAK_UPDATED', { days: 1 })
+    // Streak güncelle — hata sessizce geçer
+    try {
+      await badgeService.updateStreak(student.id)
+      EventBus.emit('STREAK_UPDATED', { days: 1 })
+    } catch (e) { console.error('Streak güncellenemedi:', e) }
 
-    // SESSION_FINISHED + XP_UPDATED event'leri gönder
+    // Events
     if (perf) {
       EventBus.emit('SESSION_FINISHED', { xpEarned: perf.xpEarned, moduleType: metrics?.moduleCode ?? moduleCode })
       EventBus.emit('XP_UPDATED', { total: (student.totalXp ?? 0) + perf.xpEarned, delta: perf.xpEarned })
     }
 
-    const stats = await badgeService.getStudentStats(student.id)
+    // Rozet kontrolü — hata sessizce geçer
+    try {
+      const stats = await badgeService.getStudentStats(student.id)
+      if (stats) {
+        const awarded = await badgeService.checkAndAwardBadges(student.id, stats)
+        if (awarded.length > 0) {
+          setNewBadges(awarded)
+          addPendingBadges(awarded)
+          setShowBadgeModal(true)
+        }
+      }
+    } catch (e) { console.error('Rozet kontrolü başarısız:', e) }
 
-    if (stats) {
-      const awarded = await badgeService.checkAndAwardBadges(student.id, stats)
-      // Profil yenile (XP ve level DB'de güncellenmiş olabilir)
+    // Profil yenile — her zaman çalışır
+    try {
       await refreshProfile()
       const updatedStudent = useAuthStore.getState().student
       const newLevel = getLevelFromXP(updatedStudent?.totalXp ?? 0)
-
-      if (awarded.length > 0) {
-        setNewBadges(awarded)
-        addPendingBadges(awarded)
-        setShowBadgeModal(true)
-      }
       if (newLevel > prevLevel) {
         setLevelChange({ from: prevLevel, to: newLevel })
         setPendingLevelUp(prevLevel, newLevel)
       }
-    } else {
-      await refreshProfile()
-    }
+    } catch (e) { console.error('Profil yenilenemedi:', e) }
   }
 
   const handleBadgeClose = () => {
@@ -308,7 +311,7 @@ const styles = StyleSheet.create({
   arpValue: { fontSize: 64, fontWeight: '900' },
   arpChange: { fontSize: 15, fontWeight: '600', marginTop: 4 },
   xpBadge: {
-    backgroundColor: '#FEF3C7', borderRadius: 12,
+    backgroundColor: '#E8F0FE', borderRadius: 12,
     paddingVertical: 10, paddingHorizontal: 20,
     alignItems: 'center', marginBottom: 24,
   },

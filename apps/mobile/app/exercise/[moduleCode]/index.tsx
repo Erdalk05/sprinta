@@ -14,6 +14,46 @@ import { useAuthStore } from '../../../src/stores/authStore'
 import { useAppTheme } from '../../../src/theme/useAppTheme'
 import type { AppTheme } from '../../../src/theme'
 
+// Modül bazlı ölçüm kriterleri
+const MODULE_METRICS: Record<string, { icon: string; label: string; desc: string }[]> = {
+  speed_control: [
+    { icon: '⚡', label: 'Okuma Hızı (WPM)', desc: 'Gerçek okuma süresi ölçülür' },
+    { icon: '🧠', label: 'Anlama Oranı',     desc: 'Sorularla test edilir' },
+    { icon: '📈', label: 'ARP Etkisi',       desc: 'Hız skoru profiline yansır' },
+  ],
+  deep_comprehension: [
+    { icon: '🧠', label: 'Kavrama Derinliği', desc: 'Çok katmanlı sorularla değerlendirilir' },
+    { icon: '⏱',  label: 'Tepki Süresi',      desc: 'Her soruda milisaniye hassasiyetinde' },
+    { icon: '📈', label: 'ARP Etkisi',         desc: 'Kavrama skoru profiline yansır' },
+  ],
+  attention_power: [
+    { icon: '🎯', label: 'Odak Hassasiyeti',  desc: 'Hedef bulma doğruluk oranı' },
+    { icon: '⚡', label: 'Tepki Hızı',        desc: 'Milisaniye düzeyinde ölçülür' },
+    { icon: '📈', label: 'ARP Etkisi',        desc: 'Dikkat skoru profiline yansır' },
+  ],
+  eye_training: [
+    { icon: '👁️', label: 'Görsel Tarama Hızı', desc: 'Schulte tamamlama süresi' },
+    { icon: '🎯', label: 'Göz Koordinasyonu',   desc: 'Sıralı hedef takip doğruluğu' },
+    { icon: '📈', label: 'ARP Etkisi',           desc: 'Periferik görüş profiline yansır' },
+  ],
+  mental_reset: [
+    { icon: '🌊', label: 'Nefes Ritmi',       desc: '4-7-8 döngü uyumu izlenir' },
+    { icon: '🧘', label: 'Dinlenme Kalitesi', desc: 'Tamamlama oranıyla ölçülür' },
+    { icon: '📈', label: 'Odak Yenileme',     desc: 'Sonraki seansa hazırlık skoru' },
+  ],
+  vocabulary: [
+    { icon: '📖', label: 'Kelime Tanıma',    desc: 'Bağlamsal tahmin doğruluğu' },
+    { icon: '⏱',  label: 'Öğrenme Hızı',    desc: 'Kelime başına yanıt süresi' },
+    { icon: '📈', label: 'ARP Etkisi',       desc: 'Kelime hazinesi profiline yansır' },
+  ],
+}
+
+const DEFAULT_METRICS = [
+  { icon: '📖', label: 'Okuma Hızı',   desc: 'Gerçek WPM ölçülür' },
+  { icon: '🧠', label: 'Anlama Oranı', desc: 'Sorularla değerlendirilir' },
+  { icon: '📈', label: 'ARP Etkisi',   desc: 'Bilişsel profile yansır' },
+]
+
 // Free modüller
 const FREE_MODULES = new Set([
   'speed_control', 'deep_comprehension',
@@ -42,8 +82,7 @@ export default function ExerciseIntroScreen() {
   const config      = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
   const exercise    = SAMPLE_EXERCISES[moduleCode]
   const accentColor = moduleColors[moduleCode] ?? t.colors.primary
-  // TEST MODU: tüm modüller açık
-  const isLocked    = false
+  const isLocked = !FREE_MODULES.has(moduleCode) && !(student?.isPremium ?? false)
 
   const currentArp = student?.currentArp ?? 0
   const difficulty  = currentArp > 200 ? 7 : currentArp > 150 ? 5 : 3
@@ -179,22 +218,39 @@ export default function ExerciseIntroScreen() {
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* ── Bilgi Kartları ── */}
+
+        {/* ── Hızlı Bilgi Şeridi ── */}
         <View style={s.infoGrid}>
-          <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+          <View style={[s.infoCard, { borderColor: accentColor + '40' }]}>
             <Text style={[s.infoValue, { color: accentColor }]}>{config.duration}</Text>
-            <Text style={s.infoLabel}>Süre</Text>
+            <Text style={s.infoLabel}>SÜRE</Text>
           </View>
-          <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+          <View style={[s.infoCard, { borderColor: accentColor + '40' }]}>
             <Text style={[s.infoValue, { color: accentColor }]}>{difficulty}/10</Text>
-            <Text style={s.infoLabel}>Zorluk</Text>
+            <Text style={s.infoLabel}>ZORLUK</Text>
           </View>
           {exercise?.wordCount ? (
-            <View style={[s.infoCard, { borderTopColor: accentColor }]}>
+            <View style={[s.infoCard, { borderColor: accentColor + '40' }]}>
               <Text style={[s.infoValue, { color: accentColor }]}>{exercise.wordCount}</Text>
-              <Text style={s.infoLabel}>Kelime</Text>
+              <Text style={s.infoLabel}>KELİME</Text>
             </View>
           ) : null}
+        </View>
+
+        {/* ── Ölçüm Kriterleri ── */}
+        <View style={s.metricsSection}>
+          <Text style={s.metricsTitle}>📊 Bu Seansta Ölçülür</Text>
+          {(MODULE_METRICS[moduleCode] ?? DEFAULT_METRICS).map((m, i) => (
+            <View key={i} style={s.metricRow}>
+              <View style={[s.metricIcon, { backgroundColor: accentColor + '18' }]}>
+                <Text style={{ fontSize: 16 }}>{m.icon}</Text>
+              </View>
+              <View style={s.metricInfo}>
+                <Text style={s.metricLabel}>{m.label}</Text>
+                <Text style={s.metricDesc}>{m.desc}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* ── İpucu ── */}
@@ -227,7 +283,7 @@ export default function ExerciseIntroScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   )
@@ -277,13 +333,29 @@ function ms(t: AppTheme) {
     scroll: { padding: 20, paddingBottom: 40 },
 
     // Bilgi kartları
-    infoGrid: { flexDirection: 'row', gap: 12, marginBottom: 20, justifyContent: 'center' },
+    infoGrid: { flexDirection: 'row', gap: 10, marginBottom: 20, justifyContent: 'center' },
     infoCard: {
-      flex: 1, backgroundColor: t.colors.surface, borderRadius: 14, padding: 16,
-      alignItems: 'center', borderTopWidth: 3, borderWidth: 1, borderColor: t.colors.border,
+      flex: 1, backgroundColor: t.colors.surface, borderRadius: 16, padding: 16,
+      alignItems: 'center', borderWidth: 1, borderColor: t.colors.border,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
     },
-    infoValue: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-    infoLabel: { fontSize: 12, color: t.colors.textHint },
+    infoValue: { fontSize: 17, fontWeight: '900', marginBottom: 3 },
+    infoLabel: { fontSize: 11, color: t.colors.textHint, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+    // Ölçüm kriterleri
+    metricsSection: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 16, padding: 16, marginBottom: 16,
+      borderWidth: 1, borderColor: t.colors.border,
+      gap: 12,
+    },
+    metricsTitle: { fontSize: 13, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
+    metricRow:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    metricIcon:   { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    metricInfo:   { flex: 1 },
+    metricLabel:  { fontSize: 14, fontWeight: '700', color: t.colors.text, marginBottom: 2 },
+    metricDesc:   { fontSize: 12, color: t.colors.textHint },
 
     // İpucu
     tipBox:  {
@@ -295,7 +367,7 @@ function ms(t: AppTheme) {
     tipText:  { fontSize: 14, color: t.colors.textSub, lineHeight: 20 },
 
     // Premium
-    premiumBanner: { borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: '#FEF3C720', marginBottom: 20 },
+    premiumBanner: { borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', backgroundColor: '#1877F212', marginBottom: 20 },
     premiumText:   { fontSize: 14, fontWeight: '600', color: '#92400E' },
 
     // Başla butonu
