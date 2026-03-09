@@ -24,6 +24,7 @@ import { EYE_EXERCISE_CONFIGS } from '@sprinta/shared'
 import type { EyeMetrics } from '@sprinta/shared'
 import EyeExerciseIntroScreen from '../../../src/components/exercises/EyeTraining/EyeExerciseIntroScreen'
 import type { DifficultyLevel } from '../../../src/components/exercises/EyeTraining/EyeExerciseIntroScreen'
+import { useEyeSoundFeedback } from '../../../src/components/exercises/EyeTraining/useEyeSoundFeedback'
 
 // ── Egzersiz bileşenleri ──────────────────────────────────────────
 import FlashAtlamaMatrisi   from '../../../src/components/exercises/EyeTraining/FlashAtlamaMatrisi'
@@ -91,12 +92,25 @@ type Phase = 'intro' | 'countdown' | 'exercise' | 'saving' | 'done'
 // ── Countdown ────────────────────────────────────────────────────
 function CountdownScreen({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState(3)
+  const { playTick, playAppear } = useEyeSoundFeedback()
+
   useEffect(() => {
-    if (count === 0) { onDone(); return }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    if (count === 0) {
+      // Başlangıç sesi + başarı haptik
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      playAppear()
+      const t = setTimeout(onDone, 350)
+      return () => clearTimeout(t)
+    }
+    // 3-2-1: tik sesi + orta haptik (son sayıda güçlü)
+    Haptics.impactAsync(
+      count === 1 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium,
+    )
+    playTick()
     const t = setTimeout(() => setCount(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [count])
+
   return (
     <SafeAreaView style={styles.countdownSafe}>
       <Text style={styles.countdownNum}>{count > 0 ? count : '🚀'}</Text>
