@@ -15,3 +15,6 @@ export * from './utils'
 
 // legal
 export * from './legal'
+
+// Kartal Gözü — Göz Antrenman Tipleri
+export * from './types/eyeTraining'

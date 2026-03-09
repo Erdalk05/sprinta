@@ -98,3 +98,7 @@ export type {
 // ── Sprint 10: Embedded Questions ──────────────────────
 export { createQuestionService } from './services/intelligence'
 export type { QuestionService, TextQuestion, QuestionAnswer } from './services/intelligence'
+
+// ── Kartal Gözü: Eye Training ──────────────────────────
+export { createEyeTrainingService } from './services/eyeTrainingService'
+export type { EyeSessionPayload, EyeProgressEntry } from './services/eyeTrainingService'

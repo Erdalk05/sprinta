@@ -35,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_challenges_active     ON challenges(status, ends_
 -- RLS
 ALTER TABLE challenges ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "challenges_select" ON challenges;
 CREATE POLICY "challenges_select"
   ON challenges FOR SELECT TO authenticated
   USING (
@@ -43,12 +44,14 @@ CREATE POLICY "challenges_select"
     opponent_id   = (SELECT id FROM students WHERE auth_user_id = auth.uid() LIMIT 1)
   );
 
+DROP POLICY IF EXISTS "challenges_insert" ON challenges;
 CREATE POLICY "challenges_insert"
   ON challenges FOR INSERT TO authenticated
   WITH CHECK (
     challenger_id = (SELECT id FROM students WHERE auth_user_id = auth.uid() LIMIT 1)
   );
 
+DROP POLICY IF EXISTS "challenges_update" ON challenges;
 CREATE POLICY "challenges_update"
   ON challenges FOR UPDATE TO authenticated
   USING (

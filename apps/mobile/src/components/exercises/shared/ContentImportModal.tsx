@@ -22,6 +22,16 @@ export interface ImportedContent {
   libraryTextId?: string
 }
 
+interface QuestionRow {
+  id: string
+  text_id: string
+  question_type: string
+  question_text: string
+  options: string[]
+  correct_index: number
+  explanation?: string | null
+}
+
 interface LibraryArticle {
   id: string
   title: string
@@ -30,6 +40,7 @@ interface LibraryArticle {
   difficulty: number
   category: string
   exam_type: string
+  questions: QuestionRow[]
 }
 
 interface RecentContent {
@@ -80,9 +91,7 @@ export async function saveRecentContent(content: ImportedContent, lastWPM?: numb
 
 function extractPdfText(b64: string): string {
   try {
-    // atob → ham binary string, okunabilir ASCII dizilerini bul
     const binary = atob(b64)
-    // Parantez operatörü: PDF text nesneleri "(kelime) Tj" formatında
     const tjMatches = binary.match(/\(([^)]{2,200})\)\s*Tj/g) ?? []
     if (tjMatches.length > 10) {
       const words = tjMatches
@@ -91,7 +100,6 @@ function extractPdfText(b64: string): string {
         .join(' ')
       if (words.length > 100) return words.slice(0, 15000)
     }
-    // Fallback: okunabilir ASCII/Latin karakter dizileri
     const runs = binary.match(/[\x20-\x7E\u00C0-\u017F\r\n\t]{4,}/g) ?? []
     const filtered = runs
       .filter((s) =>
@@ -107,6 +115,16 @@ function extractPdfText(b64: string): string {
   } catch {
     return ''
   }
+}
+
+// ─── Soru tipi etiketi ─────────────────────────────────────────────
+
+const Q_TYPE_LABEL: Record<string, string> = {
+  main_idea:  'Ana Fikir',
+  detail:     'Ayrıntı',
+  inference:  'Çıkarım',
+  vocabulary: 'Kelime',
+  tone:       'Ton',
 }
 
 // ─── Ana Bileşen ───────────────────────────────────────────────────
@@ -129,24 +147,29 @@ export default function ContentImportModal({
   const t = useAppTheme()
   const s = useMemo(() => ms(t), [t])
 
-  const [activeTab, setActiveTab] = useState<TabKey>('library')
-  const [articles, setArticles]   = useState<LibraryArticle[]>([])
-  const [recents, setRecents]     = useState<RecentContent[]>([])
-  const [loading, setLoading]     = useState(false)
-  const [manualText, setManualText] = useState('')
+  const [activeTab, setActiveTab]     = useState<TabKey>('library')
+  const [articles, setArticles]       = useState<LibraryArticle[]>([])
+  const [recents, setRecents]         = useState<RecentContent[]>([])
+  const [loading, setLoading]         = useState(false)
+  const [manualText, setManualText]   = useState('')
   const [manualTitle, setManualTitle] = useState('')
-  const [urlText, setUrlText]     = useState('')
-  const [urlLoading, setUrlLoading] = useState(false)
+  const [urlText, setUrlText]         = useState('')
+  const [urlLoading, setUrlLoading]   = useState(false)
+
+  // Seçili metin — soru önizleme
+  const [previewArticle, setPreviewArticle] = useState<LibraryArticle | null>(null)
+  const [expandedQIdx, setExpandedQIdx]     = useState<number | null>(null)
 
   // PDF tab state
-  const [fileLoading, setFileLoading]   = useState(false)
-  const [fileError, setFileError]       = useState<string | null>(null)
-  const [pickedFile, setPickedFile]     = useState<PickedFile | null>(null)
+  const [fileLoading, setFileLoading] = useState(false)
+  const [fileError, setFileError]     = useState<string | null>(null)
+  const [pickedFile, setPickedFile]   = useState<PickedFile | null>(null)
 
-  // Kütüphane yükle
+  // ── Kütüphane yükle (metin + sorular) ──────────────────────────
   const loadLibrary = useCallback(async () => {
     setLoading(true)
     try {
+      // 1) Metinleri çek
       let query = (supabase as any)
         .from('text_library')
         .select('id, title, body, word_count, difficulty, category, exam_type')
@@ -156,8 +179,35 @@ export default function ContentImportModal({
 
       if (subjectCode) query = query.eq('exam_type', subjectCode)
 
-      const { data } = await query
-      setArticles((data as LibraryArticle[]) ?? [])
+      const { data: textsData } = await query
+      const texts: Omit<LibraryArticle, 'questions'>[] = (textsData as any[]) ?? []
+
+      // 2) Soruları çek (authenticated RLS — herkes okuyabilir)
+      const textIds = texts.map((tx) => tx.id)
+      let questionsData: QuestionRow[] = []
+      if (textIds.length > 0) {
+        const { data: qData } = await (supabase as any)
+          .from('text_questions')
+          .select('id, text_id, question_type, question_text, options, correct_index, explanation')
+          .in('text_id', textIds)
+        questionsData = (qData as QuestionRow[]) ?? []
+      }
+
+      // 3) Soruları text_id'ye göre grupla
+      const qMap = new Map<string, QuestionRow[]>()
+      for (const q of questionsData) {
+        const arr = qMap.get(q.text_id) ?? []
+        arr.push(q)
+        qMap.set(q.text_id, arr)
+      }
+
+      // 4) Birleştir
+      const combined: LibraryArticle[] = texts.map((tx) => ({
+        ...tx,
+        questions: qMap.get(tx.id) ?? [],
+      }))
+
+      setArticles(combined)
     } catch {
       setArticles([])
     } finally {
@@ -176,9 +226,11 @@ export default function ContentImportModal({
     if (visible) handleShow()
   }, [visible, handleShow])
 
-  // Tab değişince PDF state'i sıfırla
+  // Tab değişince sıfırla
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab)
+    setPreviewArticle(null)
+    setExpandedQIdx(null)
     if (tab !== 'pdf') {
       setPickedFile(null)
       setFileError(null)
@@ -233,7 +285,7 @@ export default function ContentImportModal({
     }
   }
 
-  // ── Dosya seç (PDF / TXT / Word) ───────────────────────────────
+  // ── Dosya seç ───────────────────────────────────────────────────
   const pickDocument = async (mode: 'pdf' | 'txt') => {
     setFileError(null)
     setPickedFile(null)
@@ -289,7 +341,7 @@ export default function ContentImportModal({
       } else {
         setFileError('Desteklenmeyen dosya türü. .pdf, .txt veya .docx seç.')
       }
-    } catch (e) {
+    } catch {
       setFileError('Dosya okunamadı. Lütfen tekrar dene.')
     } finally {
       setFileLoading(false)
@@ -308,6 +360,119 @@ export default function ContentImportModal({
   }
 
   const diffStars = (d: number) => '★'.repeat(Math.min(5, d)) + '☆'.repeat(Math.max(0, 5 - d))
+
+  // ── Soru önizleme paneli ────────────────────────────────────────
+  if (previewArticle) {
+    const wc = previewArticle.word_count ?? wordCount(previewArticle.body)
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+        <View style={s.container}>
+          {/* Header */}
+          <View style={s.header}>
+            <TouchableOpacity onPress={() => { setPreviewArticle(null); setExpandedQIdx(null) }} style={s.backBtn}>
+              <Text style={s.backTxt}>← Geri</Text>
+            </TouchableOpacity>
+            <Text style={s.headerTitle} numberOfLines={1}>{previewArticle.title}</Text>
+            <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+              <Text style={s.closeTxt}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={s.scroll} contentContainerStyle={[s.scrollContent, { gap: 14 }]}>
+            {/* Metin meta */}
+            <View style={s.previewMeta}>
+              <Text style={s.previewMetaTxt}>{previewArticle.exam_type}</Text>
+              <Text style={s.previewMetaTxt}>{diffStars(previewArticle.difficulty)}</Text>
+              <Text style={s.previewMetaTxt}>{wc} kelime</Text>
+              <Text style={s.previewMetaTxt}>~{Math.max(1, Math.round(wc / 250))} dk</Text>
+            </View>
+
+            {/* Metin önizleme */}
+            <View style={s.textPreviewBox}>
+              <Text style={s.textPreviewLabel}>📄 Metin Önizleme</Text>
+              <Text style={s.textPreviewBody} numberOfLines={8}>
+                {previewArticle.body}
+              </Text>
+            </View>
+
+            {/* Sorular */}
+            {previewArticle.questions.length > 0 ? (
+              <>
+                <Text style={s.qSectionTitle}>
+                  📝 Anlama Soruları ({previewArticle.questions.length})
+                </Text>
+                {previewArticle.questions.map((q, qi) => (
+                  <TouchableOpacity
+                    key={q.id}
+                    style={s.qCard}
+                    onPress={() => setExpandedQIdx(expandedQIdx === qi ? null : qi)}
+                    activeOpacity={0.85}
+                  >
+                    {/* Soru başlık satırı */}
+                    <View style={s.qCardHeader}>
+                      <View style={s.qTypeBadge}>
+                        <Text style={s.qTypeTxt}>{Q_TYPE_LABEL[q.question_type] ?? q.question_type}</Text>
+                      </View>
+                      <Text style={s.qNum}>S{qi + 1}</Text>
+                      <Text style={s.qExpandIcon}>{expandedQIdx === qi ? '▲' : '▼'}</Text>
+                    </View>
+
+                    <Text style={s.qText}>{q.question_text}</Text>
+
+                    {/* Şıklar (expand edilince) */}
+                    {expandedQIdx === qi && (
+                      <View style={s.optionsWrap}>
+                        {(q.options as string[]).map((opt, oi) => (
+                          <View
+                            key={oi}
+                            style={[
+                              s.optRow,
+                              oi === q.correct_index && s.optCorrect,
+                            ]}
+                          >
+                            <Text style={[
+                              s.optLetter,
+                              oi === q.correct_index && s.optLetterCorrect,
+                            ]}>
+                              {String.fromCharCode(65 + oi)}
+                            </Text>
+                            <Text style={[
+                              s.optText,
+                              oi === q.correct_index && s.optTextCorrect,
+                            ]}>
+                              {opt}
+                            </Text>
+                            {oi === q.correct_index && (
+                              <Text style={s.checkMark}>✓</Text>
+                            )}
+                          </View>
+                        ))}
+                        {q.explanation ? (
+                          <View style={s.explanationBox}>
+                            <Text style={s.explanationLabel}>💡 Açıklama</Text>
+                            <Text style={s.explanationText}>{q.explanation}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </>
+            ) : (
+              <Text style={s.emptyTxt}>Bu metin için soru bulunamadı.</Text>
+            )}
+          </ScrollView>
+
+          {/* Seç butonu */}
+          <View style={s.bottomBar}>
+            <TouchableOpacity style={s.submitBtn} onPress={() => selectArticle(previewArticle)} activeOpacity={0.85}>
+              <Text style={s.submitTxt}>Bu Metni Kullan →</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    )
+  }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -351,12 +516,25 @@ export default function ContentImportModal({
                 <Text style={s.emptyTxt}>İçerik bulunamadı. İnternet bağlantını kontrol et.</Text>
               ) : (
                 articles.map((a) => (
-                  <TouchableOpacity key={a.id} style={s.articleCard} onPress={() => selectArticle(a)} activeOpacity={0.75}>
+                  <TouchableOpacity
+                    key={a.id}
+                    style={s.articleCard}
+                    onPress={() => { setPreviewArticle(a); setExpandedQIdx(null) }}
+                    activeOpacity={0.75}
+                  >
                     <View style={s.articleInfo}>
                       <Text style={s.articleTitle} numberOfLines={2}>{a.title}</Text>
-                      <Text style={s.articleMeta}>
-                        {a.word_count ?? '?'} kelime · {diffStars(a.difficulty)} · ~{Math.max(1, Math.round((a.word_count ?? 250) / 250))} dk
-                      </Text>
+                      <View style={s.articleMetaRow}>
+                        <Text style={s.articleMeta}>
+                          {a.word_count ?? '?'} kelime · {diffStars(a.difficulty)} · ~{Math.max(1, Math.round((a.word_count ?? 250) / 250))} dk
+                        </Text>
+                        {a.questions.length > 0 && (
+                          <View style={s.qCountBadge}>
+                            <Text style={s.qCountTxt}>📝 {a.questions.length} soru</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={s.articleExamType}>{a.exam_type} · {a.category}</Text>
                     </View>
                     <Text style={s.chevron}>›</Text>
                   </TouchableOpacity>
@@ -414,14 +592,13 @@ export default function ContentImportModal({
             </ScrollView>
           )}
 
-          {/* ── TAB: Dosya (PDF / TXT / Word) ── */}
+          {/* ── TAB: Dosya ── */}
           {activeTab === 'pdf' && (
             <ScrollView
               style={s.scroll}
               contentContainerStyle={[s.scrollContent, { gap: 14 }]}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Seçim butonları */}
               {!pickedFile && (
                 <>
                   <Text style={s.fileTitle}>Dosyandan metin yükle</Text>
@@ -486,7 +663,6 @@ export default function ContentImportModal({
                 </>
               )}
 
-              {/* Dosya seçildi → önizleme */}
               {pickedFile && (
                 <>
                   <View style={s.filePreviewHeader}>
@@ -562,10 +738,12 @@ function ms(t: AppTheme) {
     container:    { flex: 1, backgroundColor: t.colors.background },
     header:       {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12,
+      paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
       backgroundColor: t.colors.panel,
     },
-    headerTitle:  { fontSize: 18, fontWeight: '800', color: '#fff' },
+    headerTitle:  { flex: 1, fontSize: 17, fontWeight: '800', color: '#fff', marginHorizontal: 8 },
+    backBtn:      { paddingVertical: 4, paddingHorizontal: 2 },
+    backTxt:      { fontSize: 15, color: t.colors.primary, fontWeight: '600' },
     closeBtn:     { padding: 8 },
     closeTxt:     { fontSize: 18, color: 'rgba(255,255,255,0.7)' },
 
@@ -580,16 +758,84 @@ function ms(t: AppTheme) {
     loader:       { marginTop: 60 },
     emptyTxt:     { textAlign: 'center', color: t.colors.textHint, marginTop: 40, fontSize: 14 },
 
+    // ── Kütüphane kartları ──────────────────────────────────────
     articleCard:  {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       backgroundColor: t.colors.surface, borderRadius: 14, padding: 14,
       marginBottom: 10, borderWidth: 1, borderColor: t.colors.border,
     },
-    articleInfo:  { flex: 1 },
-    articleTitle: { fontSize: 15, fontWeight: '600', color: t.colors.text, marginBottom: 4 },
+    articleInfo:  { flex: 1, gap: 4 },
+    articleTitle: { fontSize: 15, fontWeight: '600', color: t.colors.text },
+    articleMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
     articleMeta:  { fontSize: 12, color: t.colors.textHint },
+    articleExamType: { fontSize: 11, color: t.colors.primary, fontWeight: '600' },
+    qCountBadge:  {
+      backgroundColor: t.colors.primary + '20',
+      borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2,
+      borderWidth: 1, borderColor: t.colors.primary + '40',
+    },
+    qCountTxt:    { fontSize: 11, fontWeight: '700', color: t.colors.primary },
     chevron:      { fontSize: 20, color: t.colors.textHint },
 
+    // ── Önizleme paneli ─────────────────────────────────────────
+    previewMeta:  {
+      flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+      backgroundColor: t.colors.surface, borderRadius: 12, padding: 12,
+      borderWidth: 1, borderColor: t.colors.border,
+    },
+    previewMetaTxt: { fontSize: 13, color: t.colors.textHint, fontWeight: '500' },
+
+    textPreviewBox: {
+      backgroundColor: t.colors.surface, borderRadius: 14,
+      padding: 14, borderWidth: 1, borderColor: t.colors.border, gap: 8,
+    },
+    textPreviewLabel: { fontSize: 12, fontWeight: '700', color: t.colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+    textPreviewBody:  { fontSize: 14, color: t.colors.text, lineHeight: 21 },
+
+    qSectionTitle: { fontSize: 15, fontWeight: '800', color: t.colors.text, marginTop: 4 },
+
+    qCard:        {
+      backgroundColor: t.colors.surface, borderRadius: 14,
+      padding: 14, borderWidth: 1, borderColor: t.colors.border, gap: 8,
+    },
+    qCardHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    qTypeBadge:   {
+      backgroundColor: t.colors.primary + '20',
+      borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2,
+    },
+    qTypeTxt:     { fontSize: 10, fontWeight: '700', color: t.colors.primary, textTransform: 'uppercase' },
+    qNum:         { flex: 1, fontSize: 11, color: t.colors.textHint, fontWeight: '600' },
+    qExpandIcon:  { fontSize: 12, color: t.colors.textHint },
+    qText:        { fontSize: 14, fontWeight: '600', color: t.colors.text, lineHeight: 20 },
+
+    optionsWrap:  { gap: 8, marginTop: 4 },
+    optRow:       {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+      backgroundColor: t.colors.background, borderRadius: 10,
+      padding: 10, borderWidth: 1, borderColor: t.colors.border,
+    },
+    optCorrect:   { borderColor: '#00C853', backgroundColor: 'rgba(0,200,83,0.08)' },
+    optLetter:    { fontSize: 13, fontWeight: '800', color: t.colors.textHint, width: 18 },
+    optLetterCorrect: { color: '#00C853' },
+    optText:      { flex: 1, fontSize: 13, color: t.colors.text, lineHeight: 18 },
+    optTextCorrect: { color: '#00C853', fontWeight: '600' },
+    checkMark:    { fontSize: 14, color: '#00C853', fontWeight: '900' },
+
+    explanationBox: {
+      backgroundColor: t.colors.primary + '10',
+      borderRadius: 10, padding: 10, borderWidth: 1,
+      borderColor: t.colors.primary + '30', gap: 4, marginTop: 4,
+    },
+    explanationLabel: { fontSize: 11, fontWeight: '700', color: t.colors.primary },
+    explanationText:  { fontSize: 12, color: t.colors.text, lineHeight: 18 },
+
+    bottomBar:    {
+      paddingHorizontal: 16, paddingBottom: Platform.OS === 'ios' ? 24 : 12, paddingTop: 8,
+      backgroundColor: t.colors.background,
+      borderTopWidth: 1, borderTopColor: t.colors.border,
+    },
+
+    // ── Manuel giriş ────────────────────────────────────────────
     titleInput:   {
       backgroundColor: t.colors.surface, borderRadius: 12, padding: 12,
       fontSize: 14, color: t.colors.text, borderWidth: 1, borderColor: t.colors.border,
@@ -615,13 +861,12 @@ function ms(t: AppTheme) {
     submitDisabled: { opacity: 0.4 },
     submitTxt:    { fontSize: 16, fontWeight: '700', color: '#fff' },
 
-    // ── Dosya seçici stilleri ───────────────────────────────────
+    // ── Dosya seçici ─────────────────────────────────────────────
     fileTitle:    { fontSize: 17, fontWeight: '700', color: t.colors.text, textAlign: 'center' },
     fileSub:      { fontSize: 13, color: t.colors.textHint, textAlign: 'center', marginTop: -6 },
     filePickBtn:  {
       flexDirection: 'row', alignItems: 'center', gap: 12,
-      backgroundColor: t.colors.primary, borderRadius: 16,
-      padding: 16,
+      backgroundColor: t.colors.primary, borderRadius: 16, padding: 16,
     },
     filePickIcon: { fontSize: 28 },
     filePickLabel:{ fontSize: 15, fontWeight: '700', color: '#fff' },
