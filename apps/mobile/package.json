@@ -7,6 +7,8 @@
     "dev": "NODE_OPTIONS=--no-experimental-strip-types expo start",
     "android": "NODE_OPTIONS=--no-experimental-strip-types expo run:android",
     "ios": "NODE_OPTIONS=--no-experimental-strip-types expo run:ios",
+    "start:local": "bash scripts/update-env.sh && NODE_OPTIONS=--no-experimental-strip-types expo start",
+    "ios:local": "bash scripts/update-env.sh && NODE_OPTIONS=--no-experimental-strip-types expo run:ios --device 'iPhone 16 Pro'",
     "build": "eas build",
     "typecheck": "tsc --noEmit"
   },
