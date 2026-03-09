@@ -64,12 +64,14 @@ export function useEyeSoundFeedback() {
     }).catch(() => {})
 
     const load = async () => {
-      for (const [key, src] of Object.entries(SOURCES) as [SoundKey, any][]) {
-        try {
-          const { sound } = await Audio.Sound.createAsync(src, { volume: VOLUMES[key] })
-          sounds.current[key] = sound
-        } catch (_) {}
-      }
+      await Promise.all(
+        (Object.entries(SOURCES) as [SoundKey, any][]).map(async ([key, src]) => {
+          try {
+            const { sound } = await Audio.Sound.createAsync(src, { volume: VOLUMES[key] })
+            sounds.current[key] = sound
+          } catch (_) {}
+        })
+      )
     }
     load()
 

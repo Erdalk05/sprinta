@@ -91,10 +91,17 @@ type Phase = 'intro' | 'countdown' | 'exercise' | 'saving' | 'done'
 
 // ── Countdown ────────────────────────────────────────────────────
 function CountdownScreen({ onDone }: { onDone: () => void }) {
-  const [count, setCount] = useState(3)
+  const [count, setCount] = useState<number | null>(null) // null = sesler yükleniyor
   const { playTick, playAppear } = useEyeSoundFeedback()
 
+  // Sesler yüklensin diye 700ms bekle, sonra 3'ten başla
   useEffect(() => {
+    const t = setTimeout(() => setCount(3), 700)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (count === null) return
     if (count === 0) {
       // Başlangıç sesi + başarı haptik
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -107,14 +114,14 @@ function CountdownScreen({ onDone }: { onDone: () => void }) {
       count === 1 ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium,
     )
     playTick()
-    const t = setTimeout(() => setCount(c => c - 1), 1000)
+    const t = setTimeout(() => setCount(c => (c ?? 1) - 1), 1000)
     return () => clearTimeout(t)
   }, [count])
 
   return (
     <SafeAreaView style={styles.countdownSafe}>
-      <Text style={styles.countdownNum}>{count > 0 ? count : '🚀'}</Text>
-      <Text style={styles.countdownLabel}>Hazırlan!</Text>
+      <Text style={styles.countdownNum}>{count === null ? '' : count > 0 ? count : '🚀'}</Text>
+      <Text style={styles.countdownLabel}>{count === null ? '' : 'Hazırlan!'}</Text>
     </SafeAreaView>
   )
 }
@@ -189,16 +196,16 @@ export default function EyeExerciseRoute() {
     setPhase('countdown')
   }, [])
 
-  const handleComplete = useCallback(async (metrics: EyeMetrics) => {
-    setPhase('saving')
+  const handleComplete = useCallback((metrics: EyeMetrics) => {
     const xp = config.xpReward
 
     markCompleted(config.id)
     updateCategoryScore(config.category, metrics.visualAttentionScore)
     updateBestScore(config.id, metrics.visualAttentionScore)
 
+    // Fire-and-forget — UI'yı bloklamaz
     if (student?.id) {
-      await eyeService.saveSession({
+      eyeService.saveSession({
         studentId:        student.id,
         exerciseId:       config.id,
         category:         config.category,
@@ -207,8 +214,7 @@ export default function EyeExerciseRoute() {
         metrics,
         xpEarned:         xp,
         isBoss:           config.isBoss ?? false,
-      })
-      // Gamification: stars + streak
+      }).catch(() => {})
       recordExercise(student.id, config.id, metrics.visualAttentionScore).catch(() => {})
     }
 

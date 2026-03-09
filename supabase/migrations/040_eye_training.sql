@@ -38,12 +38,14 @@ CREATE INDEX IF NOT EXISTS idx_eye_sessions_category
 -- RLS
 ALTER TABLE eye_training_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "eye_sessions_select" ON eye_training_sessions;
 CREATE POLICY "eye_sessions_select"
   ON eye_training_sessions FOR SELECT TO authenticated
   USING (
     student_id = (SELECT id FROM students WHERE auth_user_id = auth.uid() LIMIT 1)
   );
 
+DROP POLICY IF EXISTS "eye_sessions_insert" ON eye_training_sessions;
 CREATE POLICY "eye_sessions_insert"
   ON eye_training_sessions FOR INSERT TO authenticated
   WITH CHECK (

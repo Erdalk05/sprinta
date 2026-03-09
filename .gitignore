@@ -27,6 +27,8 @@ apps/mobile/ios/DerivedData/
 .env
 .env.local
 .env.*.local
+apps/mobile/.env
+apps/web/.env
 
 # Logs
 *.log
