@@ -8,6 +8,20 @@ import * as Haptics from 'expo-haptics'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import Animated, { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated'
 import { colors, moduleColors } from '../../../src/constants/colors'
+
+// MMKV — custom metin desteği (index.tsx ile aynı anahtar)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _smkv: any = null
+function getSMKV() {
+  if (_smkv) return _smkv
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { MMKV } = require('react-native-mmkv')
+    _smkv = new MMKV({ id: 'sprinta-content-picker' })
+  } catch { _smkv = null }
+  return _smkv
+}
+const CUSTOM_TEXT_KEY = 'pending_custom_exercise'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
 import { getArticleById, type Article } from '../../../src/hooks/useArticles'
@@ -119,7 +133,7 @@ const FONT_SIZE_MAP = { small: 14, medium: 17, large: 20 } as const
 const FONT_SIZE_LABELS = { small: 'A', medium: 'A', large: 'A' } as const
 
 export default function SessionScreen() {
-  const { moduleCode, difficulty, exerciseId, articleId, userContentId, userChunkId } =
+  const { moduleCode, difficulty, exerciseId, articleId, userContentId, userChunkId, hasPendingText } =
     useLocalSearchParams<{
       moduleCode: string
       difficulty: string
@@ -127,6 +141,7 @@ export default function SessionScreen() {
       articleId?: string
       userContentId?: string
       userChunkId?: string
+      hasPendingText?: string
     }>()
   const router = useRouter()
   const { student } = useAuthStore()
@@ -139,7 +154,7 @@ export default function SessionScreen() {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [elapsed, setElapsed] = useState(0)
   const [readingWpm, setReadingWpm] = useState(0)
-  const [articleLoading, setArticleLoading] = useState(!!(articleId || userContentId))
+  const [articleLoading, setArticleLoading] = useState(!!(articleId || userContentId || hasPendingText))
   const [remoteArticle, setRemoteArticle] = useState<ReturnType<typeof articleToExercise> | null>(null)
 
   const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
@@ -156,6 +171,27 @@ export default function SessionScreen() {
       setArticleLoading(false)
     })
   }, [articleId])
+
+  // hasPendingText → MMKV'den özel metin yükle (index.tsx Metin/Dosya sekmeleri)
+  useEffect(() => {
+    if (hasPendingText !== '1') return
+    try {
+      const raw = getSMKV()?.getString(CUSTOM_TEXT_KEY)
+      if (raw) {
+        const { text, title, wordCount } = JSON.parse(raw)
+        setRemoteArticle({
+          id: 'custom_text',
+          moduleCode,
+          title: title ?? 'Özel Metin',
+          content: text,
+          wordCount: wordCount ?? Math.round(text.split(/\s+/).length),
+          difficulty: difficultyNum,
+          questions: [],
+        })
+      }
+    } catch { /**/ }
+    setArticleLoading(false)
+  }, [hasPendingText])
 
   // userContentId → kullanıcının kendi içeriğinden chunk çek
   useEffect(() => {
