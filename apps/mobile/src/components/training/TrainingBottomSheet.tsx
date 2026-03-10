@@ -165,8 +165,43 @@ const AKADEMI_CATEGORIES = [
   { id: 'tercihler',  icon: '⚙️', label: 'Tercihler',     sub: 'Bildirim, gizlilik, çıkış',     route: '/(tabs)/profile'  },
 ] as const
 
+// ─── Okuma modülü başlık renk paleti (29 modül) ───────────────────
+const OKUMA_ACCENTS: Record<string, string> = {
+  '/exercise/speed_control':       '#2563EB',
+  '/exercise/deep_comprehension':  '#7C3AED',
+  '/exercise/chunk-rsvp':          '#0891B2',
+  '/exercise/timed-reading':       '#EA580C',
+  '/exercise/flow-reading':        '#059669',
+  '/exercise/speed-ladder':        '#D97706',
+  '/exercise/bionic-reading':      '#0284C7',
+  '/exercise/keyword-scan':        '#DC2626',
+  '/exercise/fixation-trainer':    '#9333EA',
+  '/exercise/word-burst':          '#16A34A',
+  '/exercise/auto-scroll':         '#E11D48',
+  '/exercise/sentence-step':       '#0F766E',
+  '/exercise/academic-mode':       '#1D4ED8',
+  '/exercise/focus-filter':        '#B45309',
+  '/exercise/memory-anchor':       '#6D28D9',
+  '/exercise/vocabulary':          '#047857',
+  '/exercise/prediction-reading':  '#C2410C',
+  '/exercise/subvocal-free':       '#1E40AF',
+  '/exercise/speed-camp':          '#15803D',
+  '/exercise/vanishing-reading':   '#4338CA',
+  '/exercise/fading-word':         '#BE185D',
+  '/exercise/cloze-test':          '#7E22CE',
+  '/exercise/dual-column':         '#0369A1',
+  '/exercise/soru-treni':          '#B91C1C',
+  '/exercise/hatali-cumle':        '#92400E',
+  '/exercise/flashcard-bank':      '#0E7490',
+  '/exercise/kelime-baglami':      '#3730A3',
+  '/exercise/poetry-analysis':     '#86198F',
+  '/exercise/graph-reading':       '#164E63',
+}
+
 // ─── Okuma module data (25 modül — ModeGrid ile aynı) ────────────
 const OKUMA_MODULES = [
+  { icon: '⚡', label: 'Hız Kontrolü',       subtitle: 'İçerik seç · WPM ayarla · anlama soruları',        route: '/exercise/speed_control'     },
+  { icon: '🧠', label: 'Derin Kavrama',      subtitle: 'Serbest okuma · yazı boyutu · anlama soruları',    route: '/exercise/deep_comprehension'},
   { icon: '⚡', label: 'Chunk Okuma',        subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
   { icon: '⏱️', label: 'Zamanlı Okuma',      subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
   { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır pacing · anlama + hız dengesi',             route: '/exercise/flow-reading'      },
@@ -362,26 +397,42 @@ const eyeCardS = StyleSheet.create({
   descP:  { color: '#6B7A99' },
 })
 
-// ─── Okuma Card ───────────────────────────────────────────────────
+// ─── Okuma Card — her modülün kendine özgü rengi ──────────────────
 function OkumaCard({
-  item, onPress, s,
+  item, index, onPress,
 }: {
   item: typeof OKUMA_MODULES[number]
-  index: number; onPress: () => void
-  s: ReturnType<typeof ts>
+  index: number
+  onPress: () => void
 }) {
+  const accent = OKUMA_ACCENTS[item.route] ?? '#1A3594'
   return (
-    <IsbCard onPress={onPress} s={s}>
-      {(pressed) => (
+    <Pressable
+      style={({ pressed }) => [
+        eyeCardS.card,
+        { borderTopColor: accent },
+        pressed ? eyeCardS.cardPressed : {},
+        { flex: 1 },
+      ]}
+      onPress={onPress}
+    >
+      {({ pressed }) => (
         <>
-          <View style={[s.cardNum, pressed ? s.cardNumPressed : s.cardNumBlue]}>
+          <View style={[eyeCardS.numCorner, { backgroundColor: accent + '18' }]}>
+            <Text style={[eyeCardS.numCornerTxt, { color: accent }]}>{index + 1}</Text>
+          </View>
+          <View style={[eyeCardS.iconBox, { backgroundColor: accent + '15' }]}>
             <Text style={{ fontSize: 18 }}>{item.icon}</Text>
           </View>
-          <Text style={[s.cardTitle, pressed && s.cardTitlePressed]} numberOfLines={2}>{item.label}</Text>
-          <Text style={[s.cardDesc,  pressed && s.cardDescPressed]}  numberOfLines={2}>{item.subtitle}</Text>
+          <Text style={[eyeCardS.title, pressed && eyeCardS.titleP, { color: accent }]} numberOfLines={2}>
+            {item.label}
+          </Text>
+          <Text style={[eyeCardS.desc, pressed && eyeCardS.descP]} numberOfLines={2}>
+            {item.subtitle}
+          </Text>
         </>
       )}
-    </IsbCard>
+    </Pressable>
   )
 }
 
@@ -635,7 +686,6 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
                     item={item}
                     index={rowIdx * 2 + colIdx}
                     onPress={() => navigate(item.route)}
-                    s={s}
                   />
                 ))}
                 {pair.length === 1 && <View style={{ flex: 1 }} />}

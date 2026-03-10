@@ -176,6 +176,17 @@ const PICKER_TABS: { key: PickerTab; icon: string; label: string }[] = [
 
 const MODAL_NAVY = '#1A3594'
 
+function getImmersivePalette(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return {
+    header:  `rgb(${Math.round(r*0.40)},${Math.round(g*0.40)},${Math.round(b*0.40)})`,
+    content: `rgb(${Math.min(255,Math.round(r*0.10+230))},${Math.min(255,Math.round(g*0.10+230))},${Math.min(255,Math.round(b*0.10+230))})`,
+    bottom:  `rgb(${Math.round(r*0.28)},${Math.round(g*0.28)},${Math.round(b*0.28)})`,
+  }
+}
+
 // Modül öğrenim kartları (Türkçe, kısaltmalar parantez içinde)
 const MODULE_LEARN_CARDS: Record<string, { icon: string; text: string }[]> = {
   speed_control: [
@@ -379,20 +390,18 @@ export default function ExerciseIntroScreen() {
     return (
       <SafeAreaView style={s.root}>
 
-        {/* ── Nav bar ── */}
-        <View style={s.rsNav}>
-          <TouchableOpacity onPress={() => router.back()} style={s.rsBackBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[s.rsBackTxt, { color: accentColor }]}>← Geri</Text>
+        {/* ── İmmersif header — modüle özgü koyu renk ── */}
+        <View style={[s.rsImHeader, { backgroundColor: getImmersivePalette(accentColor).header }]}>
+          <TouchableOpacity onPress={() => router.back()} style={s.rsImBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.rsImBackTxt}>← Geri</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* ── Hero ── */}
-        <View style={s.rsHero}>
-          <LinearGradient colors={moduleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.rsHeroIconWrap}>
-            <Text style={s.rsHeroIcon}>{config.icon}</Text>
-          </LinearGradient>
-          <Text style={[s.rsHeroTitle, { color: t.colors.text }]}>{config.label}</Text>
-          <Text style={[s.rsHeroSub, { color: t.colors.textSub }]}>{config.description}</Text>
+          <View style={s.rsImHero}>
+            <LinearGradient colors={moduleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.rsImIconWrap}>
+              <Text style={s.rsImIcon}>{config.icon}</Text>
+            </LinearGradient>
+            <Text style={s.rsImTitle}>{config.label}</Text>
+            <Text style={s.rsImSub}>{config.description}</Text>
+          </View>
         </View>
 
         {/* ── Kaydırılabilir içerik ── */}
@@ -740,15 +749,15 @@ function ms(t: AppTheme) {
     infoCard: { flex: 1, backgroundColor: t.colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: t.colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
     infoValue: { fontSize: 17, fontWeight: '900', marginBottom: 3 },
     infoLabel: { fontSize: 11, color: t.colors.textHint, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-    // ── Reading Setup (rs) ekranı ────────────────────────────────────
-    rsNav: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 0 },
-    rsBackBtn: { paddingVertical: 10 },
-    rsBackTxt: { fontSize: 15, fontWeight: '600' },
-    rsHero: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 20, gap: 8 },
-    rsHeroIconWrap: { width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 4, shadowColor: '#1A3594', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-    rsHeroIcon: { fontSize: 36 },
-    rsHeroTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-    rsHeroSub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+    // ── Reading Setup (rs) — İmmersif header ─────────────────────────
+    rsImHeader: { paddingBottom: 24 },
+    rsImBack: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+    rsImBackTxt: { fontSize: 15, color: 'rgba(255,255,255,0.90)', fontWeight: '600' },
+    rsImHero: { alignItems: 'center', paddingHorizontal: 24, gap: 8 },
+    rsImIconWrap: { width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.30, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+    rsImIcon: { fontSize: 36 },
+    rsImTitle: { fontSize: 24, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+    rsImSub: { fontSize: 13, color: 'rgba(255,255,255,0.80)', textAlign: 'center', lineHeight: 18 },
     rsLearnCard: {
       marginHorizontal: 16,
       borderRadius: 16,

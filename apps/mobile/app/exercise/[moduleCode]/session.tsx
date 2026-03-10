@@ -61,12 +61,20 @@ function articleToExercise(art: Article) {
   }
 }
 
-// ── İmmersif renk paleti (speed_control / deep_comprehension) ─────────
-const IM_HEADER  = '#1A2894'           // koyu lacivert üst bar
-const IM_CONTENT = '#EBF0FF'           // çok açık mavi içerik alanı
-const IM_BOTTOM  = '#0F1870'           // çok koyu lacivert alt bar
-const IM_WHITE   = '#FFFFFF'
-const IM_TRACK   = 'rgba(255,255,255,0.25)'
+// ── İmmersif renk paleti — herhangi bir accent renkten türet ─────────
+const IM_WHITE = '#FFFFFF'
+const IM_TRACK = 'rgba(255,255,255,0.25)'
+
+function getImmersivePalette(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return {
+    header:  `rgb(${Math.round(r*0.40)},${Math.round(g*0.40)},${Math.round(b*0.40)})`,
+    content: `rgb(${Math.min(255,Math.round(r*0.10+230))},${Math.min(255,Math.round(g*0.10+230))},${Math.min(255,Math.round(b*0.10+230))})`,
+    bottom:  `rgb(${Math.round(r*0.28)},${Math.round(g*0.28)},${Math.round(b*0.28)})`,
+  }
+}
 
 // ── WPM Slider ────────────────────────────────────────────────────────
 const WPM_MIN = 100, WPM_MAX = 500
@@ -418,13 +426,15 @@ export default function SessionScreen() {
     )
   }
 
-  // İmmersif mod: speed_control için özel renk şeması
-  const im = isReadingExercise
+  // İmmersif mod: metin okuma modülleri (dikkat/nefes/göz/kelime hariç tümü)
+  const NON_READING = new Set(['attention_power', 'mental_reset', 'eye_training', 'vocabulary'])
+  const im = !NON_READING.has(moduleCode)
+  const imPal = getImmersivePalette(accentColor)
 
   return (
-    <SafeAreaView style={[styles.container, im && { backgroundColor: IM_CONTENT }]}>
-      {/* Header — immersif modda koyu lacivert */}
-      <View style={[styles.header, im && { backgroundColor: IM_HEADER }]}>
+    <SafeAreaView style={[styles.container, im && { backgroundColor: imPal.content }]}>
+      {/* Header — immersif modda modüle özgü koyu renk */}
+      <View style={[styles.header, im && { backgroundColor: imPal.header }]}>
         <TouchableOpacity onPress={handleQuit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.quitBtn}>
           <Text style={[styles.quitText, im && { color: IM_WHITE }]}>✕</Text>
         </TouchableOpacity>
@@ -441,8 +451,8 @@ export default function SessionScreen() {
             text={exercise.content}
             targetWpm={wpmPreference}
             chunkSize={2}
-            accentColor={im ? IM_HEADER : accentColor}
-            bgColor={IM_CONTENT}
+            accentColor={im ? imPal.header : accentColor}
+            bgColor={imPal.content}
             fontSize={CHUNK_FONT_SIZE_MAP[fontSizePreference]}
             isPaused={sessionPaused}
             onProgress={(w) => store.addWords(w)}
@@ -462,7 +472,7 @@ export default function SessionScreen() {
                 : { backgroundColor: 'transparent', borderColor: accentColor + '80' }
             ]}
           >
-            <Text style={[styles.pauseInlineTxt, { color: im ? (sessionPaused ? IM_HEADER : IM_WHITE) : (sessionPaused ? '#fff' : accentColor) }]}>
+            <Text style={[styles.pauseInlineTxt, { color: im ? (sessionPaused ? imPal.header : IM_WHITE) : (sessionPaused ? '#fff' : accentColor) }]}>
               {sessionPaused ? '▶  Devam Et' : '⏸  Duraklat'}
             </Text>
           </TouchableOpacity>
@@ -553,7 +563,7 @@ export default function SessionScreen() {
 
       {/* ── Okuma Ayarları Alt Barı (speed_control / deep_comprehension) ── */}
       {phase === 'exercise' && isReadingExercise && (
-        <View style={[styles.settingsBar, im && { backgroundColor: IM_BOTTOM, borderTopColor: 'transparent' }]}>
+        <View style={[styles.settingsBar, im && { backgroundColor: imPal.bottom, borderTopColor: 'transparent' }]}>
           <SessionWpmSlider
             value={wpmPreference}
             onChange={setWpmPreference}
