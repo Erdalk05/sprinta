@@ -103,17 +103,17 @@ export default function SubjectProgressScreen() {
       `)
       .eq('student_id', student.id)
 
-    // Query question sessions
+    // Query question sessions — use text_library!inner via text_id FK
     const { data: sessionData } = await supabase
       .from('user_question_sessions')
-      .select('question_id, is_correct, text_questions!inner ( text_library!inner ( category ) )')
-      .eq('student_id', student.id)
+      .select('question_id, is_correct, text_library!inner ( category )')
+      .eq('user_id', student.id)
 
     // Build stats map
     const map: Record<string, { total: number; correct: number; wrong: number; pendingReview: number }> = {}
 
     for (const row of (sessionData ?? []) as any[]) {
-      const cat = row.text_questions?.text_library?.category ?? 'Diğer'
+      const cat = (row as any).text_library?.category ?? 'Diğer'
       if (!map[cat]) map[cat] = { total: 0, correct: 0, wrong: 0, pendingReview: 0 }
       map[cat].total++
       if (row.is_correct) map[cat].correct++

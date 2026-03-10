@@ -159,6 +159,30 @@ export default function PracticeResultScreen() {
             duration_seconds: durationNum,
             arp_score:        total > 0 ? Math.round((correct / total) * 100) : 0,
           })
+
+          // 3) Yanlış cevapları wrong_answers (SRS) tablosuna kaydet
+          const wrongAnswers = answers.filter(a => !a.isCorrect)
+          if (wrongAnswers.length > 0) {
+            const tomorrow = new Date()
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+            const waRows = wrongAnswers.map(a => ({
+              student_id:     user.id,
+              question_id:    a.questionId,
+              ease_factor:    2.5,
+              interval_days:  1,
+              repetitions:    0,
+              next_review_at: tomorrowStr,
+              attempt_count:  1,
+              correct_count:  0,
+            }))
+
+            await supabase.from('wrong_answers').upsert(waRows, {
+              onConflict: 'student_id,question_id',
+              ignoreDuplicates: false,
+            })
+          }
         }
       } catch (_) {
         // sessizce geç — ana akışı bozma

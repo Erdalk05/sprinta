@@ -279,6 +279,34 @@ export const useMockExamStore = create<MockExamState>((set, get) => ({
         })
 
         await supabase.from('mock_exam_answers').insert(answerRows)
+
+        // SRS: Yanlış cevapları wrong_answers tablosuna kaydet
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+        const wrongRows = questions
+          .filter(q => {
+            const ans = answers[q.id]
+            return ans?.selectedIndex != null && ans.selectedIndex !== q.correctIndex
+          })
+          .map(q => ({
+            student_id:     studentId,
+            question_id:    q.id,
+            ease_factor:    2.5,
+            interval_days:  1,
+            repetitions:    0,
+            next_review_at: tomorrowStr,
+            attempt_count:  1,
+            correct_count:  0,
+          }))
+
+        if (wrongRows.length > 0) {
+          await supabase.from('wrong_answers').upsert(wrongRows, {
+            onConflict: 'student_id,question_id',
+            ignoreDuplicates: false,
+          })
+        }
       }
 
       set({
