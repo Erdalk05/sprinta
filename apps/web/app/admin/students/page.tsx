@@ -3,6 +3,7 @@
 // Tüm öğrenciler — admin görünümü
 // =====================================================
 
+import Link              from 'next/link'
 import { requireAdmin }      from '../../../lib/adminGuard'
 import { createServerClient } from '../../../lib/supabase/server'
 
@@ -65,7 +66,7 @@ export default async function AdminStudentsPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-700">
-              {['Ad Soyad', 'E-posta', 'Sınav', 'XP', 'Seri (gün)', 'Risk', 'Durum'].map(h => (
+              {['Ad Soyad', 'E-posta', 'Sınav', 'XP', 'Seri (gün)', 'Risk', 'Durum', ''].map(h => (
                 <th key={h} className="px-5 py-3 text-left text-xs text-slate-400 font-medium whitespace-nowrap">
                   {h}
                 </th>
@@ -93,6 +94,14 @@ export default async function AdminStudentsPage() {
                     }`}>
                       {s.is_active ? 'Aktif' : 'Pasif'}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <Link
+                      href={`/admin/students/${s.id}`}
+                      className="text-blue-400 hover:text-blue-300 text-xs font-medium transition-colors whitespace-nowrap"
+                    >
+                      Detay →
+                    </Link>
                   </td>
                 </tr>
               )
