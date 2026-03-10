@@ -23,6 +23,7 @@ import { BrainPowerMap } from './components/BrainPowerMap'
 import { DailyLeaderboard } from './components/DailyLeaderboard'
 import { WeeklyMomentumStrip } from './components/WeeklyMomentumStrip'
 import { AICoachCard } from './components/AICoachCard'
+import { ExamCountdownCard } from './components/ExamCountdownCard'
 
 // ─── Renk Paleti — İş Bankası + Facebook ─────────────────────────
 const NAVY = '#1A3594'   // İş Bankası royal blue
@@ -242,6 +243,9 @@ export default function GameHomeScreen() {
         </View>
 
         {/* ══════════════════ İÇERİK KARTLARI ════════════════════ */}
+
+        {/* Sınav Geri Sayımı */}
+        <ExamCountdownCard />
 
         {/* AI Koç */}
         <AICoachCard />

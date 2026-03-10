@@ -23,18 +23,18 @@ const lbService = createLeaderboardService(supabase)
 
 const { width: W } = Dimensions.get('window')
 
-type Tab = 'leaderboard' | 'challenges'
+type Tab = 'leaderboard' | 'challenges' | 'tournament'
 type LeaderboardSortKey = LeaderboardSort
 
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
-// WhatsApp paleti — her sınav türü farklı yeşil/teal tonu
+// İş Bankası + Facebook paleti — her sınav türü farklı mavi tonu
 const EXAM_GRADIENT: Record<string, [string, string]> = {
-  lgs:  ['#075E54', '#25D366'],
-  tyt:  ['#0B141A', '#128C7E'],
-  ayt:  ['#128C7E', '#25D366'],
-  kpss: ['#1F2C34', '#25D366'],
-  ales: ['#075E54', '#128C7E'],
-  yds:  ['#0B141A', '#34B7F1'],
+  lgs:  ['#0F2357', '#1877F2'],
+  tyt:  ['#1A3594', '#2040B0'],
+  ayt:  ['#1A3594', '#1877F2'],
+  kpss: ['#0F2357', '#40C8F0'],
+  ales: ['#1A3594', '#40C8F0'],
+  yds:  ['#0F2357', '#1877F2'],
 }
 
 function buildSortOptions(t: AppTheme) {
@@ -60,6 +60,14 @@ export default function SocialScreen() {
   const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
+  // ── Turnuva state ──────────────────────────────────────────────
+  interface Tournament { id: string; title: string; exam_type: string; ends_at: string; max_questions: number; xp_reward_1st: number }
+  interface TournamentEntry { student_id: string; score: number; correct_count: number; full_name?: string }
+  const [tournaments,      setTournaments]      = useState<Tournament[]>([])
+  const [tournamentEntries, setTournamentEntries] = useState<Record<string, TournamentEntry[]>>({})
+  const [joinedTournaments, setJoinedTournaments] = useState<Set<string>>(new Set())
+  const [tourneyLoading,    setTourneyLoading]    = useState(false)
+
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
@@ -81,6 +89,67 @@ export default function SocialScreen() {
   }, [sort, student?.id])
 
   useEffect(() => { load() }, [load])
+
+  // ── Turnuva yükle ──────────────────────────────────────────────
+  const loadTournaments = useCallback(async () => {
+    setTourneyLoading(true)
+    try {
+      const now = new Date().toISOString()
+      const { data: tList } = await (supabase as any)
+        .from('tournaments')
+        .select('id, title, exam_type, ends_at, max_questions, xp_reward_1st')
+        .eq('is_active', true)
+        .gte('ends_at', now)
+        .order('ends_at', { ascending: true })
+        .limit(5)
+      const list = (tList ?? []) as Tournament[]
+      setTournaments(list)
+      if (list.length === 0) return
+      // Her turnuva için top-5 entry
+      const eMap: Record<string, TournamentEntry[]> = {}
+      await Promise.all(list.map(async (t) => {
+        const { data } = await (supabase as any)
+          .from('tournament_entries')
+          .select('student_id, score, correct_count')
+          .eq('tournament_id', t.id)
+          .order('score', { ascending: false })
+          .limit(5)
+        eMap[t.id] = (data ?? []) as TournamentEntry[]
+      }))
+      setTournamentEntries(eMap)
+      // Ben katıldım mı?
+      if (student?.id) {
+        const { data: myEntries } = await (supabase as any)
+          .from('tournament_entries')
+          .select('tournament_id')
+          .eq('student_id', student.id)
+          .in('tournament_id', list.map((t) => t.id))
+        const joined = new Set<string>((myEntries ?? []).map((e: any) => e.tournament_id))
+        setJoinedTournaments(joined)
+      }
+    } catch { /* sessiz */ }
+    finally { setTourneyLoading(false) }
+  }, [student?.id])
+
+  useEffect(() => {
+    if (activeTab === 'tournament') loadTournaments()
+  }, [activeTab, loadTournaments])
+
+  const joinTournament = useCallback(async (tournamentId: string) => {
+    if (!student?.id) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    try {
+      await (supabase as any).from('tournament_entries').upsert({
+        tournament_id: tournamentId,
+        student_id:    student.id,
+        score:         0,
+        correct_count: 0,
+        wrong_count:   0,
+        time_spent_ms: 0,
+      })
+      setJoinedTournaments(prev => new Set([...prev, tournamentId]))
+    } catch { /* sessiz */ }
+  }, [student?.id])
 
   const myPosition   = entries.findIndex((e) => e.student_id === student?.id) + 1
   const sortOption   = SORT_OPTIONS.find((o) => o.key === sort)!
@@ -110,14 +179,14 @@ export default function SocialScreen() {
 
         {/* Sıralama / Meydan tab seçici */}
         <View style={s.tabRow}>
-          {(['leaderboard', 'challenges'] as Tab[]).map((tab) => (
+          {(['leaderboard', 'challenges', 'tournament'] as Tab[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[s.tabBtn, activeTab === tab && s.tabBtnActive]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveTab(tab) }}
             >
               <Text style={[s.tabTxt, activeTab === tab && s.tabTxtActive]}>
-                {tab === 'leaderboard' ? '🏆 Sıralama' : '⚔️ Meydan'}
+                {tab === 'leaderboard' ? '🏆 Sıralama' : tab === 'challenges' ? '⚔️ Meydan' : '🏟️ Turnuva'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -223,8 +292,18 @@ export default function SocialScreen() {
           )}
           <View style={{ height: 40 }} />
         </ScrollView>
-      ) : (
+      ) : activeTab === 'challenges' ? (
         <ChallengesView t={t} s={s} student={student} entries={entries} />
+      ) : (
+        <TournamentView
+          t={t} s={s}
+          tournaments={tournaments}
+          tournamentEntries={tournamentEntries}
+          joinedTournaments={joinedTournaments}
+          tourneyLoading={tourneyLoading}
+          studentId={student?.id ?? null}
+          onJoin={joinTournament}
+        />
       )}
     </SafeAreaView>
   )
@@ -504,6 +583,83 @@ function ChallengesView({ t, s, student, entries }: { t: AppTheme; s: Styles; st
   )
 }
 
+// ─── Turnuva Görünümü ─────────────────────────────────────────────
+interface Tournament { id: string; title: string; exam_type: string; ends_at: string; max_questions: number; xp_reward_1st: number }
+interface TournamentEntry { student_id: string; score: number; correct_count: number }
+
+function TournamentView({ t, s, tournaments, tournamentEntries, joinedTournaments, tourneyLoading, studentId, onJoin }: {
+  t: AppTheme
+  s: Styles
+  tournaments: Tournament[]
+  tournamentEntries: Record<string, TournamentEntry[]>
+  joinedTournaments: Set<string>
+  tourneyLoading: boolean
+  studentId: string | null
+  onJoin: (id: string) => void
+}) {
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <Text style={[s.sectionTitle, { marginBottom: 4 }]}>🏟️ Bu Haftanın Turnuvaları</Text>
+      <Text style={[s.rowMeta, { marginBottom: 16 }]}>Her hafta yeni sorularla · Derece kazan · Özel XP</Text>
+
+      {tourneyLoading ? (
+        <ActivityIndicator color="#1877F2" style={{ marginTop: 40 }} />
+      ) : tournaments.length === 0 ? (
+        <View style={s.center}>
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>🏟️</Text>
+          <Text style={s.emptyTitle}>Aktif turnuva yok</Text>
+          <Text style={s.emptySub}>Her Pazartesi yeni turnuvalar başlar. Takipte kal!</Text>
+        </View>
+      ) : (
+        tournaments.map((tourney) => {
+          const daysLeft   = Math.ceil((new Date(tourney.ends_at).getTime() - Date.now()) / 86_400_000)
+          const topEntries = tournamentEntries[tourney.id] ?? []
+          const isJoined   = joinedTournaments.has(tourney.id)
+          const examGrad   = EXAM_GRADIENT[tourney.exam_type.toLowerCase()] ?? ['#1A3594', '#1877F2']
+          return (
+            <View key={tourney.id} style={s.tourneyCard}>
+              <LinearGradient colors={examGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.tourneyHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.tourneyTitle}>{tourney.title}</Text>
+                  <Text style={s.tourneyMeta}>{tourney.max_questions} soru · {daysLeft} gün kaldı</Text>
+                </View>
+                <View style={s.tourneyXp}>
+                  <Text style={s.tourneyXpTxt}>🥇 {tourney.xp_reward_1st} XP</Text>
+                </View>
+              </LinearGradient>
+
+              {topEntries.length > 0 && (
+                <View style={s.tourneyLeader}>
+                  {topEntries.map((entry, i) => (
+                    <View key={entry.student_id} style={s.tourneyRow}>
+                      <Text style={s.tourneyRank}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</Text>
+                      <Text style={s.tourneyName} numberOfLines={1}>
+                        {entry.student_id === studentId ? 'Sen' : `Yarışmacı ${i + 1}`}
+                      </Text>
+                      <Text style={s.tourneyScore}>{entry.score} puan</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[s.tourneyJoinBtn, isJoined && s.tourneyJoinBtnDone]}
+                onPress={() => !isJoined && onJoin(tourney.id)}
+                activeOpacity={0.85}
+              >
+                <Text style={s.tourneyJoinTxt}>
+                  {isJoined ? '✓ Katıldın' : 'Turnuvaya Katıl →'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
+        })
+      )}
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  )
+}
+
 // ─── Stiller ─────────────────────────────────────────────────────
 function ms(t: AppTheme) {
   return StyleSheet.create({
@@ -602,6 +758,24 @@ function ms(t: AppTheme) {
     },
     challengeBtn: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
     challengeBtnTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
+
+    // Turnuva
+    tourneyCard:    { backgroundColor: t.colors.surface, borderRadius: 20, marginBottom: 16,
+                      overflow: 'hidden', borderWidth: 1, borderColor: t.colors.border },
+    tourneyHeader:  { padding: 16, flexDirection: 'row', alignItems: 'center' },
+    tourneyTitle:   { color: '#fff', fontSize: 15, fontWeight: '800' },
+    tourneyMeta:    { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 3 },
+    tourneyXp:      { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: 8 },
+    tourneyXpTxt:   { color: '#fff', fontSize: 12, fontWeight: '800' },
+    tourneyLeader:  { paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
+    tourneyRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    tourneyRank:    { fontSize: 16, width: 28 },
+    tourneyName:    { flex: 1, fontSize: 13, color: t.colors.text, fontWeight: '600' },
+    tourneyScore:   { fontSize: 13, color: t.colors.primary, fontWeight: '800' },
+    tourneyJoinBtn: { margin: 12, marginTop: 4, borderRadius: 14, backgroundColor: t.colors.primary,
+                      paddingVertical: 13, alignItems: 'center' },
+    tourneyJoinBtnDone: { backgroundColor: '#10B981' },
+    tourneyJoinTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
     // Skor gösterimi
     scorePair: { flexDirection: 'row', alignItems: 'center' },
