@@ -34,7 +34,7 @@ const GOZ_EXERCISES: GozEx[] = [
   { num: 7,  exerciseId: 'opposite_pull',          label: 'Karşıt Çekim',                 subtitle: 'Zıt yönlerde hareket eden iki hedef'              },
   { num: 6,  exerciseId: 'speed_dot_storm',        label: 'Hız Nokta Fırtınası',          subtitle: 'Beliren ve kaybolan noktaları takip'              },
   { num: 5,  exerciseId: 'expanding_rings_focus',  label: 'Genişleyen Halkalar Odağı',    subtitle: 'Genişleyip daralan halkaları takip'               },
-  { num: 4,  exerciseId: 'peripheral_flash_hunter',label: 'Periferik Flash Avcısı',       subtitle: 'Merkeze bakarken çevrede beliren hedefler'        },
+  { num: 4,  exerciseId: 'peripheral_flash_hunter',label: 'Geniş Görüş (Periferik) Flash Avcısı', subtitle: 'Merkeze bakarken çevrede beliren hedefler'        },
   { num: 3,  exerciseId: 'diagonal_laser_dash',    label: 'Çapraz Lazer Koşusu',          subtitle: 'Çapraz yönde hareket eden lazer ışını'            },
   { num: 2,  exerciseId: 'vertical_pulse_track',   label: 'Dikey Nabız Takibi',           subtitle: 'Yukarı-aşağı hareket eden nabzı takip'            },
   { num: 1,  exerciseId: 'flash_jump_matrix',      label: 'Flash Atlama Matrisi',         subtitle: 'Izgara üzerinde yanan noktaları hızla takip'      },
@@ -50,8 +50,8 @@ const OKUMA_MODULES: OkumaMod[] = [
   { icon: '📖', label: 'Kelime Haznesi', subtitle: 'Bağlamsal kelime öğrenme · LGS / TYT',      duration: '10–20 dk', route: '/exercise/vocabulary'   },
 ]
 
-const WA_GREEN  = '#25D366'
-const EYE_BLUE  = '#0EA5E9'
+const WA_GREEN  = '#1877F2'   // Facebook / İş Bankası primary blue
+const EYE_BLUE  = '#40C8F0'   // İş Bankası accent blue
 
 // ─── Accordion Bölüm ─────────────────────────────────────────────
 function AccordionSection({ title, icon, color, count, children, s }: {
@@ -209,6 +209,33 @@ export default function SessionsScreen() {
             activeOpacity={0.85}
           >
             <Text style={s.heroBtnIcon}>📝</Text>
+            <Text style={s.heroBtnTxt}>Başla</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* ══════════════════════════════════════════════════════
+            Mock Sınav
+        ══════════════════════════════════════════════════════ */}
+        <TouchableOpacity
+          style={[s.heroCard, { borderColor: '#FF950050', marginTop: 8 }]}
+          onPress={() => navigate('/exam/setup')}
+          activeOpacity={0.85}
+        >
+          <View style={s.heroLeft}>
+            <View style={[s.heroBadge, { backgroundColor: '#FF950020' }]}>
+              <Text style={[s.heroBadgeTxt, { color: '#FF9500' }]}>🏆 LGS / TYT / AYT / YDS</Text>
+            </View>
+            <Text style={s.heroTitle}>Mock Sınav Simülatörü</Text>
+            <Text style={s.heroDesc}>
+              Gerçek sınav formatı · Geri sayım · Doğru/Yanlış/Net analizi · Cevap anahtarı
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[s.heroBtn, { backgroundColor: '#FF9500' }]}
+            onPress={() => navigate('/exam/setup')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.heroBtnIcon}>🎯</Text>
             <Text style={s.heroBtnTxt}>Başla</Text>
           </TouchableOpacity>
         </TouchableOpacity>
