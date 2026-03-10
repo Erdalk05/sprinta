@@ -193,6 +193,9 @@ const OKUMA_MODULES = [
   { icon: '🔎', label: 'Hatalı Cümle',       subtitle: 'Dil bilgisi hatasını bul · 20 tur',               route: '/exercise/hatali-cumle'      },
   { icon: '🃏', label: 'Flash Kart Bankası',  subtitle: 'Soruları kart formatında · işaretle/tekrar',     route: '/exercise/flashcard-bank'    },
   { icon: '🔤', label: 'Kelime Bağlamı',     subtitle: 'Altı çizili kelime · 4 şık anlam',                route: '/exercise/kelime-baglami'    },
+  // ── AYT Özel Modüller ─────────────────────────────────────
+  { icon: '🖊️', label: 'Şiir Analizi',       subtitle: '5 şiir · edebi sanat + anlama · AYT Edebiyat',    route: '/exercise/poetry-analysis'   },
+  { icon: '📊', label: 'Grafik Okuma',       subtitle: '4 veri grafiği · yorum soruları · AYT/LGS',       route: '/exercise/graph-reading'     },
 ] as const
 
 // ─── İş Bankası Kart — Mavi → tıklayınca Beyaz ───────────────────

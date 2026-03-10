@@ -286,6 +286,36 @@ export default function SessionsScreen() {
         </TouchableOpacity>
 
         {/* ══════════════════════════════════════════════════════
+            Boss Savaşı
+        ══════════════════════════════════════════════════════ */}
+        <View style={[s.heroCard, { borderColor: '#8B5CF650', marginTop: 8, backgroundColor: '#0D0520' }]}>
+          <View style={s.heroLeft}>
+            <View style={[s.heroBadge, { backgroundColor: '#8B5CF620' }]}>
+              <Text style={[s.heroBadgeTxt, { color: '#8B5CF6' }]}>⚔️ BOSS SAVAŞI</Text>
+            </View>
+            <Text style={[s.heroTitle, { color: '#F9FAFB' }]}>Boss Savaşı</Text>
+            <Text style={s.heroDesc}>50 soru · 60 dakika · Boss'u yen! XP kazan</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              {[
+                { label: 'LGS Türkçe',   examType: 'LGS', subject: 'Türkçe'     },
+                { label: 'LGS Fen',      examType: 'LGS', subject: 'Fen'         },
+                { label: 'TYT Türkçe',   examType: 'TYT', subject: 'TYT Türkçe' },
+                { label: 'AYT Edebiyat', examType: 'AYT', subject: 'AYT Edebiyat' },
+              ].map(b => (
+                <TouchableOpacity
+                  key={b.label}
+                  style={{ backgroundColor: '#8B5CF620', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#8B5CF640' }}
+                  onPress={() => navigate(`/exercise/boss-exam?examType=${b.examType}&subject=${encodeURIComponent(b.subject)}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: '#C4B5FD', fontSize: 12, fontWeight: '700' }}>{b.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* ══════════════════════════════════════════════════════
             BÖLÜM 2 — Göz & Dikkat Egzersizleri
         ══════════════════════════════════════════════════════ */}
         <Text style={s.sectionLabel}>KARTAL GÖZÜ</Text>
