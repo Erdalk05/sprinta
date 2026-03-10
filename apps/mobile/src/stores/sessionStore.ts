@@ -2,6 +2,34 @@ import { create } from 'zustand'
 import type { PerformanceResult, SessionMetrics } from '@sprinta/shared'
 import { useModuleUsageStore } from './moduleUsageStore'
 
+// ── MMKV sync helper for persisted reading preferences ─────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _prefMmkv: any = null
+function getPrefMMKV() {
+  if (_prefMmkv) return _prefMmkv
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { MMKV } = require('react-native-mmkv')
+    _prefMmkv = new MMKV({ id: 'sprinta-session-prefs' })
+  } catch { _prefMmkv = null }
+  return _prefMmkv
+}
+function prefGetNum(key: string, def: number): number {
+  const m = getPrefMMKV()
+  if (m) { try { const v = m.getNumber(key); return v !== undefined ? v : def } catch { /**/ } }
+  return def
+}
+function prefGetStr(key: string, def: string): string {
+  const m = getPrefMMKV()
+  if (m) { try { return m.getString(key) ?? def } catch { /**/ } }
+  return def
+}
+function prefSet(key: string, val: string | number): void {
+  const m = getPrefMMKV()
+  if (m) { try { m.set(key, val) } catch { /**/ } }
+}
+// ───────────────────────────────────────────────────────────────────────
+
 interface HalfMetrics {
   wpm: number
   accuracy: number
@@ -30,6 +58,10 @@ interface SessionState {
   result: PerformanceResult | null
   lastMetrics: SessionMetrics | null
 
+  // Kalıcı okuma tercihleri (MMKV persisted — reset()'ten etkilenmez)
+  wpmPreference: number
+  fontSizePreference: 'small' | 'medium' | 'large'
+
   // Eylemler
   startSession: (params: {
     moduleCode: string
@@ -43,6 +75,8 @@ interface SessionState {
   buildMetrics: (secondHalfWpm: number, secondHalfAccuracy: number) => SessionMetrics
   saveResult: (result: PerformanceResult) => void
   reset: () => void
+  setWpmPreference: (wpm: number) => void
+  setFontSizePreference: (size: 'small' | 'medium' | 'large') => void
 }
 
 const initialState = {
@@ -65,9 +99,25 @@ const initialState = {
 export const useSessionStore = create<SessionState>((set, get) => ({
   ...initialState,
 
+  // Load persisted preferences at initialization (not part of initialState → survive reset)
+  wpmPreference: prefGetNum('pref_wpm', 200),
+  fontSizePreference: prefGetStr('pref_font_size', 'medium') as 'small' | 'medium' | 'large',
+
+  setWpmPreference: (wpm) => {
+    const clamped = Math.max(100, Math.min(500, wpm))
+    prefSet('pref_wpm', clamped)
+    set({ wpmPreference: clamped })
+  },
+
+  setFontSizePreference: (size) => {
+    prefSet('pref_font_size', size)
+    set({ fontSizePreference: size })
+  },
+
   startSession: ({ moduleCode, exerciseId, difficultyLevel }) => {
     // Kullanım sayacını artır → RadialFab dinamik top-6 için
     useModuleUsageStore.getState().increment(moduleCode)
+    // Shallow merge: wpmPreference + fontSizePreference not in initialState → preserved
     set({
       ...initialState,
       isActive: true,
@@ -136,6 +186,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   reset: () => {
+    // wpmPreference + fontSizePreference are NOT in initialState → survive reset
     set(initialState)
   },
 }))

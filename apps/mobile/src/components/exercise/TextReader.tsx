@@ -6,11 +6,12 @@ import { colors } from '../../constants/colors'
 interface Props {
   text: string
   wordCount: number
+  fontSize?: number   // 14=small 17=medium(default) 20=large
   onComplete: (wpm: number) => void
   onHalfway?: () => void
 }
 
-export function TextReader({ text, wordCount, onComplete, onHalfway }: Props) {
+export function TextReader({ text, wordCount, fontSize = 17, onComplete, onHalfway }: Props) {
   const [startTime] = useState(Date.now())
   const [scrollProgress, setScrollProgress] = useState(0)
   const halfwayFired = useRef(false)
@@ -47,7 +48,7 @@ export function TextReader({ text, wordCount, onComplete, onHalfway }: Props) {
         scrollEventThrottle={100}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.text}>{text}</Text>
+        <Text style={[styles.text, { fontSize, lineHeight: Math.round(fontSize * 1.65) }]}>{text}</Text>
         <View style={styles.endSpacer} />
       </ScrollView>
 

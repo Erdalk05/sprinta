@@ -1,12 +1,18 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native'
+import {
+  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert,
+  ActivityIndicator, useWindowDimensions,
+} from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
+import { GestureDetector, Gesture } from 'react-native-gesture-handler'
+import Animated, { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated'
 import { colors, moduleColors } from '../../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
 import { getArticleById, type Article } from '../../../src/hooks/useArticles'
 import { useSessionStore } from '../../../src/stores/sessionStore'
+import { useAuthStore } from '../../../src/stores/authStore'
 import { createClient } from '@supabase/supabase-js'
 import { createUserContentService } from '@sprinta/api'
 
@@ -25,7 +31,6 @@ import { ContextGuessExercise } from '../../../src/components/exercise/Vocabular
 import { formatTime } from '../../../src/hooks/useSessionTimer'
 import { processSession } from '@sprinta/shared'
 import type { CognitiveProfile } from '@sprinta/shared'
-import { useAuthStore } from '../../../src/stores/authStore'
 
 type Phase = 'exercise' | 'questions' | 'done'
 
@@ -37,10 +42,81 @@ function articleToExercise(art: Article) {
     title: art.title,
     content: art.content_text,
     wordCount: art.word_count,
-    difficulty: art.difficulty_level * 2, // 1-10 → 2-20 ölçeği normalize
+    difficulty: art.difficulty_level * 2,
     questions: art.questions,
   }
 }
+
+// ── WPM Slider (Reanimated v4 PanGestureHandler) ────────────────────────
+const WPM_MIN = 100, WPM_MAX = 500
+
+interface WpmSliderProps {
+  value: number
+  onChange: (wpm: number) => void
+  accentColor: string
+}
+
+function SessionWpmSlider({ value, onChange, accentColor }: WpmSliderProps) {
+  const { width } = useWindowDimensions()
+  const trackW = Math.max(160, width - 80)
+  const range = WPM_MAX - WPM_MIN
+
+  const [localWpm, setLocalWpm] = useState(value)
+  const thumbX = useSharedValue(((value - WPM_MIN) / range) * trackW)
+  const startX = useSharedValue(0)
+
+  // Sync external value changes (e.g. initial load)
+  useEffect(() => {
+    thumbX.value = ((value - WPM_MIN) / range) * trackW
+    setLocalWpm(value)
+  }, [value])
+
+  // When localWpm changes via drag, notify parent
+  const prevWpm = useRef(value)
+  useEffect(() => {
+    if (localWpm !== prevWpm.current) {
+      prevWpm.current = localWpm
+      onChange(localWpm)
+    }
+  }, [localWpm, onChange])
+
+  const pan = Gesture.Pan()
+    .onBegin(() => { startX.value = thumbX.value })
+    .onUpdate((e) => {
+      const nx = Math.max(0, Math.min(trackW, startX.value + e.translationX))
+      thumbX.value = nx
+      const wpm = Math.round(WPM_MIN + (nx / trackW) * range)
+      runOnJS(setLocalWpm)(wpm)
+    })
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: thumbX.value }],
+  }))
+
+  return (
+    <View style={bar.sliderWrap}>
+      <View style={bar.sliderHeader}>
+        <Text style={bar.sliderLabel}>⚡ Hız</Text>
+        <Text style={[bar.sliderValue, { color: accentColor }]}>{localWpm} WPM</Text>
+      </View>
+      <GestureDetector gesture={pan}>
+        <View style={[bar.trackHitArea, { width: trackW }]}>
+          <View style={bar.track}>
+            <Animated.View style={[bar.thumb, { backgroundColor: accentColor }, thumbStyle]} />
+          </View>
+        </View>
+      </GestureDetector>
+      <View style={[bar.rangeRow, { width: trackW }]}>
+        <Text style={bar.rangeLabel}>100</Text>
+        <Text style={bar.rangeLabel}>500</Text>
+      </View>
+    </View>
+  )
+}
+// ────────────────────────────────────────────────────────────────────────
+
+const FONT_SIZE_MAP = { small: 14, medium: 17, large: 20 } as const
+const FONT_SIZE_LABELS = { small: 'A', medium: 'A', large: 'A' } as const
 
 export default function SessionScreen() {
   const { moduleCode, difficulty, exerciseId, articleId, userContentId, userChunkId } =
@@ -56,6 +132,9 @@ export default function SessionScreen() {
   const { student } = useAuthStore()
   const store = useSessionStore()
 
+  const { wpmPreference, fontSizePreference, setWpmPreference, setFontSizePreference } = store
+  const currentFontSize = FONT_SIZE_MAP[fontSizePreference]
+
   const [phase, setPhase] = useState<Phase>('exercise')
   const [questionIndex, setQuestionIndex] = useState(0)
   const [elapsed, setElapsed] = useState(0)
@@ -66,6 +145,8 @@ export default function SessionScreen() {
   const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
   const difficultyNum = parseInt(difficulty ?? '5', 10)
   const accentColor = moduleColors[moduleCode] ?? colors.primary
+
+  const isReadingExercise = moduleCode === 'speed_control' || moduleCode === 'deep_comprehension'
 
   // articleId → platform makalesinden çek
   useEffect(() => {
@@ -115,7 +196,6 @@ export default function SessionScreen() {
   }, [])
 
   const handleHalfway = useCallback(() => {
-    // İlk yarı metriklerini kaydet
     const wpm = store.wordsRead > 0
       ? Math.round(store.wordsRead / (Math.max(1, elapsedRef.current) / 60))
       : 180
@@ -154,7 +234,6 @@ export default function SessionScreen() {
 
     const metrics = store.buildMetrics(secondHalfWpm, secondHalfAccuracy)
 
-    // Bilişsel profil (mevcut ARP'tan tahmin)
     const arp = student?.currentArp ?? 0
     const profile: CognitiveProfile = {
       sustainableWpm: Math.round(arp / 0.8) || 180,
@@ -205,18 +284,22 @@ export default function SessionScreen() {
           <Text style={styles.quitText}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.moduleLabel}>{config.label}</Text>
-        <Text style={styles.timer}>{formatTime(elapsed)}</Text>
+        <Text style={[styles.timer, { color: accentColor }]}>{formatTime(elapsed)}</Text>
       </View>
+      {/* Accent line */}
+      <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
 
       {/* İçerik */}
       {phase === 'exercise' && moduleCode === 'speed_control' && exercise && (
         <ChunkReader
           text={exercise.content}
-          targetWpm={150 + difficultyNum * 10}
+          targetWpm={wpmPreference}
           chunkSize={2}
+          accentColor={accentColor}
           onProgress={(w) => store.addWords(w)}
           onHalfway={handleHalfway}
-          onComplete={() => handleExerciseComplete()}
+          onComplete={(wpm) => handleExerciseComplete(wpm)}
+          onQuit={handleQuit}
         />
       )}
 
@@ -224,6 +307,7 @@ export default function SessionScreen() {
         <TextReader
           text={exercise.content}
           wordCount={exercise.wordCount}
+          fontSize={currentFontSize}
           onHalfway={handleHalfway}
           onComplete={(wpm) => handleExerciseComplete(wpm)}
         />
@@ -248,6 +332,7 @@ export default function SessionScreen() {
       {phase === 'exercise' && moduleCode === 'eye_training' && (
         <SchulteExercise
           difficultyLevel={difficultyNum}
+          accentColor={accentColor}
           onComplete={(metrics) => {
             store.addWords(metrics.gridSize * metrics.gridSize)
             store.recordAnswer(true, metrics.completionTime)
@@ -270,7 +355,7 @@ export default function SessionScreen() {
         />
       )}
 
-      {/* Konu metinleri (mevcut + yeni) — TextReader ile işlenir */}
+      {/* Konu metinleri — TextReader ile işlenir */}
       {phase === 'exercise' &&
         !['speed_control','deep_comprehension','attention_power','mental_reset','eye_training','vocabulary'].includes(moduleCode) &&
         exercise && exercise.content.length > 0 && (
@@ -299,6 +384,44 @@ export default function SessionScreen() {
           />
         </View>
       )}
+
+      {/* ── Okuma Ayarları Alt Barı (speed_control / deep_comprehension) ── */}
+      {phase === 'exercise' && isReadingExercise && (
+        <View style={styles.settingsBar}>
+          {/* WPM Slider */}
+          <SessionWpmSlider
+            value={wpmPreference}
+            onChange={setWpmPreference}
+            accentColor={accentColor}
+          />
+
+          {/* Yazı Boyutu */}
+          <View style={styles.fontRow}>
+            <Text style={styles.fontLabel}>Yazı</Text>
+            <View style={styles.fontBtns}>
+              {(['small', 'medium', 'large'] as const).map(size => (
+                <TouchableOpacity
+                  key={size}
+                  onPress={() => setFontSizePreference(size)}
+                  style={[
+                    styles.fontBtn,
+                    fontSizePreference === size && { backgroundColor: accentColor + '20', borderColor: accentColor },
+                  ]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[
+                    styles.fontBtnTxt,
+                    { fontSize: size === 'small' ? 11 : size === 'medium' ? 14 : 18 },
+                    fontSizePreference === size && { color: accentColor, fontWeight: '800' },
+                  ]}>
+                    {FONT_SIZE_LABELS[size]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
@@ -313,9 +436,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: 14,
+    backgroundColor: colors.background,
+  },
+  accentLine: {
+    height: 3,
+    borderRadius: 0,
+    opacity: 0.85,
   },
   quitText: {
     fontSize: 20,
@@ -324,13 +451,12 @@ const styles = StyleSheet.create({
   },
   moduleLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
   timer: {
     fontSize: 16,
-    fontWeight: '700',
-    color: colors.textSecondary,
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   questionsContainer: {
@@ -344,5 +470,92 @@ const styles = StyleSheet.create({
   questionsTitle: {
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // ── Settings Bar ──────────────────────────────────────────────────
+  settingsBar: {
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 10,
+    paddingBottom: 14,
+    gap: 6,
+  },
+  fontRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  fontLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  fontBtns: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  fontBtn: {
+    width: 40,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontBtnTxt: {
+    fontWeight: '600',
+    color: colors.text,
+  },
+})
+
+// ── SessionWpmSlider stiller ──────────────────────────────────────────
+const bar = StyleSheet.create({
+  sliderWrap: {
+    paddingHorizontal: 20,
+    gap: 2,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  sliderLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  sliderValue: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  trackHitArea: {
+    height: 36,
+    justifyContent: 'center',
+  },
+  track: {
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    position: 'relative',
+  },
+  thumb: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    position: 'absolute',
+    top: -9,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rangeLabel: {
+    fontSize: 10,
+    color: colors.textSecondary,
   },
 })

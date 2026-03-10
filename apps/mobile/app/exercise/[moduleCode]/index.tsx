@@ -1,17 +1,22 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, ActivityIndicator,
+  Modal, FlatList, useWindowDimensions,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router'
 import * as Haptics from 'expo-haptics'
+import { GestureDetector, Gesture } from 'react-native-gesture-handler'
+import Animated, { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated'
 import { moduleColors } from '../../../src/constants/colors'
 import { MODULE_CONFIGS } from '../../../src/constants/modules'
 import { SAMPLE_EXERCISES } from '../../../src/data/sampleContent'
 import { useArticles } from '../../../src/hooks/useArticles'
 import { useAuthStore } from '../../../src/stores/authStore'
+import { useSessionStore } from '../../../src/stores/sessionStore'
 import { useAppTheme } from '../../../src/theme/useAppTheme'
+import { supabase } from '../../../src/lib/supabase'
 import type { AppTheme } from '../../../src/theme'
 
 // Modül bazlı ölçüm kriterleri
@@ -67,9 +72,96 @@ const SUBJECT_MODULE_CODES = new Set([
   'cografya', 'edebiyat', 'sosyal', 'fen', 'saglik',
 ])
 
+// Okuma tercih paneli gösterilecek modüller
+const READING_SETUP_MODULES = new Set(['speed_control', 'deep_comprehension'])
+
 const DIFFICULTY_STARS = (d: number) => {
   const stars = Math.min(5, Math.max(0, Math.round((d ?? 0) / 2)))
   return '★'.repeat(stars) + '☆'.repeat(5 - stars)
+}
+
+// ── WPM Slider (Reanimated v4 PanGestureHandler) ─────────────────────────
+const WPM_MIN = 100, WPM_MAX = 500
+
+interface WpmSliderProps {
+  value: number
+  onChange: (wpm: number) => void
+  accentColor: string
+  labelColor: string
+}
+
+function WpmSlider({ value, onChange, accentColor, labelColor }: WpmSliderProps) {
+  const { width } = useWindowDimensions()
+  // Track: screen width - horizontal paddings (40 scroll + 32 section inner)
+  const trackW = Math.max(160, width - 72)
+  const range = WPM_MAX - WPM_MIN
+
+  const [localWpm, setLocalWpm] = useState(value)
+  const thumbX = useSharedValue(((value - WPM_MIN) / range) * trackW)
+  const startX = useSharedValue(0)
+
+  useEffect(() => {
+    thumbX.value = ((value - WPM_MIN) / range) * trackW
+    setLocalWpm(value)
+  }, [value])
+
+  const prevWpm = React.useRef(value)
+  useEffect(() => {
+    if (localWpm !== prevWpm.current) {
+      prevWpm.current = localWpm
+      onChange(localWpm)
+    }
+  }, [localWpm, onChange])
+
+  const pan = Gesture.Pan()
+    .onBegin(() => { startX.value = thumbX.value })
+    .onUpdate((e) => {
+      const nx = Math.max(0, Math.min(trackW, startX.value + e.translationX))
+      thumbX.value = nx
+      const wpm = Math.round(WPM_MIN + (nx / trackW) * range)
+      runOnJS(setLocalWpm)(wpm)
+    })
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: thumbX.value }],
+  }))
+
+  return (
+    <View style={{ gap: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: labelColor }}>⚡ Okuma Hızı</Text>
+        <Text style={{ fontSize: 14, fontWeight: '900', color: accentColor }}>{localWpm} WPM</Text>
+      </View>
+      <GestureDetector gesture={pan}>
+        <View style={{ height: 40, justifyContent: 'center', width: trackW }}>
+          <View style={{ height: 4, backgroundColor: accentColor + '25', borderRadius: 2 }}>
+            <Animated.View style={[
+              {
+                width: 24, height: 24, borderRadius: 12,
+                backgroundColor: accentColor,
+                position: 'absolute', top: -10,
+                shadowColor: accentColor, shadowOpacity: 0.4, shadowRadius: 6, elevation: 4,
+              },
+              thumbStyle,
+            ]} />
+          </View>
+        </View>
+      </GestureDetector>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: trackW }}>
+        <Text style={{ fontSize: 10, color: labelColor + '80' }}>100 WPM</Text>
+        <Text style={{ fontSize: 10, color: labelColor + '80' }}>500 WPM</Text>
+      </View>
+    </View>
+  )
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+interface ContentItem {
+  id: string
+  title: string
+  word_count: number
+  category: string
+  exam_type: string
 }
 
 export default function ExerciseIntroScreen() {
@@ -79,6 +171,8 @@ export default function ExerciseIntroScreen() {
   const t = useAppTheme()
   const s = useMemo(() => ms(t), [t])
 
+  const { wpmPreference, fontSizePreference, setWpmPreference, setFontSizePreference } = useSessionStore()
+
   const config      = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
   const exercise    = SAMPLE_EXERCISES[moduleCode]
   const accentColor = moduleColors[moduleCode] ?? t.colors.primary
@@ -86,6 +180,8 @@ export default function ExerciseIntroScreen() {
 
   const currentArp = student?.currentArp ?? 0
   const difficulty  = currentArp > 200 ? 7 : currentArp > 150 ? 5 : 3
+
+  const isReadingSetup = READING_SETUP_MODULES.has(moduleCode)
 
   // Tema'dan modül gradienti al
   const moduleGradient = useMemo((): [string, string] => {
@@ -107,6 +203,29 @@ export default function ExerciseIntroScreen() {
   )
   const hasArticles = articles.length > 0
 
+  // ── İçerik Seçici state ───────────────────────────────────────
+  const [selectedContent, setSelectedContent] = useState<{ id: string; title: string; wordCount: number } | null>(null)
+  const [showContentPicker, setShowContentPicker] = useState(false)
+  const [contentItems, setContentItems] = useState<ContentItem[]>([])
+  const [contentLoadingModal, setContentLoadingModal] = useState(false)
+
+  const openContentPicker = useCallback(async () => {
+    setShowContentPicker(true)
+    if (contentItems.length > 0) return
+    setContentLoadingModal(true)
+    try {
+      const { data } = await (supabase as any)
+        .from('text_library')
+        .select('id, title, word_count, category, exam_type')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(40)
+      setContentItems((data ?? []) as ContentItem[])
+    } catch { /* ignore */ }
+    setContentLoadingModal(false)
+  }, [contentItems.length])
+  // ─────────────────────────────────────────────────────────────
+
   const startWithArticle = (articleId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     router.push({
@@ -124,7 +243,12 @@ export default function ExerciseIntroScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     router.push({
       pathname: '/exercise/[moduleCode]/session',
-      params: { moduleCode, difficulty: String(difficulty), exerciseId: exercise?.id ?? 'sample' },
+      params: {
+        moduleCode,
+        difficulty: String(difficulty),
+        exerciseId: selectedContent?.id ?? exercise?.id ?? 'sample',
+        ...(selectedContent ? { articleId: selectedContent.id } : {}),
+      },
     })
   }
 
@@ -237,6 +361,75 @@ export default function ExerciseIntroScreen() {
           ) : null}
         </View>
 
+        {/* ── Okuma Tercihleri (speed_control / deep_comprehension) ── */}
+        {isReadingSetup && !isLocked && (
+          <View style={[s.prefSection, { borderColor: accentColor + '30' }]}>
+            <Text style={[s.prefTitle, { color: t.colors.text }]}>⚙️ Tercihler</Text>
+
+            {/* İçerik Seç */}
+            <TouchableOpacity
+              style={[s.contentCard, { borderColor: selectedContent ? accentColor : t.colors.border }]}
+              onPress={openContentPicker}
+              activeOpacity={0.75}
+            >
+              {selectedContent ? (
+                <View style={s.contentCardInner}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.contentCardTitle, { color: t.colors.text }]} numberOfLines={1}>
+                      {selectedContent.title}
+                    </Text>
+                    <Text style={[s.contentCardMeta, { color: t.colors.textHint }]}>
+                      {selectedContent.wordCount ?? '—'} kelime
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: accentColor, fontWeight: '600' }}>Değiştir</Text>
+                </View>
+              ) : (
+                <View style={s.contentCardInner}>
+                  <Text style={[s.contentCardEmpty, { color: t.colors.textHint }]}>
+                    📄 İçerik Seç (opsiyonel)
+                  </Text>
+                  <Text style={{ fontSize: 18, color: accentColor }}>+</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* WPM Slider */}
+            <WpmSlider
+              value={wpmPreference}
+              onChange={setWpmPreference}
+              accentColor={accentColor}
+              labelColor={t.colors.text}
+            />
+
+            {/* Yazı Boyutu */}
+            <View style={s.fontSizeRow}>
+              <Text style={[s.prefSubLabel, { color: t.colors.text }]}>🔤 Yazı Boyutu</Text>
+              <View style={s.fontSizeBtns}>
+                {(['small', 'medium', 'large'] as const).map(size => (
+                  <TouchableOpacity
+                    key={size}
+                    onPress={() => setFontSizePreference(size)}
+                    style={[
+                      s.fontSizeBtn,
+                      { borderColor: t.colors.border },
+                      fontSizePreference === size && { backgroundColor: accentColor + '18', borderColor: accentColor },
+                    ]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[
+                      s.fontSizeTxt,
+                      { fontSize: size === 'small' ? 11 : size === 'medium' ? 15 : 19 },
+                      { color: t.colors.textSub },
+                      fontSizePreference === size && { color: accentColor, fontWeight: '800' },
+                    ]}>A</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* ── Ölçüm Kriterleri ── */}
         <View style={s.metricsSection}>
           <Text style={s.metricsTitle}>📊 Bu Seansta Ölçülür</Text>
@@ -285,6 +478,70 @@ export default function ExerciseIntroScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── İçerik Seçici Modal ── */}
+      <Modal
+        visible={showContentPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowContentPicker(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
+          {/* Modal Header */}
+          <View style={[s.modalHeader, { borderBottomColor: t.colors.border }]}>
+            <Text style={[s.modalTitle, { color: t.colors.text }]}>İçerik Seç</Text>
+            <TouchableOpacity onPress={() => setShowContentPicker(false)}>
+              <Text style={{ fontSize: 15, color: accentColor, fontWeight: '700' }}>Kapat</Text>
+            </TouchableOpacity>
+          </View>
+
+          {contentLoadingModal ? (
+            <ActivityIndicator style={{ flex: 1 }} size="large" color={accentColor} />
+          ) : (
+            <FlatList
+              data={contentItems}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ padding: 16, gap: 10 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    s.contentPickerItem,
+                    {
+                      backgroundColor: t.colors.surface,
+                      borderColor: selectedContent?.id === item.id ? accentColor : t.colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedContent({ id: item.id, title: item.title, wordCount: item.word_count })
+                    setShowContentPicker(false)
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  }}
+                  activeOpacity={0.75}
+                >
+                  {selectedContent?.id === item.id && (
+                    <Text style={[s.contentPickerCheck, { color: accentColor }]}>✓ </Text>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.contentPickerTitle, { color: t.colors.text }]} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={[s.contentPickerMeta, { color: t.colors.textHint }]}>
+                      {item.exam_type} · {item.category} · {item.word_count ?? '—'} kelime
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', padding: 48 }}>
+                  <Text style={{ color: t.colors.textHint, textAlign: 'center' }}>
+                    İçerik bulunamadı.{'\n'}Egzersiz varsayılan metni kullanır.
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -343,6 +600,35 @@ function ms(t: AppTheme) {
     infoValue: { fontSize: 17, fontWeight: '900', marginBottom: 3 },
     infoLabel: { fontSize: 11, color: t.colors.textHint, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
 
+    // ── Okuma Tercihleri Bölümü ───────────────────────────────────
+    prefSection: {
+      backgroundColor: t.colors.surface,
+      borderRadius: 16, padding: 16, marginBottom: 16,
+      borderWidth: 1, gap: 16,
+    },
+    prefTitle: { fontSize: 14, fontWeight: '800', marginBottom: -4 },
+    prefSubLabel: { fontSize: 13, fontWeight: '700', flex: 1 },
+
+    // İçerik seç kartı
+    contentCard: {
+      borderWidth: 1.5, borderRadius: 12, padding: 12,
+      backgroundColor: t.colors.background,
+    },
+    contentCardInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    contentCardTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+    contentCardMeta:  { fontSize: 11 },
+    contentCardEmpty: { flex: 1, fontSize: 13, fontStyle: 'italic' },
+
+    // Yazı boyutu
+    fontSizeRow:  { flexDirection: 'row', alignItems: 'center' },
+    fontSizeBtns: { flexDirection: 'row', gap: 8 },
+    fontSizeBtn:  {
+      width: 42, height: 38, borderRadius: 8,
+      borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+    },
+    fontSizeTxt: { fontWeight: '600' },
+    // ─────────────────────────────────────────────────────────────
+
     // Ölçüm kriterleri
     metricsSection: {
       backgroundColor: t.colors.surface,
@@ -373,5 +659,20 @@ function ms(t: AppTheme) {
     // Başla butonu
     startBtn: { borderRadius: 18, paddingVertical: 18, alignItems: 'center', marginBottom: 8 },
     startTxt: { fontSize: 18, fontWeight: '800', color: '#fff' },
+
+    // Modal
+    modalHeader: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 14,
+      borderBottomWidth: 1,
+    },
+    modalTitle: { fontSize: 17, fontWeight: '700' },
+    contentPickerItem: {
+      flexDirection: 'row', alignItems: 'flex-start',
+      borderWidth: 1.5, borderRadius: 12, padding: 14,
+    },
+    contentPickerCheck: { fontSize: 14, fontWeight: '700', marginTop: 1 },
+    contentPickerTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+    contentPickerMeta:  { fontSize: 12 },
   })
 }
