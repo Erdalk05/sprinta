@@ -241,6 +241,51 @@ export default function SessionsScreen() {
         </TouchableOpacity>
 
         {/* ══════════════════════════════════════════════════════
+            SRS — Yanlış Cevaplar + Ders Analizi
+        ══════════════════════════════════════════════════════ */}
+        <View style={[s.heroCard, { borderColor: '#FF3B3050', marginTop: 8, gap: 0 }]}>
+          <TouchableOpacity
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}
+            onPress={() => navigate('/exercise/wrong-answers')}
+            activeOpacity={0.85}
+          >
+            <View style={s.heroLeft}>
+              <View style={[s.heroBadge, { backgroundColor: '#FF3B3020' }]}>
+                <Text style={[s.heroBadgeTxt, { color: '#FF3B30' }]}>🔁 SM-2 Tekrar</Text>
+              </View>
+              <Text style={s.heroTitle}>Yanlış Cevaplar</Text>
+              <Text style={s.heroDesc}>
+                Hatalı sorular · Aralıklı tekrar · SM-2 algoritması
+              </Text>
+            </View>
+            <View style={[s.heroBtn, { backgroundColor: '#FF3B30' }]}>
+              <Text style={s.heroBtnIcon}>🔁</Text>
+              <Text style={s.heroBtnTxt}>Tekrar</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[s.heroCard, { borderColor: '#34C75950', marginTop: 8 }]}
+          onPress={() => navigate('/exercise/subject-progress')}
+          activeOpacity={0.85}
+        >
+          <View style={s.heroLeft}>
+            <View style={[s.heroBadge, { backgroundColor: '#34C75920' }]}>
+              <Text style={[s.heroBadgeTxt, { color: '#34C759' }]}>📊 Ders Bazlı</Text>
+            </View>
+            <Text style={s.heroTitle}>Ders Analizi</Text>
+            <Text style={s.heroDesc}>
+              Doğru/Yanlış/Net · Başarı yüzdesi · Zayıf konular
+            </Text>
+          </View>
+          <View style={[s.heroBtn, { backgroundColor: '#34C759' }]}>
+            <Text style={s.heroBtnIcon}>📊</Text>
+            <Text style={s.heroBtnTxt}>İncele</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* ══════════════════════════════════════════════════════
             BÖLÜM 2 — Göz & Dikkat Egzersizleri
         ══════════════════════════════════════════════════════ */}
         <Text style={s.sectionLabel}>KARTAL GÖZÜ</Text>
