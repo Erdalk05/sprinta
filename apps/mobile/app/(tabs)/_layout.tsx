@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Tabs } from 'expo-router'
+import { useRef, useState, useEffect } from 'react'
+import { Tabs, useRouter } from 'expo-router'
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { useAppTheme } from '../../src/theme/useAppTheme'
@@ -8,44 +8,52 @@ import * as Haptics from 'expo-haptics'
 import { RadialFab } from '../../src/features/navigation/components/RadialFab'
 import TrainingBottomSheet from '../../src/components/training/TrainingBottomSheet'
 import type { TrainingSheetRef } from '../../src/components/training/TrainingBottomSheet'
+import { notificationService } from '../../src/services/notificationService'
+
+// ─── Tema renkleri ────────────────────────────────────────────────
+const NAVY = '#0D1B3E'
+const TEAL = '#40C8F0'   // İş Bankası accent
 
 // ─── Eagle Eye Icon (Kartal Gözü) ────────────────────────────────
-// Sistem emojisi 👁️ — Apple retina kalitesi, aktifken altın glow
 function EagleEyeIcon({ active }: { active: boolean }) {
   return (
     <View style={{
-      opacity:       active ? 1.0 : 0.38,
-      alignItems:    'center',
+      opacity:        active ? 1.0 : 0.45,
+      alignItems:     'center',
       justifyContent: 'center',
-      shadowColor:   '#D97706',
-      shadowOffset:  { width: 0, height: 0 },
-      shadowRadius:  active ? 10 : 0,
-      shadowOpacity: active ? 0.80 : 0,
-      elevation:     active ? 10 : 0,
+      shadowColor:    active ? TEAL : 'transparent',
+      shadowOffset:   { width: 0, height: 0 },
+      shadowRadius:   active ? 8 : 0,
+      shadowOpacity:  active ? 0.70 : 0,
+      elevation:      active ? 6 : 0,
     }}>
-      <Text style={{ fontSize: 26, lineHeight: 30 }}>👁️</Text>
+      <Text style={{ fontSize: 22, lineHeight: 28 }}>👁️</Text>
     </View>
   )
 }
 
 // ─── Tab Bar yüksekliği ───────────────────────────────────────────
-const BAR_H = Platform.OS === 'ios' ? 80 : 66
+const BAR_H = Platform.OS === 'ios' ? 84 : 68
 
 // ─── Custom Sprinta Tab Bar ───────────────────────────────────────
 interface SprintaTabBarProps extends BottomTabBarProps {
   onOpenEgzersiz:  () => void
-  onNavigateCalis: () => void
+  onOpenOkuma:     () => void
+  onOpenAkademi:   () => void
   egzersizActive:  boolean
   okumaActive:     boolean
+  akademiActive:   boolean
 }
 
 function SprintaTabBar({
   state,
   navigation,
   onOpenEgzersiz,
-  onNavigateCalis,
+  onOpenOkuma,
+  onOpenAkademi,
   egzersizActive,
   okumaActive,
+  akademiActive,
 }: SprintaTabBarProps) {
   const t = useAppTheme()
   const s = createStyles(t)
@@ -53,36 +61,22 @@ function SprintaTabBar({
   const currentName   = state.routes[state.index]?.name ?? ''
   const isHome        = currentName === 'index'
   const isMenu        = currentName === 'menu'
-  // calis ekranı aktifken Okuma tab'ı vurgulu görünür
   const isCalisActive = currentName === 'calis'
 
-  // Regular nav tab
-  const navTab = (
-    name: string,
-    icon: string,
-    label: string,
-    isActive: boolean,
-  ) => (
-    <TouchableOpacity
-      style={s.tabBtn}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        navigation.navigate(name)
-      }}
-      activeOpacity={0.7}
-    >
-      <Text style={[s.tabIcon, isActive && s.tabIconActive]}>{icon}</Text>
-      <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{label}</Text>
-    </TouchableOpacity>
-  )
-
-  // Sheet-opening tab — emoji ikon ile
-  const sheetTab = (
-    icon: string,
-    label: string,
-    isActive: boolean,
-    onPress: () => void,
-  ) => (
+  // ─── Tek tab butonu ─────────────────────────────────────────────
+  const TabItem = ({
+    icon,
+    label,
+    isActive,
+    onPress,
+    customIcon,
+  }: {
+    icon?:       string
+    label:       string
+    isActive:    boolean
+    onPress:     () => void
+    customIcon?: React.ReactNode
+  }) => (
     <TouchableOpacity
       style={s.tabBtn}
       onPress={() => {
@@ -91,33 +85,52 @@ function SprintaTabBar({
       }}
       activeOpacity={0.7}
     >
-      <Text style={[s.tabIcon, isActive && s.tabIconActive]}>{icon}</Text>
+      {/* Aktif arka plan pill */}
+      <View style={[s.iconPill, isActive && s.iconPillActive]}>
+        {customIcon ?? (
+          <Text style={[s.tabIcon, isActive && s.tabIconActive]}>{icon}</Text>
+        )}
+      </View>
       <Text style={[s.tabLabel, isActive && s.tabLabelActive]}>{label}</Text>
+      {/* Aktif gösterge nokta */}
+      {isActive && <View style={s.activeDot} />}
     </TouchableOpacity>
   )
 
   return (
     <View style={s.bar}>
-      {navTab('index', '🏠', 'Ana Sayfa', isHome)}
 
-      {/* Egzersiz — özel mavi göz ikonu */}
-      <TouchableOpacity
-        style={s.tabBtn}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-          onOpenEgzersiz()
-        }}
-        activeOpacity={0.7}
-      >
-        <EagleEyeIcon active={egzersizActive} />
-        <Text style={[s.tabLabel, egzersizActive && s.tabLabelActive]}>Kartal Gözü</Text>
-      </TouchableOpacity>
+      <TabItem
+        icon="🏠"
+        label="Ana Sayfa"
+        isActive={isHome}
+        onPress={() => navigation.navigate('index')}
+      />
 
-      {/* FAB placeholder — RadialFab overlay olarak render edilir */}
+      <TabItem
+        label="Kartal Gözü"
+        isActive={egzersizActive}
+        onPress={onOpenEgzersiz}
+        customIcon={<EagleEyeIcon active={egzersizActive} />}
+      />
+
+      {/* FAB placeholder */}
       <View style={s.fabSlot} pointerEvents="none" />
 
-      {sheetTab('📖', 'Okuma', okumaActive || isCalisActive, onNavigateCalis)}
-      {navTab('menu', '🎓', 'Üssü', isMenu)}
+      <TabItem
+        icon="📖"
+        label="Okuma"
+        isActive={okumaActive}
+        onPress={onOpenOkuma}
+      />
+
+      <TabItem
+        icon="🎓"
+        label="Akademi"
+        isActive={isMenu || akademiActive}
+        onPress={onOpenAkademi}
+      />
+
     </View>
   )
 }
@@ -126,12 +139,19 @@ function SprintaTabBar({
 export default function TabsLayout() {
   const t = useAppTheme()
 
-  // Bottom sheet ref (sadece egzersiz sheet'i)
-  const egzersizRef = useRef<TrainingSheetRef>(null)
+  // Push bildirim izni + günlük hatırlatıcı
+  useEffect(() => {
+    notificationService.init().then(() => {
+      notificationService.scheduleDailyReminder()
+    })
+  }, [])
 
-  // Active states for tab highlight
+  const egzersizRef = useRef<TrainingSheetRef>(null)
+  const okumaRef    = useRef<TrainingSheetRef>(null)
+  const akademiRef  = useRef<TrainingSheetRef>(null)
   const [egzersizActive, setEgzersizActive] = useState(false)
   const [okumaActive,    setOkumaActive]    = useState(false)
+  const [akademiActive,  setAkademiActive]  = useState(false)
 
   return (
     <View style={rootStyle}>
@@ -141,24 +161,31 @@ export default function TabsLayout() {
             {...props}
             onOpenEgzersiz={() => {
               setOkumaActive(false)
+              setAkademiActive(false)
               setEgzersizActive(true)
               egzersizRef.current?.open()
             }}
-            onNavigateCalis={() => {
+            onOpenOkuma={() => {
               setEgzersizActive(false)
+              setAkademiActive(false)
               setOkumaActive(true)
-              props.navigation.navigate('calis')
+              okumaRef.current?.open()
+            }}
+            onOpenAkademi={() => {
+              setEgzersizActive(false)
+              setOkumaActive(false)
+              setAkademiActive(true)
+              akademiRef.current?.open()
             }}
             egzersizActive={egzersizActive}
             okumaActive={okumaActive}
+            akademiActive={akademiActive}
           />
         )}
         screenOptions={{ headerShown: false }}
       >
         <Tabs.Screen name="index"    options={{ title: 'Ana Sayfa' }} />
-        <Tabs.Screen name="menu"     options={{ title: 'Üssü' }} />
-
-        {/* Navigable but hidden from tab bar */}
+        <Tabs.Screen name="menu"     options={{ title: 'Akademi' }} />
         <Tabs.Screen name="calis"    options={{ href: null }} />
         <Tabs.Screen name="coach"    options={{ href: null }} />
         <Tabs.Screen name="sessions" options={{ href: null }} />
@@ -168,14 +195,22 @@ export default function TabsLayout() {
         <Tabs.Screen name="practice" options={{ href: null }} />
       </Tabs>
 
-      {/* Radial FAB — Tabs'ın üzerinde */}
       <RadialFab theme={t} tabBarHeight={BAR_H} />
 
-      {/* Egzersiz Training Bottom Sheet */}
       <TrainingBottomSheet
         ref={egzersizRef}
         type="egzersiz"
         onClose={() => setEgzersizActive(false)}
+      />
+      <TrainingBottomSheet
+        ref={okumaRef}
+        type="okuma"
+        onClose={() => setOkumaActive(false)}
+      />
+      <TrainingBottomSheet
+        ref={akademiRef}
+        type="akademi"
+        onClose={() => setAkademiActive(false)}
       />
     </View>
   )
@@ -190,30 +225,57 @@ function createStyles(t: AppTheme) {
       flexDirection:     'row',
       backgroundColor:   t.colors.surface,
       borderTopWidth:    StyleSheet.hairlineWidth,
-      borderTopColor:    t.colors.border,
+      borderTopColor:    t.isDark ? '#1E293B' : '#E2E8F8',
       height:            BAR_H,
       alignItems:        'center',
-      paddingBottom:     Platform.OS === 'ios' ? 16 : 0,
+      paddingBottom:     Platform.OS === 'ios' ? 20 : 0,
       paddingHorizontal: 4,
-      shadowColor:       t.colors.primary,
-      shadowOffset:      { width: 0, height: -2 },
-      shadowOpacity:     t.isDark ? 0.15 : 0.06,
-      shadowRadius:      8,
-      elevation:         12,
+      // Derin gölge — kartın altından yükseliyormuş hissi
+      shadowColor:       NAVY,
+      shadowOffset:      { width: 0, height: -4 },
+      shadowOpacity:     t.isDark ? 0.25 : 0.08,
+      shadowRadius:      12,
+      elevation:         16,
     },
 
     tabBtn: {
       flex:           1,
       alignItems:     'center',
       justifyContent: 'center',
-      paddingTop:     8,
+      paddingTop:     6,
+      position:       'relative',
     },
-    tabIcon:        { fontSize: 22, marginBottom: 3, opacity: 0.35 },
-    tabIconActive:  { opacity: 1.0 },
-    tabLabel:       { fontSize: 10, color: t.colors.textHint, fontWeight: '600' },
-    tabLabelActive: { color: t.colors.primary, fontWeight: '800' },
 
-    // FAB yerini tutan boş alan
+    // İkon pill — aktifken navy %8 arkaplan
+    iconPill: {
+      width:          44,
+      height:         30,
+      borderRadius:   14,
+      alignItems:     'center',
+      justifyContent: 'center',
+      marginBottom:   2,
+    },
+    iconPillActive: {
+      backgroundColor: NAVY + '12',
+    },
+
+    tabIcon:       { fontSize: 22, opacity: 0.45 },
+    tabIconActive: { opacity: 1.0 },
+
+    tabLabel:      { fontSize: 10, color: t.isDark ? '#64748B' : '#8892A4', fontWeight: '600' },
+    tabLabelActive: { color: NAVY, fontWeight: '800' },
+
+    // Küçük teal nokta — aktif gösterge
+    activeDot: {
+      position:        'absolute',
+      bottom:          Platform.OS === 'ios' ? -2 : 0,
+      width:           20,
+      height:          3,
+      borderRadius:    1.5,
+      backgroundColor: TEAL,
+    },
+
+    // FAB boşluk
     fabSlot: { flex: 1 },
   })
 }
