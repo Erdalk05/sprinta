@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'
@@ -55,7 +55,6 @@ export default function ResultScreen() {
     if (!student) return
     const prevLevel = getLevelFromXP(student.totalXp)
 
-    // ── Session'ı Supabase'e kaydet (DB trigger → total_xp güncellenir) ──
     const { exerciseId, lastMetrics: metrics, result: perf } = useSessionStore.getState()
     if (metrics && perf && exerciseId) {
       try {
@@ -81,7 +80,6 @@ export default function ResultScreen() {
           xp_earned: perf.xpEarned,
         })
         if (!sessionError) {
-          // arpHistory → cognitiveProfile sıralı; dailyStats paralel
           const arpHistory = await pipeline.getArpHistory(student.id)
           await Promise.allSettled([
             pipeline.updateCognitiveProfile(student.id, metrics, perf.arp, arpHistory),
@@ -99,9 +97,7 @@ export default function ResultScreen() {
         console.error('Session kayıt hatası:', e)
       }
     }
-    // ─────────────────────────────────────────────────────────────────────
 
-    // Kullanıcı chunk'ı tamamlandı olarak işaretle
     if (userChunkId && perf && metrics) {
       await ucSvc.markChunkCompleted({
         chunkId: userChunkId,
@@ -111,19 +107,16 @@ export default function ResultScreen() {
       }).catch((e) => console.error('Chunk işaretlenemedi:', e))
     }
 
-    // Streak güncelle — hata sessizce geçer
     try {
       await badgeService.updateStreak(student.id)
       EventBus.emit('STREAK_UPDATED', { days: 1 })
     } catch (e) { console.error('Streak güncellenemedi:', e) }
 
-    // Events
     if (perf) {
       EventBus.emit('SESSION_FINISHED', { xpEarned: perf.xpEarned, moduleType: metrics?.moduleCode ?? moduleCode })
       EventBus.emit('XP_UPDATED', { total: (student.totalXp ?? 0) + perf.xpEarned, delta: perf.xpEarned })
     }
 
-    // Rozet kontrolü — hata sessizce geçer
     try {
       const stats = await badgeService.getStudentStats(student.id)
       if (stats) {
@@ -136,7 +129,6 @@ export default function ResultScreen() {
       }
     } catch (e) { console.error('Rozet kontrolü başarısız:', e) }
 
-    // Profil yenile — her zaman çalışır
     try {
       await refreshProfile()
       const updatedStudent = useAuthStore.getState().student
@@ -150,9 +142,7 @@ export default function ResultScreen() {
 
   const handleBadgeClose = () => {
     setShowBadgeModal(false)
-    if (levelChange) {
-      setTimeout(() => setShowLevelModal(true), 300)
-    }
+    if (levelChange) setTimeout(() => setShowLevelModal(true), 300)
   }
 
   const handleLevelClose = () => {
@@ -162,25 +152,22 @@ export default function ResultScreen() {
 
   if (!result) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.error}>Sonuç bulunamadı.</Text>
+      <SafeAreaView style={s.container}>
+        <Text style={s.error}>Sonuç bulunamadı.</Text>
         <TouchableOpacity onPress={() => router.replace('/(tabs)/sessions')}>
-          <Text style={styles.link}>Geri Dön</Text>
+          <Text style={s.link}>Geri Dön</Text>
         </TouchableOpacity>
       </SafeAreaView>
     )
   }
 
   const arpColor = result.arpChange > 0 ? colors.success : result.arpChange < -5 ? colors.error : colors.textSecondary
-  const arpSign = result.arpChange > 0 ? '+' : ''
+  const arpSign  = result.arpChange > 0 ? '+' : ''
 
   const handleRepeat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     reset()
-    router.replace({
-      pathname: '/exercise/[moduleCode]',
-      params: { moduleCode },
-    })
+    router.replace({ pathname: '/exercise/[moduleCode]', params: { moduleCode } })
   }
 
   const handleHome = () => {
@@ -190,92 +177,85 @@ export default function ResultScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Başlık */}
-        <View style={styles.topSection}>
-          <Text style={styles.emoji}>🎉</Text>
-          <Text style={styles.title}>Tebrikler!</Text>
-          <Text style={styles.subtitle}>{config.label} tamamlandı</Text>
-        </View>
+    <SafeAreaView style={s.container}>
 
-        {/* ARP Kartı */}
-        <View style={[styles.arpCard, { borderColor: accentColor }]}>
-          <Text style={styles.arpLabel}>ARP Puanın</Text>
-          <Text style={[styles.arpValue, { color: accentColor }]}>{result.arp}</Text>
-          <Text style={[styles.arpChange, { color: arpColor }]}>
+      {/* ── Üst: emoji + başlık ───────────────────────────────── */}
+      <View style={s.topSection}>
+        <Text style={s.emoji}>🎉</Text>
+        <Text style={s.title}>Tebrikler!</Text>
+        <Text style={s.subtitle}>{config.label} tamamlandı</Text>
+      </View>
+
+      {/* ── ARP + XP yatay kart ───────────────────────────────── */}
+      <View style={[s.arpRow, { borderColor: accentColor + '60' }]}>
+        <View style={s.arpBlock}>
+          <Text style={s.arpSmallLabel}>ARP PUANIN</Text>
+          <Text style={[s.arpBig, { color: accentColor }]}>{result.arp}</Text>
+          <Text style={[s.arpDelta, { color: arpColor }]}>
             {arpSign}{result.arpChange} bu sessionda
           </Text>
         </View>
-
-        {/* XP Kazanıldı */}
-        <View style={styles.xpBadge}>
-          <Text style={styles.xpText}>+{result.xpEarned} XP kazandın! ⭐</Text>
+        <View style={[s.arpSep, { backgroundColor: accentColor + '30' }]} />
+        <View style={s.xpBlock}>
+          <Text style={s.xpEmoji}>⭐</Text>
+          <Text style={[s.xpNum, { color: accentColor }]}>+{result.xpEarned}</Text>
+          <Text style={s.xpLbl}>XP</Text>
         </View>
+      </View>
 
-        {/* Metrik grid */}
-        <View style={styles.metricsGrid}>
-          <MetricCard label="REI" value={String(result.rei)} sub="Verimlilik İndeksi" />
-          <MetricCard label="CSF" value={result.csf.toFixed(2)} sub="Stabilite Faktörü" />
-          <MetricCard label="WPM" value={String(lastMetrics?.wpm ?? 0)} sub="Kelime/Dakika" />
-          <MetricCard label="Kavrama" value={`%${lastMetrics?.comprehension ?? 0}`} sub="Anlama Oranı" />
-        </View>
+      {/* ── 4 metrik — yatay şerit ────────────────────────────── */}
+      <View style={s.metricsRow}>
+        <Chip label="REI"     value={String(result.rei)} />
+        <Chip label="CSF"     value={result.csf.toFixed(2)} />
+        <Chip label="WPM"     value={String(lastMetrics?.wpm ?? 0)} />
+        <Chip label="Kavrama" value={`%${lastMetrics?.comprehension ?? 0}`} />
+      </View>
 
-        {/* Yorgunluk */}
-        <View style={styles.fatigueRow}>
-          <Text style={styles.fatigueLabel}>Enerji Durumu:</Text>
-          <Text style={styles.fatigueValue}>
-            {FATIGUE_LABELS[result.fatigueLevel] ?? result.fatigueLevel}
+      {/* ── Enerji + Zorluk ───────────────────────────────────── */}
+      <View style={s.infoRow}>
+        <Text style={s.infoTxt}>
+          {FATIGUE_LABELS[result.fatigueLevel] ?? result.fatigueLevel}
+        </Text>
+        <View style={s.infoDot} />
+        <Text style={s.infoTxt}>Sonraki zorluk: {result.suggestedDifficulty}/10</Text>
+      </View>
+
+      {/* ── Öneri ─────────────────────────────────────────────── */}
+      {result.recommendedMode && (
+        <View style={[s.rec, { backgroundColor: accentColor + '12', borderColor: accentColor + '30' }]}>
+          <Text style={[s.recTxt, { color: accentColor }]}>
+            💡 {MODULE_CONFIGS[result.recommendedMode]?.label} modülünde çalışmayı deneyebilirsin.
           </Text>
         </View>
+      )}
 
-        {result.shouldTakeBreak && (
-          <View style={styles.breakAlert}>
-            <Text style={styles.breakText}>
-              ☕ Şimdi 15 dakika mola vermenizi öneririz.
-            </Text>
-          </View>
-        )}
-
-        {/* Öneri */}
-        {result.recommendedMode && (
-          <View style={styles.recommendation}>
-            <Text style={styles.recLabel}>💡 Öneri</Text>
-            <Text style={styles.recText}>
-              {MODULE_CONFIGS[result.recommendedMode]?.label} modülünde çalışmayı deneyebilirsin.
-            </Text>
-          </View>
-        )}
-
-        {/* Sonraki zorluk */}
-        <View style={styles.nextDifficulty}>
-          <Text style={styles.nextLabel}>Sonraki oturum zorluğu:</Text>
-          <Text style={styles.nextValue}>{result.suggestedDifficulty}/10</Text>
+      {result.shouldTakeBreak && (
+        <View style={s.breakAlert}>
+          <Text style={s.breakTxt}>☕ 15 dakika mola vermenizi öneririz.</Text>
         </View>
+      )}
 
-        {/* Butonlar */}
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.repeatButton, { borderColor: accentColor }]}
-            onPress={handleRepeat}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.repeatText, { color: accentColor }]}>Tekrar Yap</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.homeButton, { backgroundColor: accentColor }]}
-            onPress={handleHome}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.homeText}>Ana Sayfaya Dön</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-      <BadgeAwardModal
-        visible={showBadgeModal}
-        badges={newBadges}
-        onClose={handleBadgeClose}
-      />
+      <View style={{ flex: 1 }} />
+
+      {/* ── Butonlar ──────────────────────────────────────────── */}
+      <View style={s.actions}>
+        <TouchableOpacity
+          style={[s.repeatBtn, { borderColor: accentColor }]}
+          onPress={handleRepeat}
+          activeOpacity={0.8}
+        >
+          <Text style={[s.repeatTxt, { color: accentColor }]}>↺  Tekrar Yap</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.homeBtn, { backgroundColor: accentColor }]}
+          onPress={handleHome}
+          activeOpacity={0.8}
+        >
+          <Text style={s.homeTxt}>Ana Sayfaya Dön</Text>
+        </TouchableOpacity>
+      </View>
+
+      <BadgeAwardModal visible={showBadgeModal} badges={newBadges} onClose={handleBadgeClose} />
       <LevelUpModal
         visible={showLevelModal}
         fromLevel={levelChange?.from ?? 1}
@@ -286,80 +266,112 @@ export default function ResultScreen() {
   )
 }
 
-function MetricCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+// ── Metrik chip ───────────────────────────────────────────────────────
+function Chip({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metricCard}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricSub}>{sub}</Text>
+    <View style={s.chip}>
+      <Text style={s.chipVal}>{value}</Text>
+      <Text style={s.chipLbl}>{label}</Text>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+// ── Stiller ───────────────────────────────────────────────────────────
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 24, paddingBottom: 48 },
-  topSection: { alignItems: 'center', marginBottom: 28 },
-  emoji: { fontSize: 56, marginBottom: 8 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
-  arpCard: {
-    borderWidth: 2, borderRadius: 20, padding: 24,
-    alignItems: 'center', marginBottom: 16,
+
+  // Üst başlık
+  topSection: { alignItems: 'center', paddingTop: 16, paddingBottom: 12 },
+  emoji:    { fontSize: 40, marginBottom: 4 },
+  title:    { fontSize: 24, fontWeight: '900', color: colors.text, letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+
+  // ARP + XP kart
+  arpRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 12,
   },
-  arpLabel: { fontSize: 14, color: colors.textSecondary, marginBottom: 6 },
-  arpValue: { fontSize: 64, fontWeight: '900' },
-  arpChange: { fontSize: 15, fontWeight: '600', marginTop: 4 },
-  xpBadge: {
-    backgroundColor: '#E8F0FE', borderRadius: 12,
-    paddingVertical: 10, paddingHorizontal: 20,
-    alignItems: 'center', marginBottom: 24,
+  arpBlock: {
+    flex: 2,
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 2,
   },
-  xpText: { fontSize: 16, fontWeight: '700', color: '#92400E' },
-  metricsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20,
+  arpSmallLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.textSecondary },
+  arpBig:  { fontSize: 52, fontWeight: '900', lineHeight: 60, letterSpacing: -2 },
+  arpDelta:{ fontSize: 12, fontWeight: '600' },
+  arpSep:  { width: 1, marginVertical: 12 },
+  xpBlock: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  xpEmoji: { fontSize: 22 },
+  xpNum:   { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
+  xpLbl:   { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
+
+  // Metrik şeridi
+  metricsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    gap: 8,
+    marginBottom: 10,
   },
-  metricCard: {
-    flex: 1, minWidth: '44%', backgroundColor: colors.surface,
-    borderRadius: 14, padding: 16, alignItems: 'center',
+  chip: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 2,
   },
-  metricValue: { fontSize: 22, fontWeight: '800', color: colors.text },
-  metricLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginTop: 2 },
-  metricSub: { fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign: 'center' },
-  fatigueRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 12,
-    paddingHorizontal: 4,
+  chipVal: { fontSize: 16, fontWeight: '900', color: colors.text },
+  chipLbl: { fontSize: 9,  fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.3 },
+
+  // Info satırı
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 10,
+    paddingHorizontal: 20,
   },
-  fatigueLabel: { fontSize: 14, color: colors.textSecondary },
-  fatigueValue: { fontSize: 15, fontWeight: '600', color: colors.text },
+  infoTxt: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  infoDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.textSecondary, opacity: 0.4 },
+
+  // Öneri
+  rec: {
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+  },
+  recTxt: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+
+  // Mola uyarısı
   breakAlert: {
-    backgroundColor: '#FEF9C3', borderRadius: 12,
-    padding: 14, marginBottom: 16,
+    marginHorizontal: 20,
+    backgroundColor: '#FEF9C3',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
   },
-  breakText: { fontSize: 14, color: '#854D0E', textAlign: 'center' },
-  recommendation: {
-    backgroundColor: '#EDE9FE', borderRadius: 12,
-    padding: 14, marginBottom: 16,
+  breakTxt: { fontSize: 13, color: '#854D0E', textAlign: 'center' },
+
+  // Butonlar
+  actions: { paddingHorizontal: 20, paddingBottom: 12, gap: 10 },
+  repeatBtn: {
+    borderWidth: 2, borderRadius: 14,
+    paddingVertical: 13, alignItems: 'center',
   },
-  recLabel: { fontSize: 13, fontWeight: '700', color: '#5B21B6', marginBottom: 4 },
-  recText: { fontSize: 14, color: '#5B21B6', lineHeight: 20 },
-  nextDifficulty: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 28, paddingHorizontal: 4,
+  repeatTxt: { fontSize: 15, fontWeight: '700' },
+  homeBtn: {
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center',
   },
-  nextLabel: { fontSize: 14, color: colors.textSecondary },
-  nextValue: { fontSize: 16, fontWeight: '700', color: colors.text },
-  actions: { gap: 12 },
-  repeatButton: {
-    borderWidth: 2, borderRadius: 16,
-    paddingVertical: 16, alignItems: 'center',
-  },
-  repeatText: { fontSize: 16, fontWeight: '700' },
-  homeButton: {
-    borderRadius: 16, paddingVertical: 16, alignItems: 'center',
-  },
-  homeText: { fontSize: 16, fontWeight: '700', color: colors.white },
+  homeTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
   error: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginTop: 80 },
-  link: { fontSize: 15, color: colors.primary, textAlign: 'center', marginTop: 16 },
+  link:  { fontSize: 15, color: colors.primary, textAlign: 'center', marginTop: 16 },
 })

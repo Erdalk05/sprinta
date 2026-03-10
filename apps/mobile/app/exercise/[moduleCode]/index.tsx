@@ -113,72 +113,53 @@ const DIFFICULTY_STARS = (d: number) => {
   return '★'.repeat(stars) + '☆'.repeat(5 - stars)
 }
 
-// ── WPM Slider (Reanimated v4) ────────────────────────────────────────
+// ── WPM Slider (Reanimated v4 — loop-free, filled track) ─────────────
 const WPM_MIN = 100, WPM_MAX = 500
 
-interface WpmSliderProps {
-  value: number
-  onChange: (wpm: number) => void
-  accentColor: string
-  labelColor: string
-}
-
-function WpmSlider({ value, onChange, accentColor, labelColor }: WpmSliderProps) {
+function WpmSlider({ value, onChange, accentColor, trackWidth }: { value: number; onChange: (v: number) => void; accentColor: string; trackWidth?: number }) {
   const { width } = useWindowDimensions()
-  const trackW = Math.max(160, width - 72)
+  const trackW = trackWidth ?? Math.max(160, width - 72)
   const range = WPM_MAX - WPM_MIN
-  const [localWpm, setLocalWpm] = useState(value)
   const thumbX = useSharedValue(((value - WPM_MIN) / range) * trackW)
   const startX = useSharedValue(0)
 
   useEffect(() => {
     thumbX.value = ((value - WPM_MIN) / range) * trackW
-    setLocalWpm(value)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
-
-  const prevWpm = useRef(value)
-  useEffect(() => {
-    if (localWpm !== prevWpm.current) {
-      prevWpm.current = localWpm
-      onChange(localWpm)
-    }
-  }, [localWpm, onChange])
 
   const pan = Gesture.Pan()
     .onBegin(() => { startX.value = thumbX.value })
     .onUpdate((e) => {
       const nx = Math.max(0, Math.min(trackW, startX.value + e.translationX))
       thumbX.value = nx
-      runOnJS(setLocalWpm)(Math.round(WPM_MIN + (nx / trackW) * range))
+      runOnJS(onChange)(Math.round(WPM_MIN + (nx / trackW) * range))
     })
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: thumbX.value }],
   }))
+  const fillStyle = useAnimatedStyle(() => ({
+    width: Math.max(0, thumbX.value + 11),
+  }))
 
   return (
-    <View style={{ gap: 4 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: labelColor }}>⚡ Okuma Hızı</Text>
-        <Text style={{ fontSize: 14, fontWeight: '900', color: accentColor }}>{localWpm} WPM</Text>
-      </View>
-      <GestureDetector gesture={pan}>
-        <View style={{ height: 40, justifyContent: 'center', width: trackW }}>
-          <View style={{ height: 4, backgroundColor: accentColor + '25', borderRadius: 2 }}>
-            <Animated.View style={[
-              { width: 24, height: 24, borderRadius: 12, backgroundColor: accentColor,
-                position: 'absolute', top: -10,
-                shadowColor: accentColor, shadowOpacity: 0.4, shadowRadius: 6, elevation: 4 },
-              thumbStyle,
-            ]} />
-          </View>
+    <GestureDetector gesture={pan}>
+      <View style={{ height: 40, justifyContent: 'center', width: trackW }}>
+        {/* Track background */}
+        <View style={{ height: 6, backgroundColor: accentColor + '20', borderRadius: 3, overflow: 'hidden' }}>
+          {/* Filled portion */}
+          <Animated.View style={[{ height: 6, backgroundColor: accentColor, borderRadius: 3, position: 'absolute' }, fillStyle]} />
         </View>
-      </GestureDetector>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: trackW }}>
-        <Text style={{ fontSize: 10, color: labelColor + '80' }}>100 WPM</Text>
-        <Text style={{ fontSize: 10, color: labelColor + '80' }}>500 WPM</Text>
+        {/* Thumb */}
+        <Animated.View style={[
+          { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff', position: 'absolute',
+            top: 7, borderWidth: 3, borderColor: accentColor,
+            shadowColor: accentColor, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
+          thumbStyle,
+        ]} />
       </View>
-    </View>
+    </GestureDetector>
   )
 }
 // ─────────────────────────────────────────────────────────────────────
@@ -194,6 +175,20 @@ const PICKER_TABS: { key: PickerTab; icon: string; label: string }[] = [
 ]
 
 const MODAL_NAVY = '#1A3594'
+
+// Modül öğrenim kartları (Türkçe, kısaltmalar parantez içinde)
+const MODULE_LEARN_CARDS: Record<string, { icon: string; text: string }[]> = {
+  speed_control: [
+    { icon: '⚡', text: 'Kelimeler grup grup gösterilir — RSVP (Rapid Serial Visual Presentation) yöntemi' },
+    { icon: '📊', text: 'Her seans gerçek WPM (Kelime/Dakika) hızın ölçülür' },
+    { icon: '🧠', text: 'Seans sonunda anlama (comprehension) soruları gelir, ARP puanına yansır' },
+  ],
+  deep_comprehension: [
+    { icon: '📖', text: 'Metni kendi hızında kaydırarak okursun — göz yorgunluğu azalır' },
+    { icon: '🔤', text: 'Yazı boyutunu (punto) seans sırasında bile ayarlayabilirsin' },
+    { icon: '🧠', text: 'Derin analiz ve çıkarım (inference) soruları — ARP kavrama puanına işlenir' },
+  ],
+}
 
 export default function ExerciseIntroScreen() {
   const { moduleCode } = useLocalSearchParams<{ moduleCode: string }>()
@@ -375,6 +370,264 @@ export default function ExerciseIntroScreen() {
     )
   }
 
+  // ─── Kompakt okuma kurulum ekranı (speed_control / deep_comprehension) ──
+  if (isReadingSetup) {
+    const estMin = selectedContent?.wordCount
+      ? Math.max(1, Math.round(selectedContent.wordCount / wpmPreference))
+      : null
+
+    return (
+      <SafeAreaView style={s.root}>
+
+        {/* ── Nav bar ── */}
+        <View style={s.rsNav}>
+          <TouchableOpacity onPress={() => router.back()} style={s.rsBackBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={[s.rsBackTxt, { color: accentColor }]}>← Geri</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Hero ── */}
+        <View style={s.rsHero}>
+          <LinearGradient colors={moduleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.rsHeroIconWrap}>
+            <Text style={s.rsHeroIcon}>{config.icon}</Text>
+          </LinearGradient>
+          <Text style={[s.rsHeroTitle, { color: t.colors.text }]}>{config.label}</Text>
+          <Text style={[s.rsHeroSub, { color: t.colors.textSub }]}>{config.description}</Text>
+        </View>
+
+        {/* ── Kaydırılabilir içerik ── */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 12 }}>
+
+          {/* Modül öğrenim kartları */}
+          {MODULE_LEARN_CARDS[moduleCode] && (
+            <View style={[s.rsLearnCard, { borderColor: accentColor + '28' }]}>
+              {MODULE_LEARN_CARDS[moduleCode].map((item, i) => (
+                <View key={i} style={s.rsLearnRow}>
+                  <View style={[s.rsLearnIcon, { backgroundColor: accentColor + '14' }]}>
+                    <Text style={{ fontSize: 14 }}>{item.icon}</Text>
+                  </View>
+                  <Text style={[s.rsLearnText, { color: t.colors.textSub }]}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Ayarlar paneli */}
+          <View style={s.rsPanel}>
+
+            {/* Metin seçici */}
+            <TouchableOpacity
+              style={[s.rsContentRow, { borderBottomColor: t.colors.border }]}
+              onPress={openContentPicker}
+              activeOpacity={0.7}
+            >
+              <View style={[s.rsRowIconBox, { backgroundColor: accentColor + '14' }]}>
+                <Text style={{ fontSize: 17 }}>📄</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.rsRowLabel}>METİN</Text>
+                <Text style={[s.rsRowValue, { color: selectedContent ? t.colors.text : t.colors.textSub }]} numberOfLines={1}>
+                  {selectedContent?.title ?? 'Kütüphaneden seç veya yapıştır'}
+                </Text>
+              </View>
+              <View style={[s.rsSelectBtn, { borderColor: accentColor, backgroundColor: accentColor + '10' }]}>
+                <Text style={{ fontSize: 12, color: accentColor, fontWeight: '800' }}>
+                  {selectedContent ? 'Değiştir' : 'Seç ›'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* WPM */}
+            <View style={[s.rsWpmRow, { borderBottomColor: t.colors.border }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
+                <View>
+                  <Text style={s.rsRowLabel}>OKUMA HIZI</Text>
+                  {estMin && (
+                    <Text style={[s.rsEstTime, { color: t.colors.textHint }]}>~{estMin} dk okuma süresi</Text>
+                  )}
+                </View>
+                <Text style={[s.rsWpmBig, { color: accentColor }]}>
+                  {wpmPreference}
+                  <Text style={s.rsWpmUnit}> WPM</Text>
+                </Text>
+              </View>
+              <WpmSlider value={wpmPreference} onChange={setWpmPreference} accentColor={accentColor} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                <Text style={s.rsRangeHint}>Yavaş · 100</Text>
+                <Text style={s.rsRangeHint}>Hızlı · 500</Text>
+              </View>
+            </View>
+
+            {/* Yazı boyutu */}
+            <View style={s.rsFontRow}>
+              <Text style={[s.rsRowLabel, { flex: 1 }]}>YAZI BOYUTU</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(['small', 'medium', 'large'] as const).map(sz => (
+                  <TouchableOpacity
+                    key={sz}
+                    onPress={() => setFontSizePreference(sz)}
+                    activeOpacity={0.75}
+                    style={[s.rsFontPill,
+                      fontSizePreference === sz
+                        ? { backgroundColor: accentColor, borderColor: accentColor }
+                        : { backgroundColor: t.colors.background, borderColor: t.colors.border },
+                    ]}
+                  >
+                    <Text style={[s.rsFontA, fontSizePreference === sz ? s.rsFontAActive : {},
+                      { fontSize: sz === 'small' ? 12 : sz === 'medium' ? 16 : 21 }]}>A</Text>
+                    <Text style={[s.rsFontLabel, { color: fontSizePreference === sz ? 'rgba(255,255,255,0.75)' : t.colors.textHint }]}>
+                      {sz === 'small' ? 'Küçük' : sz === 'medium' ? 'Orta' : 'Büyük'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Alt meta chipleri */}
+          <View style={s.rsMeta}>
+            <View style={[s.rsMetaChip, { borderColor: accentColor + '35', backgroundColor: accentColor + '0C' }]}>
+              <Text style={{ fontSize: 13 }}>⏱</Text>
+              <View>
+                <Text style={[s.rsMetaVal, { color: accentColor }]}>{config.duration}</Text>
+                <Text style={[s.rsMetaLbl, { color: t.colors.textHint }]}>SÜRE</Text>
+              </View>
+            </View>
+            <View style={[s.rsMetaChip, { borderColor: accentColor + '35', backgroundColor: accentColor + '0C' }]}>
+              <Text style={{ fontSize: 13 }}>📊</Text>
+              <View>
+                <Text style={[s.rsMetaVal, { color: accentColor }]}>{difficulty}/10</Text>
+                <Text style={[s.rsMetaLbl, { color: t.colors.textHint }]}>ZORLUK</Text>
+              </View>
+            </View>
+            {selectedContent?.wordCount ? (
+              <View style={[s.rsMetaChip, { borderColor: accentColor + '35', backgroundColor: accentColor + '0C' }]}>
+                <Text style={{ fontSize: 13 }}>📖</Text>
+                <View>
+                  <Text style={[s.rsMetaVal, { color: accentColor }]}>{selectedContent.wordCount}</Text>
+                  <Text style={[s.rsMetaLbl, { color: t.colors.textHint }]}>KELİME</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+
+        </ScrollView>
+
+        {/* Başlat — sabit alt */}
+        <View style={s.rsFooter}>
+          {isLocked ? (
+            <TouchableOpacity style={[s.rsStartBtn, { backgroundColor: t.colors.textHint }]} onPress={handleStart}>
+              <Text style={s.rsStartTxt}>🔒 Premium'a Geç</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handleStart} activeOpacity={0.85}>
+              <LinearGradient colors={moduleGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.rsStartBtn}>
+                <Text style={s.rsStartTxt}>⚡  Egzersizi Başlat</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* İçerik Seçici Modal */}
+        <Modal visible={showContentPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowContentPicker(false)}>
+          <View style={p.root}>
+            <View style={p.header}>
+              <Text style={p.headerTitle}>📚 İçerik Seç</Text>
+              <TouchableOpacity onPress={() => setShowContentPicker(false)} style={p.closeBtn}>
+                <Text style={p.closeTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={p.tabBar}>
+              {PICKER_TABS.map(tab => (
+                <TouchableOpacity key={tab.key} style={[p.tabBtn, pickerTab === tab.key && p.tabBtnActive]} onPress={() => setPickerTab(tab.key)} activeOpacity={0.7}>
+                  <Text style={p.tabIcon}>{tab.icon}</Text>
+                  <Text style={[p.tabLabel, pickerTab === tab.key && p.tabLabelActive]}>{tab.label}</Text>
+                  {pickerTab === tab.key && <View style={[p.tabUnderline, { backgroundColor: MODAL_NAVY }]} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            {pickerTab === 'library' && (
+              contentLoading ? <ActivityIndicator style={{ flex: 1 }} size="large" color={MODAL_NAVY} /> : (
+                <FlatList data={contentItems} keyExtractor={item => item.id} contentContainerStyle={p.listContent}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={[p.libItem, selectedContent?.id === item.id && { borderColor: MODAL_NAVY }]} onPress={() => selectLibraryItem(item)} activeOpacity={0.75}>
+                      {selectedContent?.id === item.id && <Text style={[p.checkmark, { color: MODAL_NAVY }]}>✓ </Text>}
+                      <View style={{ flex: 1 }}>
+                        <Text style={p.libTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={p.libMeta}>{item.exam_type} · {item.category} · {item.word_count ?? '—'} kelime</Text>
+                      </View>
+                      <Text style={p.libChevron}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={<View style={p.emptyWrap}><Text style={p.emptyTxt}>İçerik bulunamadı</Text></View>}
+                />
+              )
+            )}
+            {pickerTab === 'text' && (
+              <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ScrollView contentContainerStyle={p.textTabContent}>
+                  <Text style={p.textTabHint}>Bir metin yapıştır veya yaz.</Text>
+                  <TextInput style={p.textInput} multiline placeholder="Metni buraya yapıştır…" placeholderTextColor="#AAB" value={customText} onChangeText={setCustomText} textAlignVertical="top" />
+                  {customText.trim().length > 0 && <Text style={p.wordCountBadge}>{customText.trim().split(/\s+/).length} kelime</Text>}
+                  <TouchableOpacity style={[p.useBtn, { backgroundColor: customText.trim().length > 20 ? MODAL_NAVY : '#CCC' }]} onPress={() => useCustomContent(customText, 'Özel Metin')} disabled={customText.trim().length <= 20} activeOpacity={0.85}>
+                    <Text style={p.useBtnTxt}>✓ Bu Metni Kullan</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            )}
+            {pickerTab === 'file' && (
+              <View style={p.fileTabContent}>
+                {fileInfo ? (
+                  <>
+                    <View style={p.filePreviewBox}>
+                      <Text style={p.filePreviewName}>📄 {fileInfo.name}</Text>
+                      <Text style={p.filePreviewMeta}>{fileInfo.text.trim().split(/\s+/).length} kelime</Text>
+                      <Text style={p.filePreviewSnippet} numberOfLines={4}>{fileInfo.text.slice(0, 200)}…</Text>
+                    </View>
+                    <TouchableOpacity style={[p.useBtn, { backgroundColor: MODAL_NAVY }]} onPress={() => useCustomContent(fileInfo.text, fileInfo.name.replace(/\.[^.]+$/, ''))} activeOpacity={0.85}>
+                      <Text style={p.useBtnTxt}>✓ Bu Dosyayı Kullan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={p.rePickBtn} onPress={pickFile}><Text style={p.rePickTxt}>Farklı Dosya Seç</Text></TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={p.fileHint}>Cihazından .txt dosyası seç.</Text>
+                    {fileLoading ? <ActivityIndicator size="large" color={MODAL_NAVY} style={{ marginTop: 32 }} /> : (
+                      <TouchableOpacity style={[p.useBtn, { backgroundColor: MODAL_NAVY }]} onPress={pickFile} activeOpacity={0.85}><Text style={p.useBtnTxt}>📂 Dosya Seç</Text></TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+            {pickerTab === 'recent' && (
+              recentItems.length === 0 ? (
+                <View style={p.emptyWrap}>
+                  <Text style={p.emptyTxt}>Henüz içerik seçilmedi</Text>
+                  <Text style={[p.emptyTxt, { fontSize: 12, marginTop: 4 }]}>Kütüphane'den bir metin seçince burada görünür</Text>
+                </View>
+              ) : (
+                <FlatList data={recentItems} keyExtractor={item => item.id} contentContainerStyle={p.listContent}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={[p.libItem, selectedContent?.id === item.id && { borderColor: MODAL_NAVY }]}
+                      onPress={() => { setSelectedContent({ id: item.id, title: item.title, wordCount: item.wordCount }); setShowContentPicker(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light) }}
+                      activeOpacity={0.75}>
+                      {selectedContent?.id === item.id && <Text style={[p.checkmark, { color: MODAL_NAVY }]}>✓ </Text>}
+                      <View style={{ flex: 1 }}>
+                        <Text style={p.libTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={p.libMeta}>{item.wordCount} kelime · {new Date(item.usedAt).toLocaleDateString('tr-TR')}</Text>
+                      </View>
+                      <Text style={p.libChevron}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )
+            )}
+          </View>
+        </Modal>
+      </SafeAreaView>
+    )
+  }
+
   // ─── Normal egzersiz intro ─────────────────────────────────────
   return (
     <SafeAreaView style={s.root}>
@@ -408,53 +661,6 @@ export default function ExerciseIntroScreen() {
             </View>
           ) : null}
         </View>
-
-        {/* ── Okuma Tercihleri ── */}
-        {isReadingSetup && !isLocked && (
-          <View style={[s.prefSection, { borderColor: accentColor + '30' }]}>
-            <Text style={[s.prefTitle, { color: t.colors.text }]}>⚙️ Tercihler</Text>
-
-            {/* İçerik Seç */}
-            <TouchableOpacity style={[s.contentCard, { borderColor: selectedContent ? accentColor : t.colors.border }]} onPress={openContentPicker} activeOpacity={0.75}>
-              <View style={s.contentCardInner}>
-                {selectedContent ? (
-                  <>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.contentCardTitle, { color: t.colors.text }]} numberOfLines={1}>{selectedContent.title}</Text>
-                      <Text style={[s.contentCardMeta, { color: t.colors.textHint }]}>{selectedContent.wordCount ?? '—'} kelime</Text>
-                    </View>
-                    <Text style={{ fontSize: 12, color: accentColor, fontWeight: '600' }}>Değiştir</Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={[s.contentCardEmpty, { color: t.colors.textHint }]}>📄 İçerik Seç (opsiyonel)</Text>
-                    <Text style={{ fontSize: 20, color: accentColor }}>+</Text>
-                  </>
-                )}
-              </View>
-            </TouchableOpacity>
-
-            {/* WPM Slider */}
-            <WpmSlider value={wpmPreference} onChange={setWpmPreference} accentColor={accentColor} labelColor={t.colors.text} />
-
-            {/* Yazı Boyutu */}
-            <View style={s.fontSizeRow}>
-              <Text style={[s.prefSubLabel, { color: t.colors.text }]}>🔤 Yazı Boyutu</Text>
-              <View style={s.fontSizeBtns}>
-                {(['small', 'medium', 'large'] as const).map(size => (
-                  <TouchableOpacity
-                    key={size}
-                    onPress={() => setFontSizePreference(size)}
-                    style={[s.fontSizeBtn, { borderColor: t.colors.border }, fontSizePreference === size && { backgroundColor: accentColor + '18', borderColor: accentColor }]}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[s.fontSizeTxt, { fontSize: size === 'small' ? 11 : size === 'medium' ? 15 : 19 }, { color: t.colors.textSub }, fontSizePreference === size && { color: accentColor, fontWeight: '800' }]}>A</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* Ölçüm Kriterleri */}
         <View style={s.metricsSection}>
@@ -496,165 +702,6 @@ export default function ExerciseIntroScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
-
-      {/* ══ İçerik Seçici Modal — 4 Sekme ══════════════════════════════ */}
-      <Modal
-        visible={showContentPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowContentPicker(false)}
-      >
-        <View style={p.root}>
-          {/* Header */}
-          <View style={p.header}>
-            <Text style={p.headerTitle}>📚 İçerik Seç</Text>
-            <TouchableOpacity onPress={() => setShowContentPicker(false)} style={p.closeBtn}>
-              <Text style={p.closeTxt}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Tab Bar */}
-          <View style={p.tabBar}>
-            {PICKER_TABS.map(tab => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[p.tabBtn, pickerTab === tab.key && p.tabBtnActive]}
-                onPress={() => setPickerTab(tab.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[p.tabIcon]}>{tab.icon}</Text>
-                <Text style={[p.tabLabel, pickerTab === tab.key && p.tabLabelActive]}>{tab.label}</Text>
-                {pickerTab === tab.key && <View style={[p.tabUnderline, { backgroundColor: MODAL_NAVY }]} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ── Kütüphane ── */}
-          {pickerTab === 'library' && (
-            contentLoading ? (
-              <ActivityIndicator style={{ flex: 1 }} size="large" color={MODAL_NAVY} />
-            ) : (
-              <FlatList
-                data={contentItems}
-                keyExtractor={item => item.id}
-                contentContainerStyle={p.listContent}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[p.libItem, selectedContent?.id === item.id && { borderColor: MODAL_NAVY }]}
-                    onPress={() => selectLibraryItem(item)}
-                    activeOpacity={0.75}
-                  >
-                    {selectedContent?.id === item.id && <Text style={[p.checkmark, { color: MODAL_NAVY }]}>✓ </Text>}
-                    <View style={{ flex: 1 }}>
-                      <Text style={p.libTitle} numberOfLines={2}>{item.title}</Text>
-                      <Text style={p.libMeta}>{item.exam_type} · {item.category} · {item.word_count ?? '—'} kelime</Text>
-                    </View>
-                    <Text style={p.libChevron}>›</Text>
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={<View style={p.emptyWrap}><Text style={p.emptyTxt}>İçerik bulunamadı</Text></View>}
-              />
-            )
-          )}
-
-          {/* ── Metin ── */}
-          {pickerTab === 'text' && (
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-              <ScrollView contentContainerStyle={p.textTabContent}>
-                <Text style={p.textTabHint}>Bir metin yapıştır veya yaz. Sistem bu metinle egzersizi başlatır.</Text>
-                <TextInput
-                  style={p.textInput}
-                  multiline
-                  placeholder="Metni buraya yapıştır…"
-                  placeholderTextColor="#AAB"
-                  value={customText}
-                  onChangeText={setCustomText}
-                  textAlignVertical="top"
-                />
-                {customText.trim().length > 0 && (
-                  <Text style={p.wordCountBadge}>
-                    {customText.trim().split(/\s+/).length} kelime
-                  </Text>
-                )}
-                <TouchableOpacity
-                  style={[p.useBtn, { backgroundColor: customText.trim().length > 20 ? MODAL_NAVY : '#CCC' }]}
-                  onPress={() => useCustomContent(customText, 'Özel Metin')}
-                  disabled={customText.trim().length <= 20}
-                  activeOpacity={0.85}
-                >
-                  <Text style={p.useBtnTxt}>✓ Bu Metni Kullan</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </KeyboardAvoidingView>
-          )}
-
-          {/* ── Dosya ── */}
-          {pickerTab === 'file' && (
-            <View style={p.fileTabContent}>
-              {fileInfo ? (
-                <>
-                  <View style={p.filePreviewBox}>
-                    <Text style={p.filePreviewName}>📄 {fileInfo.name}</Text>
-                    <Text style={p.filePreviewMeta}>{fileInfo.text.trim().split(/\s+/).length} kelime</Text>
-                    <Text style={p.filePreviewSnippet} numberOfLines={4}>{fileInfo.text.slice(0, 200)}…</Text>
-                  </View>
-                  <TouchableOpacity style={[p.useBtn, { backgroundColor: MODAL_NAVY }]} onPress={() => useCustomContent(fileInfo.text, fileInfo.name.replace(/\.[^.]+$/, ''))} activeOpacity={0.85}>
-                    <Text style={p.useBtnTxt}>✓ Bu Dosyayı Kullan</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={p.rePickBtn} onPress={pickFile}>
-                    <Text style={p.rePickTxt}>Farklı Dosya Seç</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Text style={p.fileHint}>Cihazından .txt dosyası seç.</Text>
-                  {fileLoading ? (
-                    <ActivityIndicator size="large" color={MODAL_NAVY} style={{ marginTop: 32 }} />
-                  ) : (
-                    <TouchableOpacity style={[p.useBtn, { backgroundColor: MODAL_NAVY }]} onPress={pickFile} activeOpacity={0.85}>
-                      <Text style={p.useBtnTxt}>📂 Dosya Seç</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-          )}
-
-          {/* ── Son ── */}
-          {pickerTab === 'recent' && (
-            recentItems.length === 0 ? (
-              <View style={p.emptyWrap}>
-                <Text style={p.emptyTxt}>Henüz içerik seçilmedi</Text>
-                <Text style={[p.emptyTxt, { fontSize: 12, marginTop: 4 }]}>Kütüphane'den bir metin seçince burada görünür</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={recentItems}
-                keyExtractor={item => item.id}
-                contentContainerStyle={p.listContent}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[p.libItem, selectedContent?.id === item.id && { borderColor: MODAL_NAVY }]}
-                    onPress={() => {
-                      setSelectedContent({ id: item.id, title: item.title, wordCount: item.wordCount })
-                      setShowContentPicker(false)
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    {selectedContent?.id === item.id && <Text style={[p.checkmark, { color: MODAL_NAVY }]}>✓ </Text>}
-                    <View style={{ flex: 1 }}>
-                      <Text style={p.libTitle} numberOfLines={2}>{item.title}</Text>
-                      <Text style={p.libMeta}>{item.wordCount} kelime · {new Date(item.usedAt).toLocaleDateString('tr-TR')}</Text>
-                    </View>
-                    <Text style={p.libChevron}>›</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )
-          )}
-        </View>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -693,18 +740,72 @@ function ms(t: AppTheme) {
     infoCard: { flex: 1, backgroundColor: t.colors.surface, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: t.colors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
     infoValue: { fontSize: 17, fontWeight: '900', marginBottom: 3 },
     infoLabel: { fontSize: 11, color: t.colors.textHint, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-    prefSection: { backgroundColor: t.colors.surface, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, gap: 16 },
-    prefTitle: { fontSize: 14, fontWeight: '800', marginBottom: -4 },
-    prefSubLabel: { fontSize: 13, fontWeight: '700', flex: 1 },
-    contentCard: { borderWidth: 1.5, borderRadius: 12, padding: 12, backgroundColor: t.colors.background },
-    contentCardInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    contentCardTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-    contentCardMeta: { fontSize: 11 },
-    contentCardEmpty: { flex: 1, fontSize: 13, fontStyle: 'italic' },
-    fontSizeRow: { flexDirection: 'row', alignItems: 'center' },
-    fontSizeBtns: { flexDirection: 'row', gap: 8 },
-    fontSizeBtn: { width: 42, height: 38, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-    fontSizeTxt: { fontWeight: '600' },
+    // ── Reading Setup (rs) ekranı ────────────────────────────────────
+    rsNav: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 4, paddingBottom: 0 },
+    rsBackBtn: { paddingVertical: 10 },
+    rsBackTxt: { fontSize: 15, fontWeight: '600' },
+    rsHero: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 20, gap: 8 },
+    rsHeroIconWrap: { width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 4, shadowColor: '#1A3594', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+    rsHeroIcon: { fontSize: 36 },
+    rsHeroTitle: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
+    rsHeroSub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+    rsLearnCard: {
+      marginHorizontal: 16,
+      borderRadius: 16,
+      backgroundColor: t.colors.surface,
+      borderWidth: 1,
+      padding: 14,
+      gap: 10,
+    },
+    rsLearnRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    rsLearnIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+    rsLearnText: { flex: 1, fontSize: 12, lineHeight: 17, fontWeight: '500' },
+    rsPanel: {
+      marginHorizontal: 16, borderRadius: 20,
+      backgroundColor: t.colors.surface,
+      borderWidth: 1, borderColor: t.colors.border,
+      shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+      overflow: 'hidden',
+    },
+    rsContentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+    rsRowIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    rsRowLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.9, color: '#8898B0', marginBottom: 3 },
+    rsRowValue: { fontSize: 14, fontWeight: '600' },
+    rsSelectBtn: { borderRadius: 10, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 },
+    rsWpmRow: { padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+    rsEstTime: { fontSize: 11, marginTop: 1 },
+    rsWpmBig: { fontSize: 30, fontWeight: '900', letterSpacing: -1 },
+    rsWpmUnit: { fontSize: 14, fontWeight: '600' },
+    rsRangeHint: { fontSize: 10, color: '#8898B0', fontWeight: '600' },
+    rsFontRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+    rsFontPill: { width: 60, height: 56, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', gap: 2 },
+    rsFontA: { fontWeight: '800', color: '#8898B0' },
+    rsFontAActive: { color: '#fff' },
+    rsFontLabel: { fontSize: 9, fontWeight: '600' },
+    rsMeta: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 14 },
+    rsMetaChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 12, borderWidth: 1, padding: 10 },
+    rsMetaVal: { fontSize: 14, fontWeight: '800' },
+    rsMetaLbl: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginTop: 1 },
+    rsFooter: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
+    rsStartBtn: { borderRadius: 18, paddingVertical: 18, alignItems: 'center' },
+    rsStartTxt: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.2 },
+    // ── Eski compact styles (normal modüller için kullanılmıyor ama gerekebilir) ─
+    infoChip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
+    infoChipTxt: { fontSize: 12, fontWeight: '700' },
+    // ── Setup card (normal modüller) ─────────────────────────────────
+    setupCard: {
+      backgroundColor: t.colors.surface, borderRadius: 20, borderWidth: 1,
+      marginBottom: 16, overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    },
+    setupRow: { flexDirection: 'row', alignItems: 'flex-start', padding: 14, gap: 12 },
+    setupIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+    setupLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 3 },
+    setupValue: { fontSize: 14, fontWeight: '600' },
+    setupDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 14 },
+    setupChip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, alignSelf: 'center' },
+    wpmBadge: { flexDirection: 'row', alignItems: 'baseline', borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+    fontPill: { width: 38, height: 36, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
     metricsSection: { backgroundColor: t.colors.surface, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: t.colors.border, gap: 12 },
     metricsTitle: { fontSize: 13, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
     metricRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

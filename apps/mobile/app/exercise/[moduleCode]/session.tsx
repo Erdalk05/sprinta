@@ -61,76 +61,156 @@ function articleToExercise(art: Article) {
   }
 }
 
-// ── WPM Slider (Reanimated v4 PanGestureHandler) ────────────────────────
+// ── İmmersif renk paleti (speed_control / deep_comprehension) ─────────
+const IM_HEADER  = '#1A2894'           // koyu lacivert üst bar
+const IM_CONTENT = '#EBF0FF'           // çok açık mavi içerik alanı
+const IM_BOTTOM  = '#0F1870'           // çok koyu lacivert alt bar
+const IM_WHITE   = '#FFFFFF'
+const IM_TRACK   = 'rgba(255,255,255,0.25)'
+
+// ── WPM Slider ────────────────────────────────────────────────────────
 const WPM_MIN = 100, WPM_MAX = 500
 
 interface WpmSliderProps {
   value: number
   onChange: (wpm: number) => void
   accentColor: string
+  dark?: boolean
 }
 
-function SessionWpmSlider({ value, onChange, accentColor }: WpmSliderProps) {
+function SessionWpmSlider({ value, onChange, accentColor, dark }: WpmSliderProps) {
   const { width } = useWindowDimensions()
-  const trackW = Math.max(160, width - 80)
+  const trackW = Math.max(160, width - 48)
   const range = WPM_MAX - WPM_MIN
-
-  const [localWpm, setLocalWpm] = useState(value)
   const thumbX = useSharedValue(((value - WPM_MIN) / range) * trackW)
   const startX = useSharedValue(0)
 
-  // Sync external value changes (e.g. initial load)
   useEffect(() => {
     thumbX.value = ((value - WPM_MIN) / range) * trackW
-    setLocalWpm(value)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
-  // When localWpm changes via drag, notify parent
-  const prevWpm = useRef(value)
-  useEffect(() => {
-    if (localWpm !== prevWpm.current) {
-      prevWpm.current = localWpm
-      onChange(localWpm)
-    }
-  }, [localWpm, onChange])
+  const fillC = dark ? IM_WHITE : accentColor
+  const trackC = dark ? IM_TRACK : accentColor + '22'
+  const labelC = dark ? 'rgba(255,255,255,0.65)' : colors.textSecondary
+  const valueC = dark ? IM_WHITE : accentColor
 
   const pan = Gesture.Pan()
     .onBegin(() => { startX.value = thumbX.value })
     .onUpdate((e) => {
       const nx = Math.max(0, Math.min(trackW, startX.value + e.translationX))
       thumbX.value = nx
-      const wpm = Math.round(WPM_MIN + (nx / trackW) * range)
-      runOnJS(setLocalWpm)(wpm)
+      runOnJS(onChange)(Math.round(WPM_MIN + (nx / trackW) * range))
     })
+
+  // Tek tıkla → o noktaya atla
+  const tapJump = Gesture.Tap()
+    .onEnd((e) => {
+      const nx = Math.max(0, Math.min(trackW, e.x))
+      thumbX.value = nx
+      runOnJS(onChange)(Math.round(WPM_MIN + (nx / trackW) * range))
+    })
+
+  const gesture = Gesture.Exclusive(pan, tapJump)
 
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: thumbX.value }],
+  }))
+  const fillStyle = useAnimatedStyle(() => ({
+    width: Math.max(0, thumbX.value + 13),
   }))
 
   return (
     <View style={bar.sliderWrap}>
       <View style={bar.sliderHeader}>
-        <Text style={bar.sliderLabel}>⚡ Hız</Text>
-        <Text style={[bar.sliderValue, { color: accentColor }]}>{localWpm} WPM</Text>
+        <Text style={[bar.sliderLabel, { color: labelC }]}>⚡ OKUMA HIZI</Text>
+        <Text style={[bar.sliderValue, { color: valueC }]}>{value} WPM</Text>
       </View>
-      <GestureDetector gesture={pan}>
+      <GestureDetector gesture={gesture}>
         <View style={[bar.trackHitArea, { width: trackW }]}>
-          <View style={bar.track}>
-            <Animated.View style={[bar.thumb, { backgroundColor: accentColor }, thumbStyle]} />
+          <View style={[bar.track, { backgroundColor: trackC }]}>
+            <Animated.View style={[{ height: 5, backgroundColor: fillC, borderRadius: 3, position: 'absolute' }, fillStyle]} />
           </View>
+          <Animated.View style={[bar.thumb, { borderColor: dark ? IM_WHITE : accentColor }, thumbStyle]} />
         </View>
       </GestureDetector>
-      <View style={[bar.rangeRow, { width: trackW }]}>
-        <Text style={bar.rangeLabel}>100</Text>
-        <Text style={bar.rangeLabel}>500</Text>
+    </View>
+  )
+}
+
+// ── Yazı Boyutu Slider (3 snap) ────────────────────────────────────────
+const FONT_STEPS = ['small', 'medium', 'large'] as const
+type FontSizeKey = typeof FONT_STEPS[number]
+const FONT_LABELS: Record<FontSizeKey, string> = { small: 'Küçük', medium: 'Orta', large: 'Büyük' }
+
+function FontSizeSlider({ value, onChange, accentColor, dark }: { value: FontSizeKey; onChange: (v: FontSizeKey) => void; accentColor: string; dark?: boolean }) {
+  const { width } = useWindowDimensions()
+  const trackW = Math.max(160, width - 48)
+  const thumbX = useSharedValue((FONT_STEPS.indexOf(value) / 2) * trackW)
+  const startX = useSharedValue(0)
+
+  useEffect(() => {
+    thumbX.value = (FONT_STEPS.indexOf(value) / 2) * trackW
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  const fillC = dark ? IM_WHITE : accentColor
+  const trackC = dark ? IM_TRACK : accentColor + '22'
+  const labelC = dark ? 'rgba(255,255,255,0.65)' : colors.textSecondary
+  const valueC = dark ? IM_WHITE : accentColor
+
+  // Worklet içinde snap — JS'e sadece step indexi geçilir
+  const pan = Gesture.Pan()
+    .onBegin(() => { startX.value = thumbX.value })
+    .onUpdate((e) => {
+      thumbX.value = Math.max(0, Math.min(trackW, startX.value + e.translationX))
+    })
+    .onEnd(() => {
+      'worklet'
+      const clamped = Math.max(0, Math.min(2, Math.round((thumbX.value / trackW) * 2)))
+      thumbX.value = (clamped / 2) * trackW
+      runOnJS(onChange)(['small', 'medium', 'large'][clamped] as FontSizeKey)
+    })
+
+  // Tek tıkla da atlayabilsin
+  const tapJump = Gesture.Tap()
+    .onEnd((e) => {
+      'worklet'
+      const clamped = Math.max(0, Math.min(2, Math.round((Math.max(0, Math.min(trackW, e.x)) / trackW) * 2)))
+      thumbX.value = (clamped / 2) * trackW
+      runOnJS(onChange)(['small', 'medium', 'large'][clamped] as FontSizeKey)
+    })
+
+  const gesture = Gesture.Exclusive(pan, tapJump)
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: thumbX.value }],
+  }))
+  const fillStyle = useAnimatedStyle(() => ({
+    width: Math.max(0, thumbX.value + 13),
+  }))
+
+  return (
+    <View style={bar.sliderWrap}>
+      <View style={bar.sliderHeader}>
+        <Text style={[bar.sliderLabel, { color: labelC }]}>YAZI BOYUTU</Text>
+        <Text style={[bar.sliderValue, { color: valueC }]}>{FONT_LABELS[value]}</Text>
       </View>
+      <GestureDetector gesture={gesture}>
+        <View style={[bar.trackHitArea, { width: trackW }]}>
+          <View style={[bar.track, { backgroundColor: trackC }]}>
+            <Animated.View style={[{ height: 5, backgroundColor: fillC, borderRadius: 3, position: 'absolute' }, fillStyle]} />
+          </View>
+          <Animated.View style={[bar.thumb, { borderColor: dark ? IM_WHITE : accentColor }, thumbStyle]} />
+        </View>
+      </GestureDetector>
     </View>
   )
 }
 // ────────────────────────────────────────────────────────────────────────
 
-const FONT_SIZE_MAP = { small: 14, medium: 17, large: 20 } as const
-const FONT_SIZE_LABELS = { small: 'A', medium: 'A', large: 'A' } as const
+const FONT_SIZE_MAP      = { small: 14, medium: 17, large: 20 } as const
+const CHUNK_FONT_SIZE_MAP = { small: 40, medium: 52, large: 66 } as const
 
 export default function SessionScreen() {
   const { moduleCode, difficulty, exerciseId, articleId, userContentId, userChunkId, hasPendingText } =
@@ -156,6 +236,7 @@ export default function SessionScreen() {
   const [readingWpm, setReadingWpm] = useState(0)
   const [articleLoading, setArticleLoading] = useState(!!(articleId || userContentId || hasPendingText))
   const [remoteArticle, setRemoteArticle] = useState<ReturnType<typeof articleToExercise> | null>(null)
+  const [sessionPaused, setSessionPaused] = useState(false)
 
   const config = MODULE_CONFIGS[moduleCode] ?? MODULE_CONFIGS.speed_control
   const difficultyNum = parseInt(difficulty ?? '5', 10)
@@ -163,13 +244,38 @@ export default function SessionScreen() {
 
   const isReadingExercise = moduleCode === 'speed_control' || moduleCode === 'deep_comprehension'
 
-  // articleId → platform makalesinden çek
+  // articleId → önce articles cache, sonra text_library tablosundan çek
   useEffect(() => {
     if (!articleId) return
-    getArticleById(articleId).then((art) => {
-      if (art) setRemoteArticle(articleToExercise(art))
+    ;(async () => {
+      // 1) Articles cache (konu modülleri)
+      const cached = await getArticleById(articleId)
+      if (cached) {
+        setRemoteArticle(articleToExercise(cached))
+        setArticleLoading(false)
+        return
+      }
+      // 2) text_library tablosu (içerik seçici kütüphanesi)
+      try {
+        const { data } = await _supabase
+          .from('text_library')
+          .select('id, title, body, word_count, exam_type')
+          .eq('id', articleId)
+          .single()
+        if (data) {
+          setRemoteArticle({
+            id: data.id,
+            moduleCode,
+            title: data.title,
+            content: data.body ?? '',
+            wordCount: data.word_count ?? 0,
+            difficulty: difficultyNum,
+            questions: [],
+          })
+        }
+      } catch { /**/ }
       setArticleLoading(false)
-    })
+    })()
   }, [articleId])
 
   // hasPendingText → MMKV'den özel metin yükle (index.tsx Metin/Dosya sekmeleri)
@@ -312,31 +418,55 @@ export default function SessionScreen() {
     )
   }
 
+  // İmmersif mod: speed_control için özel renk şeması
+  const im = isReadingExercise
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleQuit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.quitText}>✕</Text>
+    <SafeAreaView style={[styles.container, im && { backgroundColor: IM_CONTENT }]}>
+      {/* Header — immersif modda koyu lacivert */}
+      <View style={[styles.header, im && { backgroundColor: IM_HEADER }]}>
+        <TouchableOpacity onPress={handleQuit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.quitBtn}>
+          <Text style={[styles.quitText, im && { color: IM_WHITE }]}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.moduleLabel}>{config.label}</Text>
-        <Text style={[styles.timer, { color: accentColor }]}>{formatTime(elapsed)}</Text>
+        <Text style={[styles.moduleLabel, im && { color: IM_WHITE }]}>{config.label}</Text>
+        <Text style={[styles.timer, { color: im ? IM_WHITE : accentColor }]}>{formatTime(elapsed)}</Text>
       </View>
-      {/* Accent line */}
-      <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
+      {/* Accent line — immersif modda gizle */}
+      {!im && <View style={[styles.accentLine, { backgroundColor: accentColor }]} />}
 
       {/* İçerik */}
       {phase === 'exercise' && moduleCode === 'speed_control' && exercise && (
-        <ChunkReader
-          text={exercise.content}
-          targetWpm={wpmPreference}
-          chunkSize={2}
-          accentColor={accentColor}
-          onProgress={(w) => store.addWords(w)}
-          onHalfway={handleHalfway}
-          onComplete={(wpm) => handleExerciseComplete(wpm)}
-          onQuit={handleQuit}
-        />
+        <>
+          <ChunkReader
+            text={exercise.content}
+            targetWpm={wpmPreference}
+            chunkSize={2}
+            accentColor={im ? IM_HEADER : accentColor}
+            bgColor={IM_CONTENT}
+            fontSize={CHUNK_FONT_SIZE_MAP[fontSizePreference]}
+            isPaused={sessionPaused}
+            onProgress={(w) => store.addWords(w)}
+            onHalfway={handleHalfway}
+            onComplete={(wpm) => handleExerciseComplete(wpm)}
+          />
+          {/* Pause / Resume — immersif modda beyaz outline */}
+          <TouchableOpacity
+            onPress={() => setSessionPaused(p => !p)}
+            activeOpacity={0.82}
+            style={[styles.pauseInlineBtn, im
+              ? sessionPaused
+                ? { backgroundColor: IM_WHITE, borderColor: IM_WHITE }
+                : { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.5)' }
+              : sessionPaused
+                ? { backgroundColor: accentColor, borderColor: accentColor }
+                : { backgroundColor: 'transparent', borderColor: accentColor + '80' }
+            ]}
+          >
+            <Text style={[styles.pauseInlineTxt, { color: im ? (sessionPaused ? IM_HEADER : IM_WHITE) : (sessionPaused ? '#fff' : accentColor) }]}>
+              {sessionPaused ? '▶  Devam Et' : '⏸  Duraklat'}
+            </Text>
+          </TouchableOpacity>
+        </>
       )}
 
       {phase === 'exercise' && moduleCode === 'deep_comprehension' && exercise && (
@@ -423,39 +553,19 @@ export default function SessionScreen() {
 
       {/* ── Okuma Ayarları Alt Barı (speed_control / deep_comprehension) ── */}
       {phase === 'exercise' && isReadingExercise && (
-        <View style={styles.settingsBar}>
-          {/* WPM Slider */}
+        <View style={[styles.settingsBar, im && { backgroundColor: IM_BOTTOM, borderTopColor: 'transparent' }]}>
           <SessionWpmSlider
             value={wpmPreference}
             onChange={setWpmPreference}
             accentColor={accentColor}
+            dark={im}
           />
-
-          {/* Yazı Boyutu */}
-          <View style={styles.fontRow}>
-            <Text style={styles.fontLabel}>Yazı</Text>
-            <View style={styles.fontBtns}>
-              {(['small', 'medium', 'large'] as const).map(size => (
-                <TouchableOpacity
-                  key={size}
-                  onPress={() => setFontSizePreference(size)}
-                  style={[
-                    styles.fontBtn,
-                    fontSizePreference === size && { backgroundColor: accentColor + '20', borderColor: accentColor },
-                  ]}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[
-                    styles.fontBtnTxt,
-                    { fontSize: size === 'small' ? 11 : size === 'medium' ? 14 : 18 },
-                    fontSizePreference === size && { color: accentColor, fontWeight: '800' },
-                  ]}>
-                    {FONT_SIZE_LABELS[size]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <FontSizeSlider
+            value={fontSizePreference}
+            onChange={setFontSizePreference}
+            accentColor={accentColor}
+            dark={im}
+          />
         </View>
       )}
     </SafeAreaView>
@@ -472,28 +582,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: colors.background,
   },
   accentLine: {
-    height: 3,
-    borderRadius: 0,
-    opacity: 0.85,
+    height: 2,
+    opacity: 0.7,
   },
+  quitBtn: { padding: 4 },
   quitText: {
-    fontSize: 20,
+    fontSize: 18,
     color: colors.textSecondary,
-    padding: 4,
   },
   moduleLabel: {
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pauseInlineBtn: {
+    marginHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseInlineTxt: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   timer: {
     fontSize: 16,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
+    minWidth: 36,
+    textAlign: 'right',
   },
   questionsContainer: {
     flex: 1,
@@ -513,18 +644,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 10,
-    paddingBottom: 14,
-    gap: 6,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 4,
   },
   fontRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 24,
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
   },
   fontLabel: {
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     color: colors.textSecondary,
   },
   fontBtns: {
@@ -532,47 +665,80 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fontBtn: {
-    width: 40,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+    width: 58,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
+    backgroundColor: colors.background,
   },
-  fontBtnTxt: {
+  fontBtnA: {
+    fontWeight: '800',
+  },
+  fontBtnLbl: {
+    fontSize: 9,
     fontWeight: '600',
-    color: colors.text,
+  },
+  // Font timeline (3-dot slider)
+  fontTimeline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  fontTrackLine: {
+    flex: 1,
+    height: 2,
+    borderRadius: 1,
+  },
+  fontDotWrap: {
+    alignItems: 'center',
+    gap: 5,
+  },
+  fontDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  fontDotLabel: {
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
 })
 
-// ── SessionWpmSlider stiller ──────────────────────────────────────────
+// ── Slider paylaşımlı stiller (WPM + FontSize) ───────────────────────
 const bar = StyleSheet.create({
   sliderWrap: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     gap: 2,
   },
   sliderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'center',
+    marginBottom: 3,
   },
   sliderLabel: {
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     color: colors.textSecondary,
   },
   sliderValue: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '900',
   },
   trackHitArea: {
-    height: 36,
+    height: 32,
     justifyContent: 'center',
+    position: 'relative',
   },
   track: {
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden',
     position: 'relative',
   },
   thumb: {
@@ -580,18 +746,23 @@ const bar = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     position: 'absolute',
-    top: -9,
+    top: 5,
+    backgroundColor: '#fff',
+    borderWidth: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   rangeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 1,
   },
   rangeLabel: {
     fontSize: 10,
+    fontWeight: '600',
     color: colors.textSecondary,
   },
 })
