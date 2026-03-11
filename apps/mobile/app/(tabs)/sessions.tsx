@@ -40,14 +40,47 @@ const GOZ_EXERCISES: GozEx[] = [
   { num: 1,  exerciseId: 'flash_jump_matrix',      label: 'Flash Atlama Matrisi',         subtitle: 'Izgara üzerinde yanan noktaları hızla takip'      },
 ]
 
-// ─── 3 Okuma Modülü ───────────────────────────────────────────────
+// ─── Okuma Modülleri (29 modül, 3 kategori) ───────────────────────
 interface OkumaMod {
-  icon: string; label: string; subtitle: string; duration: string; route: string
+  icon: string; label: string; subtitle: string; duration: string; route: string; accent: string
 }
-const OKUMA_MODULES: OkumaMod[] = [
-  { icon: '⚡', label: 'RSVP Okuma',     subtitle: 'Parça parça okuma · Bionic · Hız kontrolü',  duration: '8–20 dk',  route: '/exercise/chunk-rsvp'   },
-  { icon: '🌊', label: 'Akış Okuma',     subtitle: 'Satır pacing · Cursor animasyon · Sprint',   duration: '10–20 dk', route: '/exercise/flow-reading' },
-  { icon: '📖', label: 'Kelime Haznesi', subtitle: 'Bağlamsal kelime öğrenme · LGS / TYT',      duration: '10–20 dk', route: '/exercise/vocabulary'   },
+
+const HIZ_EGITIMI: OkumaMod[] = [
+  { icon: '⚡', label: 'Hız Kontrolü',      subtitle: 'İçerik seç · WPM ayarla · anlama soruları',     duration: '10–20 dk', route: '/exercise/speed_control',    accent: '#2563EB' },
+  { icon: '⚡', label: 'Chunk Okuma',       subtitle: 'Kelimeyi grup grup gör · hızını 2×',             duration: '8–15 dk',  route: '/exercise/chunk-rsvp',       accent: '#0891B2' },
+  { icon: '🌊', label: 'Akış Okuma',        subtitle: 'Satır pacing · anlama + hız dengesi',            duration: '10–20 dk', route: '/exercise/flow-reading',     accent: '#059669' },
+  { icon: '🪜', label: 'Hız Merdiveni',     subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',       duration: '10–15 dk', route: '/exercise/speed-ladder',     accent: '#D97706' },
+  { icon: '🧬', label: 'Biyonik Okuma',     subtitle: 'İlk heceler kalın · beyin tamamlar',             duration: '8–15 dk',  route: '/exercise/bionic-reading',   accent: '#0284C7' },
+  { icon: '👁️', label: 'Göz Genişliği',    subtitle: 'Flash gruplar · daha az göz hareketi',           duration: '5–10 dk',  route: '/exercise/fixation-trainer', accent: '#9333EA' },
+  { icon: '💫', label: 'Çok Kelime',        subtitle: '2–4 kelime aynı anda · span artır',              duration: '8–15 dk',  route: '/exercise/word-burst',       accent: '#16A34A' },
+  { icon: '📜', label: 'Oto Kaydırma',      subtitle: 'Metin kendi hızında akar · ritim kur',           duration: '8–15 dk',  route: '/exercise/auto-scroll',      accent: '#E11D48' },
+  { icon: '🏕️', label: 'Hızlı Okuma Kampı',subtitle: 'Günlük antrenman · WPM gelişimini izle',         duration: '20–30 dk', route: '/exercise/speed-camp',       accent: '#15803D' },
+]
+
+const ANLAMA_STRATEJI: OkumaMod[] = [
+  { icon: '🧠', label: 'Derin Kavrama',    subtitle: 'Serbest okuma · yazı boyutu · anlama soruları',  duration: '15–25 dk', route: '/exercise/deep_comprehension', accent: '#7C3AED' },
+  { icon: '⏱️', label: 'Zamanlı Okuma',   subtitle: 'Süre baskısı · YKS/TYT simülasyonu',             duration: '10–20 dk', route: '/exercise/timed-reading',      accent: '#EA580C' },
+  { icon: '🔍', label: 'Anahtar Kelime',  subtitle: 'Kritik bilgiyi tara · pasaj tekniği',             duration: '8–15 dk',  route: '/exercise/keyword-scan',       accent: '#DC2626' },
+  { icon: '📝', label: 'Cümle Adım',      subtitle: 'Cümle cümle ilerle · anlama odaklı',              duration: '10–20 dk', route: '/exercise/sentence-step',      accent: '#0F766E' },
+  { icon: '📚', label: 'Akademik Mod',    subtitle: 'Derin anlama · ağır paragraf çözme',              duration: '15–25 dk', route: '/exercise/academic-mode',      accent: '#1D4ED8' },
+  { icon: '🎯', label: 'Dikkat Filtresi', subtitle: 'Tek satırı gör · odaklanmayı güçlendir',          duration: '8–15 dk',  route: '/exercise/focus-filter',       accent: '#B45309' },
+  { icon: '🧠', label: 'Hafıza Sabitleme',subtitle: 'Oku-gizle-hatırla · bilgiyi kalıcı yap',          duration: '10–20 dk', route: '/exercise/memory-anchor',      accent: '#6D28D9' },
+  { icon: '🔮', label: 'Tahmin Okuma',    subtitle: 'Cümle sonunu tahmin et · anlam bağlantısı',       duration: '10–15 dk', route: '/exercise/prediction-reading', accent: '#C2410C' },
+  { icon: '🤫', label: 'Sessiz Okuma',    subtitle: 'İç sesi bastır · subvokalizasyonu kır',           duration: '8–15 dk',  route: '/exercise/subvocal-free',      accent: '#1E40AF' },
+  { icon: '📖', label: 'Kelime Haznesi',  subtitle: 'Bağlamsal kelime öğren · LGS / TYT',              duration: '10–20 dk', route: '/exercise/vocabulary',         accent: '#047857' },
+]
+
+const SINAV_HAZIRLIK: OkumaMod[] = [
+  { icon: '🌫️', label: 'Kaybolma Okuma',    subtitle: 'Metin solar · anlama soruları',               duration: '8–15 dk',  route: '/exercise/vanishing-reading', accent: '#4338CA' },
+  { icon: '🗑️', label: 'Kelime Silme',      subtitle: 'Kelimeler kaybolur · hafızandan tamamla',     duration: '5–10 dk',  route: '/exercise/fading-word',       accent: '#BE185D' },
+  { icon: '📋', label: 'Cloze Testi',        subtitle: 'Her 7. kelime boşluk · LGS formatı',          duration: '10–15 dk', route: '/exercise/cloze-test',        accent: '#7E22CE' },
+  { icon: '📰', label: 'Çift Sütun',         subtitle: 'İki kolon · periferik span egzersizi',        duration: '10–15 dk', route: '/exercise/dual-column',       accent: '#0369A1' },
+  { icon: '🚂', label: 'Soru Treni',         subtitle: '40 LGS sorusu · 45dk timer',                  duration: '45 dk',    route: '/exercise/soru-treni',        accent: '#B91C1C' },
+  { icon: '🔎', label: 'Hatalı Cümle',       subtitle: 'Dil bilgisi hatasını bul · 20 tur',           duration: '10–15 dk', route: '/exercise/hatali-cumle',      accent: '#92400E' },
+  { icon: '🃏', label: 'Flash Kart Bankası', subtitle: 'Soruları kart formatında · işaretle/tekrar',  duration: '15–20 dk', route: '/exercise/flashcard-bank',    accent: '#0E7490' },
+  { icon: '🔤', label: 'Kelime Bağlamı',     subtitle: 'Altı çizili kelime · 4 şık anlam',            duration: '10–15 dk', route: '/exercise/kelime-baglami',    accent: '#3730A3' },
+  { icon: '🖊️', label: 'Şiir Analizi',      subtitle: '5 şiir · edebi sanat + anlama · AYT Edebiyat',duration: '15–20 dk', route: '/exercise/poetry-analysis',   accent: '#86198F' },
+  { icon: '📊', label: 'Grafik Okuma',       subtitle: '4 veri grafiği · yorum soruları · AYT/LGS',   duration: '10–15 dk', route: '/exercise/graph-reading',     accent: '#164E63' },
 ]
 
 const WA_GREEN  = '#1877F2'   // Facebook / İş Bankası primary blue
@@ -115,9 +148,11 @@ function ModRow({ mod, navigate, isLast, s }: {
       onPress={() => navigate(mod.route)}
       activeOpacity={0.7}
     >
-      <Text style={s.modIcon}>{mod.icon}</Text>
+      <View style={[s.modIconBox, { backgroundColor: mod.accent + '18' }]}>
+        <Text style={s.modIcon}>{mod.icon}</Text>
+      </View>
       <View style={s.modInfo}>
-        <Text style={s.modLabel}>{mod.label}</Text>
+        <Text style={[s.modLabel, { color: mod.accent }]}>{mod.label}</Text>
         <Text style={s.modSub}>{mod.subtitle}</Text>
       </View>
       <View style={s.modRight}>
@@ -341,26 +376,47 @@ export default function SessionsScreen() {
         </View>
 
         {/* ══════════════════════════════════════════════════════
-            BÖLÜM 3 — Okuma Modülleri
+            BÖLÜM 3 — Okuma Modülleri (29 modül, 3 kategori)
         ══════════════════════════════════════════════════════ */}
         <Text style={[s.sectionLabel, { marginTop: 20 }]}>OKUMA MODÜLLERİ</Text>
 
-        <View style={s.accordionWrap}>
+        <View style={[s.accordionWrap, { gap: 10 }]}>
           <AccordionSection
-            title="Okuma Modülleri"
-            icon="📖"
-            color={WA_GREEN}
-            count={OKUMA_MODULES.length}
+            title="Hız Eğitimi"
+            icon="🚀"
+            color="#2563EB"
+            count={HIZ_EGITIMI.length}
             s={s}
           >
-            {OKUMA_MODULES.map((mod, i) => (
-              <ModRow
-                key={mod.route}
-                mod={mod}
-                navigate={navigate}
-                isLast={i === OKUMA_MODULES.length - 1}
-                s={s}
-              />
+            {HIZ_EGITIMI.map((mod, i) => (
+              <ModRow key={mod.route} mod={mod} navigate={navigate}
+                isLast={i === HIZ_EGITIMI.length - 1} s={s} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Anlama & Strateji"
+            icon="🧠"
+            color="#7C3AED"
+            count={ANLAMA_STRATEJI.length}
+            s={s}
+          >
+            {ANLAMA_STRATEJI.map((mod, i) => (
+              <ModRow key={mod.route} mod={mod} navigate={navigate}
+                isLast={i === ANLAMA_STRATEJI.length - 1} s={s} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Sınav Hazırlık"
+            icon="🎯"
+            color="#B91C1C"
+            count={SINAV_HAZIRLIK.length}
+            s={s}
+          >
+            {SINAV_HAZIRLIK.map((mod, i) => (
+              <ModRow key={mod.route} mod={mod} navigate={navigate}
+                isLast={i === SINAV_HAZIRLIK.length - 1} s={s} />
             ))}
           </AccordionSection>
         </View>
@@ -522,7 +578,11 @@ function ms(t: AppTheme) {
     modRowLast: {
       borderBottomWidth: 0,
     },
-    modIcon:  { fontSize: 24 },
+    modIconBox: {
+      width: 38, height: 38, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    modIcon:  { fontSize: 20 },
     modInfo:  { flex: 1 },
     modLabel: { fontSize: 14, fontWeight: '700', color: t.colors.text },
     modSub:   { fontSize: 11, color: t.colors.textSub, marginTop: 2 },
