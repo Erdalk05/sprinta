@@ -1,35 +1,30 @@
-/**
- * Biyonik Okuma Egzersizi — SuperReader tarzı
- * Her kelimenin ilk yarısı kalın → beyin kelimeyi tamamlar
- */
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/stores/authStore'
 import { supabase } from '../../src/lib/supabase'
 import { usePendingContent } from '../../src/hooks/usePendingContent'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
+import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 
-export default function BionicReadingScreen() {
-  const router   = useRouter()
+export default function ubionicureadingScreen() {
+  const router = useRouter()
   const { student } = useAuthStore()
   const { ready, initialContent } = usePendingContent()
+  const [started, setStarted] = useState(false)
 
-  const handleComplete = async (metrics: ReadingModesMetrics) => {
-    if (!student?.id) return
-    try {
-      await (supabase as any).from('reading_mode_sessions').insert({
-        student_id:   student.id,
-        mode:         'bionic',
-        avg_wpm:      metrics.avgWPM,
-        total_words:  metrics.totalWords,
-        duration_sec: metrics.durationSeconds,
-        arp_score:    metrics.arpScore,
-        xp_earned:    metrics.xpEarned,
-        completion:   metrics.completionRatio,
-      })
-    } catch { /* sessiz */ }
-  }
+  const handleComplete = useCallback(async (m: ReadingModesMetrics) => {
+    if (student?.id) {
+      try {
+        await (supabase as any).from('reading_mode_sessions').insert({
+          student_id: student.id, mode: 'bionic', avg_wpm: m.avgWPM,
+          total_words: m.totalWords, duration_seconds: m.durationSeconds,
+          arp_score: m.arpScore, xp_earned: m.xpEarned, completion_ratio: m.completionRatio,
+        })
+      } catch { /* sessiz */ }
+    }
+  }, [student])
 
+  if (!started) return <ReadingModuleIntro moduleKey="bionic-reading" onStart={() => setStarted(true)} onBack={() => router.back()} />
   if (!ready) return null
 
   return (

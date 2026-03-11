@@ -3,20 +3,20 @@
  * MCQ flashcard tabanlı kelime öğrenme egzersizi.
  * VocabularyExercise bileşenini kullanır.
  */
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/stores/authStore'
 import { VocabularyExercise } from '../../src/components/exercises/VocabularyExercise'
-import { supabase } from '../../src/lib/supabase'
+import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 
 export default function VocabularyScreen() {
   const router      = useRouter()
   const { student } = useAuthStore()
+  const [started, setStarted] = useState(false)
 
-  // XP'yi students.total_xp'ye yansıt (opsiyonel — zaten reading_mode_sessions trigger halleder)
-  const handleComplete = useCallback(async (score: number, xp: number) => {
-    router.back()
-  }, [router])
+  const handleComplete = useCallback(async () => { router.back() }, [router])
+
+  if (!started) return <ReadingModuleIntro moduleKey="vocabulary" onStart={() => setStarted(true)} onBack={() => router.back()} />
 
   return (
     <VocabularyExercise

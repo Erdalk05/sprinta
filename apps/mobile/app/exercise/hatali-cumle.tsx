@@ -1,8 +1,11 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import HataliCumleScreen from '../../src/screens/reading/HataliCumleScreen'
+import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 
-export default function HataliCumleRoute() {
+export default function uhataliucumleRoute() {
   const router = useRouter()
+  const [started, setStarted] = useState(false)
+  if (!started) return <ReadingModuleIntro moduleKey="hatali-cumle" onStart={() => setStarted(true)} onBack={() => router.back()} />
   return <HataliCumleScreen onExit={() => router.back()} />
 }

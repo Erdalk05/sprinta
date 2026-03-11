@@ -1,39 +1,38 @@
-/**
- * Sessiz Okuma — subvocal mod
- * ReadingModesExercise wrapper + Supabase session kayıt
- */
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
-import { supabase } from '../../src/lib/supabase'
 import { useAuthStore } from '../../src/stores/authStore'
-import ReadingModesExercise, {
-  ReadingModesMetrics,
-} from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
+import { supabase } from '../../src/lib/supabase'
+import { usePendingContent } from '../../src/hooks/usePendingContent'
+import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
+import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 
-
-export default function SubvocalFreeScreen() {
-  const router      = useRouter()
+export default function usubvocalufreeScreen() {
+  const router = useRouter()
   const { student } = useAuthStore()
+  const { ready, initialContent } = usePendingContent()
+  const [started, setStarted] = useState(false)
 
   const handleComplete = useCallback(async (m: ReadingModesMetrics) => {
     if (student?.id) {
       try {
         await (supabase as any).from('reading_mode_sessions').insert({
-          student_id: student.id, mode: m.mode, avg_wpm: m.avgWPM,
+          student_id: student.id, mode: 'subvocal', avg_wpm: m.avgWPM,
           total_words: m.totalWords, duration_seconds: m.durationSeconds,
-          arp_score: m.arpScore, xp_earned: m.xpEarned,
-          completion_ratio: m.completionRatio,
+          arp_score: m.arpScore, xp_earned: m.xpEarned, completion_ratio: m.completionRatio,
         })
       } catch { /* sessiz */ }
     }
-    router.back()
-  }, [student, router])
+  }, [student])
+
+  if (!started) return <ReadingModuleIntro moduleKey="subvocal-free" onStart={() => setStarted(true)} onBack={() => router.back()} />
+  if (!ready) return null
 
   return (
     <ReadingModesExercise
       mode="subvocal"
       onComplete={handleComplete}
       onExit={() => router.back()}
+      initialContent={initialContent}
     />
   )
 }
