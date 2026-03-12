@@ -28,15 +28,27 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
-import ContentImportModal, { type ImportedContent } from '../exercises/shared/ContentImportModal'
+import { type ImportedContent } from '../exercises/shared/ContentImportModal'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { createBadgeService } from '@sprinta/api'
 import { MODULE_INTRO } from '../exercise/ReadingModuleIntro'
 import type { Badge } from '@sprinta/api'
+import ModuleSetupScreen from '../../screens/reading/ModuleSetupScreen'
+import ContentLibraryScreen from '../../screens/reading/ContentLibraryScreen'
+import type { SpeedTier, ComprehensionTier } from '../../types/reading'
 
 const badgeSvc = createBadgeService(supabase)
 const { width: SW } = Dimensions.get('window')
+
+// Hızlı Başlat için örnek içerik (egzersizler boş metni kendi varsayılanıyla doldurur)
+const QUICK_START_CONTENT: ImportedContent = {
+  text:             'Okuma hızı ve anlama kapasitesi, düzenli pratikle geliştirilebilir. Beyin, kelime gruplarını bir bütün olarak algılamayı öğrendiğinde göz hareketleri azalır ve okuma hızı artar. Araştırmalar, günde on beş dakika bilinçli okuma pratiğinin üç ayda WPM değerini yüzde otuz artırdığını göstermektedir. Hızlı okumanın sırrı, gözü daha az hareket ettirirken daha fazla bilgiyi aynı anda işlemektir.',
+  title:            'Örnek Metin',
+  wordCount:        65,
+  source:           'text',
+  estimatedMinutes: 1,
+}
 
 // ─── Public Types ───────────────────────────────────────────────────
 
@@ -60,7 +72,7 @@ interface QuestionRow {
   explanation?:  string | null
 }
 
-type Phase = 'picking' | 'exercising' | 'questioning' | 'results'
+type Phase = 'setup' | 'picking' | 'exercising' | 'questioning' | 'results'
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -207,6 +219,48 @@ function QuestionPhase({
   )
 }
 
+// ─── Tier Helpers ────────────────────────────────────────────────────
+
+function getSpeedTier(wpm: number): SpeedTier {
+  if (wpm < 150) return 'Yeni Başlayan'
+  if (wpm < 200) return 'Geliştiriyor'
+  if (wpm < 280) return 'Orta Seviye'
+  if (wpm < 350) return 'Hızlı Okuyucu'
+  return 'Uzman'
+}
+
+function getComprehensionTier(score: number): ComprehensionTier {
+  if (score < 40) return 'Geliştirilmeli'
+  if (score < 60) return 'Orta'
+  if (score < 75) return 'İyi'
+  if (score < 90) return 'Çok İyi'
+  return 'Mükemmel'
+}
+
+function getRecommendation(speed: SpeedTier, comprehension: ComprehensionTier): string {
+  if (speed === 'Uzman' && comprehension === 'Mükemmel') return 'Zirve performansı! Daha zorlu metinler denemeyi unutma.'
+  if (speed === 'Uzman' || speed === 'Hızlı Okuyucu') return 'Harika hız! Anlama oranını artırmaya odaklan.'
+  if (comprehension === 'Mükemmel' || comprehension === 'Çok İyi') return 'Mükemmel anlama! Şimdi okuma hızını artırmaya çalış.'
+  if (speed === 'Yeni Başlayan') return 'Her gün 10 dk pratik yap — hız kendiliğinden gelecek.'
+  return 'Dengeli gelişim için hem hız hem de anlama becerini çalış.'
+}
+
+const SPEED_TIER_COLOR: Record<SpeedTier, string> = {
+  'Yeni Başlayan':  '#6B7280',
+  'Geliştiriyor':   '#3B82F6',
+  'Orta Seviye':    '#10B981',
+  'Hızlı Okuyucu':  '#F59E0B',
+  'Uzman':          '#8B5CF6',
+}
+
+const COMPREHENSION_TIER_COLOR: Record<ComprehensionTier, string> = {
+  'Geliştirilmeli': '#EF4444',
+  'Orta':           '#F59E0B',
+  'İyi':            '#3B82F6',
+  'Çok İyi':        '#10B981',
+  'Mükemmel':       '#8B5CF6',
+}
+
 // ─── ResultPhase ─────────────────────────────────────────────────────
 
 interface ResultPhaseProps {
@@ -233,6 +287,14 @@ function ResultPhase({
   onRetry,
   onHome,
 }: ResultPhaseProps) {
+  const comprehensionPct = totalQuestions > 0
+    ? Math.round((correctAnswers / totalQuestions) * 100)
+    : 0
+  const speedTier        = getSpeedTier(metrics.avgWPM)
+  const comprehensionTier= getComprehensionTier(comprehensionPct)
+  const recommendation   = getRecommendation(speedTier, comprehensionTier)
+  const speedColor       = SPEED_TIER_COLOR[speedTier]
+  const comprehColor     = COMPREHENSION_TIER_COLOR[comprehensionTier]
   const arpShared = useSharedValue(0)
   const cardScale = useSharedValue(0.85)
   const headerOpacity = useSharedValue(0)
@@ -413,6 +475,38 @@ function ResultPhase({
           </View>
         )}
 
+        {/* Tier Kartları */}
+        <View style={rs.tierSection}>
+          {/* SpeedTier */}
+          <View style={[rs.tierCard, { borderColor: speedColor + '40', backgroundColor: speedColor + '0C' }]}>
+            <View style={rs.tierRow}>
+              <View style={[rs.tierBadge, { backgroundColor: speedColor }]}>
+                <Text style={rs.tierBadgeText}>⚡ HIZ</Text>
+              </View>
+              <Text style={[rs.tierLabel, { color: speedColor }]}>{speedTier}</Text>
+            </View>
+            <Text style={rs.tierWpm}>{Math.round(metrics.avgWPM)} WPM</Text>
+          </View>
+
+          {/* ComprehensionTier — sadece sorular varsa anlamlı */}
+          {totalQuestions > 0 && (
+            <View style={[rs.tierCard, { borderColor: comprehColor + '40', backgroundColor: comprehColor + '0C' }]}>
+              <View style={rs.tierRow}>
+                <View style={[rs.tierBadge, { backgroundColor: comprehColor }]}>
+                  <Text style={rs.tierBadgeText}>🧠 KAVRAMA</Text>
+                </View>
+                <Text style={[rs.tierLabel, { color: comprehColor }]}>{comprehensionTier}</Text>
+              </View>
+              <Text style={rs.tierWpm}>%{comprehensionPct}</Text>
+            </View>
+          )}
+
+          {/* Öneri */}
+          <View style={[rs.recommendCard, { borderColor: accentColor + '30', backgroundColor: accentColor + '08' }]}>
+            <Text style={[rs.recommendText, { color: accentColor }]}>💡 {recommendation}</Text>
+          </View>
+        </View>
+
         {/* Action buttons */}
         <View style={rs.buttonsRow}>
           <TouchableOpacity
@@ -443,7 +537,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
   const info   = MODULE_INTRO[moduleKey]
   const accent = info?.accent ?? '#0891B2'
 
-  const [phase,        setPhase]        = useState<Phase>('picking')
+  const [phase,        setPhase]        = useState<Phase>('setup')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [metrics,      setMetrics]      = useState<BaseReadingMetrics | null>(null)
   const [questions,    setQuestions]    = useState<QuestionRow[]>([])
@@ -454,7 +548,15 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
   const [loading,      setLoading]      = useState(false)
   const [savedBadges,  setSavedBadges]  = useState<Badge[]>([])
 
-  // ── Content selected ──────────────────────────────────────────────
+  // ── Setup phase handlers ──────────────────────────────────────────
+  const handleSelectText = useCallback(() => setPhase('picking'), [])
+
+  const handleQuickStart = useCallback(() => {
+    setContent(QUICK_START_CONTENT)
+    setPhase('exercising')
+  }, [])
+
+  // ── Content selected (from ContentLibraryScreen) ──────────────────
   const handleContentSelected = useCallback((c: ImportedContent) => {
     setContent(c)
     setPhase('exercising')
@@ -570,7 +672,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
 
   // ── Retry ─────────────────────────────────────────────────────────
   const handleRetry = useCallback(() => {
-    setPhase('picking')
+    setPhase('setup')
     setContent(null)
     setMetrics(null)
     setQuestions([])
@@ -592,15 +694,25 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
     )
   }
 
+  if (phase === 'setup') {
+    return (
+      <ModuleSetupScreen
+        moduleKey={moduleKey}
+        onSelectText={handleSelectText}
+        onQuickStart={handleQuickStart}
+        onBack={onBack}
+      />
+    )
+  }
+
   if (phase === 'picking') {
     return (
-      <SafeAreaView style={fl.pickingRoot}>
-        <ContentImportModal
-          visible={true}
-          onClose={onBack}
-          onContentSelected={handleContentSelected}
-        />
-      </SafeAreaView>
+      <ContentLibraryScreen
+        accentColor={accent}
+        moduleKey={moduleKey}
+        onContentSelected={handleContentSelected}
+        onBack={() => setPhase('setup')}
+      />
     )
   }
 
@@ -990,11 +1102,62 @@ const rs = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  tierSection: {
+    paddingHorizontal: 16,
+    marginTop:         20,
+    gap:               8,
+  },
+  tierCard: {
+    borderRadius:  14,
+    borderWidth:   1,
+    padding:       14,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           12,
+  },
+  tierRow: {
+    flex:          1,
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           8,
+  },
+  tierBadge: {
+    borderRadius:      8,
+    paddingHorizontal: 8,
+    paddingVertical:   4,
+  },
+  tierBadgeText: {
+    fontSize:   9,
+    fontWeight: '900',
+    color:      '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  tierLabel: {
+    fontSize:   15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  tierWpm: {
+    fontSize:   18,
+    fontWeight: '900',
+    color:      '#111827',
+    letterSpacing: -0.4,
+  },
+  recommendCard: {
+    borderRadius: 14,
+    borderWidth:  1,
+    padding:      14,
+  },
+  recommendText: {
+    fontSize:   13,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
   buttonsRow: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    marginTop: 28,
+    marginTop: 20,
   },
   retryBtn: {
     flex: 1,
