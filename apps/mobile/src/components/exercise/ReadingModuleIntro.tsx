@@ -1,63 +1,254 @@
 /**
- * ReadingModuleIntro — Tüm okuma modülleri için ortak immersif intro ekranı.
- * Her modüle özgü renk + ikon + başlık + "Egzersizi Başlat" butonu gösterir.
+ * ReadingModuleIntro — Tüm okuma modülleri için zengin intro ekranı.
+ * Her modüle özgü renk + ikon + başlık + faydalar + adımlar + istatistikler.
  */
 import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 
-// ── Accent'ten 3 renk türet (session.tsx ile aynı) ───────────────
 function getPalette(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   return {
-    header:  `rgb(${Math.round(r * 0.40)},${Math.round(g * 0.40)},${Math.round(b * 0.40)})` as const,
-    content: `rgb(${Math.min(255, Math.round(r * 0.10 + 230))},${Math.min(255, Math.round(g * 0.10 + 230))},${Math.min(255, Math.round(b * 0.10 + 230))})` as const,
+    header:  `rgb(${Math.round(r * 0.38)},${Math.round(g * 0.38)},${Math.round(b * 0.38)})` as const,
+    content: `rgb(${Math.min(255, Math.round(r * 0.08 + 235))},${Math.min(255, Math.round(g * 0.08 + 235))},${Math.min(255, Math.round(b * 0.08 + 235))})` as const,
     bottom:  `rgb(${Math.round(r * 0.28)},${Math.round(g * 0.28)},${Math.round(b * 0.28)})` as const,
   }
 }
 
-// ── Modül bilgileri haritası ───────────────────────────────────────
-export const MODULE_INTRO: Record<string, {
+interface ModuleInfo {
   icon:     string
   label:    string
   subtitle: string
   accent:   string
   tip:      string
-}> = {
-  'chunk-rsvp':        { icon: '⚡', label: 'Chunk Okuma',       subtitle: 'Kelimeler grup grup gösterilir — gözün art arda taramasını keser',       accent: '#0891B2', tip: 'Okuma hızın için en etkili RSVP yöntemlerinden biri.' },
-  'timed-reading':     { icon: '⏱️', label: 'Zamanlı Okuma',     subtitle: 'Süre sayacı altında oku — YKS/TYT sınav baskısını simüle et',           accent: '#EA580C', tip: 'Zaman baskısı altında okuma hızını ve kavramayı geliştirir.' },
-  'flow-reading':      { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır satır pacing — anlama + hız dengesini kur',                       accent: '#059669', tip: 'Duraksama olmadan sürekli akış, yorgunluğu azaltır.' },
-  'speed-ladder':      { icon: '🪜', label: 'Hız Merdiveni',      subtitle: 'Her 30 kelimede +25 WPM artar — konfor zonunu kır',                     accent: '#D97706', tip: 'Kademeli hız artışı kalıcı WPM kazanımı sağlar.' },
-  'bionic-reading':    { icon: '🧬', label: 'Biyonik Okuma',      subtitle: 'İlk heceler kalın vurgulanır — beyin kelimeyi tamamlar',               accent: '#0284C7', tip: 'Göz daha az hareket eder, zihin daha hızlı işler.' },
-  'keyword-scan':      { icon: '🔍', label: 'Anahtar Kelime',     subtitle: 'Kritik kavramları tarar — pasaj soru stratejisi',                       accent: '#DC2626', tip: 'Paragrafta ana fikri taşıyan anahtar kelimeleri yakala.' },
-  'fixation-trainer':  { icon: '👁️', label: 'Göz Genişliği',     subtitle: 'Flash gruplar — tek fiksasyonda daha fazla kelime gör',                 accent: '#9333EA', tip: 'Göz genişliği arttıkça satır başı sayısı düşer.' },
-  'word-burst':        { icon: '💫', label: 'Çok Kelime',          subtitle: '2-4 kelime aynı anda — periferik görüş alanını genişlet',              accent: '#16A34A', tip: 'Span kapasiten her seansta ~0.3 kelime büyür.' },
-  'auto-scroll':       { icon: '📜', label: 'Oto Kaydırma',        subtitle: 'Metin kendi hızında kayar — ritim ve duruş noktalarını ortadan kaldır', accent: '#E11D48', tip: 'Gözlerin metni takip eder, bilinçsiz duraksama azalır.' },
-  'sentence-step':     { icon: '📝', label: 'Cümle Adım',          subtitle: 'Cümle cümle ilerle — her adımda anlama odaklan',                       accent: '#0F766E', tip: 'Yavaş ama güçlü: kavrama oranı %40 artar.' },
-  'academic-mode':     { icon: '📚', label: 'Akademik Mod',         subtitle: 'Ağır paragrafları analiz et — derin çıkarım soruları',                 accent: '#1D4ED8', tip: 'Üniversite sınav metinleri için idealdir.' },
-  'focus-filter':      { icon: '🎯', label: 'Dikkat Filtresi',     subtitle: 'Tek satır odak maskesi — dikkat dağınıklığını engeller',               accent: '#B45309', tip: 'Çevresel gürültüye karşı göz odağını korur.' },
-  'memory-anchor':     { icon: '🧠', label: 'Hafıza Sabitleme',    subtitle: 'Oku-gizle-hatırla — bilgiyi uzun süreli belleğe aktar',                accent: '#6D28D9', tip: 'Spaced repetition prensibinin okuma versiyonu.' },
-  'vocabulary':        { icon: '📖', label: 'Kelime Haznesi',      subtitle: 'Bağlam içinde kelime öğren — MCQ formatında anlam testi',              accent: '#047857', tip: 'Kelime başına yanıt süresi ölçülür.' },
-  'prediction-reading':{ icon: '🔮', label: 'Tahmin Okuma',        subtitle: 'Cümle sonunu tahmin et — anlam bağlantısı kur',                        accent: '#C2410C', tip: 'Öngörü yeteneği hız okumada en önemli bilişsel beceridir.' },
-  'subvocal-free':     { icon: '🤫', label: 'Sessiz Okuma',        subtitle: 'İç sesi bastır — subvokalizasyonu kır, hızı ikiye katla',              accent: '#1E40AF', tip: 'İç ses okumayı konuşma hızına kilitler (180 WPM).' },
-  'speed-camp':        { icon: '🏕️', label: 'Hızlı Okuma Kampı',  subtitle: 'Günlük antrenman programı — WPM gelişimini takip et',                 accent: '#15803D', tip: '21 günlük kamp ortalama +80 WPM kazandırır.' },
-  'vanishing-reading': { icon: '🌫️', label: 'Kaybolma Okuma',     subtitle: 'Metin yavaşça solar — gördüklerini hafızadan tamamla',                 accent: '#4338CA', tip: 'Periferal bellek kapasiteni zorlar.' },
-  'fading-word':       { icon: '🗑️', label: 'Kelime Silme',        subtitle: 'Kelimeler birer birer kaybolur — cümleyi hafızadan tamamla',           accent: '#BE185D', tip: 'Kısa süreli çalışma belleğini güçlendirir.' },
-  'cloze-test':        { icon: '📋', label: 'Cloze Testi',          subtitle: 'Her 7. kelime boş — bağlamdan tahminde bulun',                         accent: '#7E22CE', tip: 'LGS okuma sorusu formatıyla özdeş strateji.' },
-  'dual-column':       { icon: '📰', label: 'Çift Sütun',           subtitle: 'İki kolon aynı anda oku — periferik span kapasiteni artır',            accent: '#0369A1', tip: 'Gazete okuma tekniği: sütun ortasına odaklan.' },
-  'soru-treni':        { icon: '🚂', label: 'Soru Treni',           subtitle: '40 LGS sorusu · 45 dakika timer · gerçek sınav simülasyonu',           accent: '#B91C1C', tip: 'Sınav koşullarında pratik yapmak başarıyı %35 artırır.' },
-  'hatali-cumle':      { icon: '🔎', label: 'Hatalı Cümle',         subtitle: 'Dil bilgisi hatasını bul — 20 tur dikkat egzersizi',                  accent: '#92400E', tip: 'Türkçe soru hatasını fark etme becerisini geliştirir.' },
-  'flashcard-bank':    { icon: '🃏', label: 'Flash Kart Bankası',   subtitle: 'Soruları kart formatında geç — işaretle ve tekrar et',                 accent: '#0E7490', tip: '375 soru, serbest tempo, işaretleme sistemi.' },
-  'kelime-baglami':    { icon: '🔤', label: 'Kelime Bağlamı',       subtitle: 'Altı çizili kelimeyi cümleden anlamlandır · 4 şık',                   accent: '#3730A3', tip: 'LGS kelime anlam sorusunun tam format eğitimi.' },
-  'poetry-analysis':   { icon: '🖊️', label: 'Şiir Analizi',        subtitle: '5 şiir · edebi sanat + anlam soruları · AYT Edebiyat',                accent: '#86198F', tip: 'Edebi sanatları cümle içinde tanıma egzersizi.' },
-  'graph-reading':     { icon: '📊', label: 'Grafik Okuma',         subtitle: 'Veri grafiklerini yorumla · çıkarım soruları · AYT/LGS',              accent: '#164E63', tip: 'Görsel veri okuma hızı AYT puanını doğrudan etkiler.' },
+  benefits: string[]     // 3 madde — kazanımlar
+  steps:    string[]     // 3 adım — ne olacak
+  stats:    { label: string; value: string }[]  // 2-3 rakam
 }
 
-// ── Bileşen ───────────────────────────────────────────────────────
+export const MODULE_INTRO: Record<string, ModuleInfo> = {
+  'chunk-rsvp': {
+    icon: '⚡', label: 'Chunk Okuma', accent: '#0891B2',
+    subtitle: 'Kelimeler grup grup gösterilir — gözün art arda taramasını keser',
+    tip: 'Okuma hızın için en etkili RSVP yöntemlerinden biri.',
+    benefits: ['WPM hızını %30-50 artırır', 'Göz geri dönüşlerini sıfırlar', 'Odak kapasitesini güçlendirir'],
+    steps:    ['Ekranda kelime grupları belirir', 'Her grubu tek bakışta yakala', 'Hız arttıkça chunk boyutu büyür'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Grup Boyutu', value: '2-4 kelime' }, { label: 'Hedef', value: '+50 WPM' }],
+  },
+  'timed-reading': {
+    icon: '⏱️', label: 'Zamanlı Okuma', accent: '#EA580C',
+    subtitle: 'Süre sayacı altında oku — YKS/TYT sınav baskısını simüle et',
+    tip: 'Zaman baskısı altında okuma hızını ve kavramayı geliştirir.',
+    benefits: ['Sınav baskısına alışıklık kazandırır', 'Anlama oranını koruyarak hızlanır', 'Gerçek TYT formatını simüle eder'],
+    steps:    ['Süre sayacı başlar', 'Metni olabildiğince hızlı oku', 'Süre bitince anlama soruları gelir'],
+    stats:    [{ label: 'Süre', value: '3 dk' }, { label: 'Soru', value: '3 adet' }, { label: 'Format', value: 'TYT/LGS' }],
+  },
+  'flow-reading': {
+    icon: '🌊', label: 'Akış Okuma', accent: '#059669',
+    subtitle: 'Satır satır pacing — anlama + hız dengesini kur',
+    tip: 'Duraksama olmadan sürekli akış, yorgunluğu azaltır.',
+    benefits: ['Göz takibini akıcı hale getirir', 'Zihinsel yorgunluğu azaltır', 'Anlama + hız dengesini geliştirir'],
+    steps:    ['Çizgi metnin üzerinden kayar', 'Gözlerin çizgiyi takip eder', 'Hızı kaydırıcıyla ayarlayabilirsin'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Hız', value: 'Ayarlanabilir' }, { label: 'Mod', value: 'Sürekli akış' }],
+  },
+  'speed-ladder': {
+    icon: '🪜', label: 'Hız Merdiveni', accent: '#D97706',
+    subtitle: 'Her 30 kelimede +25 WPM artar — konfor zonunu kır',
+    tip: 'Kademeli hız artışı kalıcı WPM kazanımı sağlar.',
+    benefits: ['Kademeli hız artışıyla kalıcı gelişim', 'Konfor zonunu sistematik olarak kırar', '3 haftada +80 WPM ortalama kazanım'],
+    steps:    ['1. basamakta rahat hızla başla', 'Her bölümde hız otomatik artar', 'En yüksek WPM basamağına ulaş'],
+    stats:    [{ label: 'Basamak', value: '6 seviye' }, { label: 'Artış', value: '+25 WPM' }, { label: 'Süre', value: '~6 dk' }],
+  },
+  'bionic-reading': {
+    icon: '🧬', label: 'Biyonik Okuma', accent: '#0284C7',
+    subtitle: 'İlk heceler kalın vurgulanır — beyin kelimeyi tamamlar',
+    tip: 'Göz daha az hareket eder, zihin daha hızlı işler.',
+    benefits: ['Beyin kalıp tanıma hızını artırır', 'Göz hareketi %40 azalır', 'Dikkat dağınıklığını azaltır'],
+    steps:    ['Her kelimenin ilk hecesi kalın görünür', 'Beyin geri kalanını tahmin eder', 'Hız arttıkça oran değişir'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Vurgu', value: 'İlk %50 hece' }, { label: 'Etki', value: '+35% hız' }],
+  },
+  'keyword-scan': {
+    icon: '🔍', label: 'Anahtar Kelime', accent: '#DC2626',
+    subtitle: 'Kritik kavramları tarar — pasaj soru stratejisi',
+    tip: 'Paragrafta ana fikri taşıyan anahtar kelimeleri yakala.',
+    benefits: ['Pasajda hızlı bilgi bulmayı öğretir', 'LGS okuma soru stratejisini geliştirir', 'Odak kelime hafızasını güçlendirir'],
+    steps:    ['Metni vurgulu anahtar kelimelerle oku', 'Her paragrafın kilit kavramını işaretle', 'Anlama soruları için bu kavramları kullan'],
+    stats:    [{ label: 'Süre', value: '4 dk' }, { label: 'Kelime', value: 'Vurgulu tarama' }, { label: 'Hedef', value: 'LGS/TYT' }],
+  },
+  'fixation-trainer': {
+    icon: '👁️', label: 'Göz Genişliği', accent: '#9333EA',
+    subtitle: 'Flash gruplar — tek fiksasyonda daha fazla kelime gör',
+    tip: 'Göz genişliği arttıkça satır başı sayısı düşer.',
+    benefits: ['Tek bakışta daha fazla kelime alır', 'Satır başı sayısını azaltır', 'Periferik görüşü geliştirir'],
+    steps:    ['Kelime grupları ekranın ortasında belirir', 'Gözlerini sabit tut, grubu algıla', 'Grup büyüklüğü ilerledikçe artar'],
+    stats:    [{ label: 'Süre', value: '3 dk' }, { label: 'Flash', value: '0.3-0.8 sn' }, { label: 'Grup', value: '2-5 kelime' }],
+  },
+  'word-burst': {
+    icon: '💫', label: 'Çok Kelime', accent: '#16A34A',
+    subtitle: '2-4 kelime aynı anda — periferik görüş alanını genişlet',
+    tip: 'Span kapasiten her seansta ~0.3 kelime büyür.',
+    benefits: ['Periferik görüş açısını genişletir', 'Satır tarama verimliliğini artırır', '4 haftada ortalama +1.5 kelime span'],
+    steps:    ['2 kelime birlikte flash olur', 'Gözlerini ortaya sabitle', 'Grup büyüdükçe span kapasiten artar'],
+    stats:    [{ label: 'Süre', value: '4 dk' }, { label: 'Başlangıç', value: '2 kelime' }, { label: 'Hedef', value: '4 kelime span' }],
+  },
+  'auto-scroll': {
+    icon: '📜', label: 'Oto Kaydırma', accent: '#E11D48',
+    subtitle: 'Metin kendi hızında kayar — ritim ve duruş noktalarını kaldır',
+    tip: 'Gözlerin metni takip eder, bilinçsiz duraksama azalır.',
+    benefits: ['Okuma ritmini otomatik kurar', 'Bilinçsiz duraksama ve geri dönüşü engeller', 'Sürekli ilerlemeyi zorunlu kılar'],
+    steps:    ['Metin otomatik aşağı kayar', 'Ritmi bozmadan takip et', 'Hızı dilediğin zaman ayarla'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Hız', value: 'Ayarlanabilir' }, { label: 'Kaydırma', value: 'Sürekli' }],
+  },
+  'sentence-step': {
+    icon: '📝', label: 'Cümle Adım', accent: '#0F766E',
+    subtitle: 'Cümle cümle ilerle — her adımda anlama odaklan',
+    tip: 'Yavaş ama güçlü: kavrama oranı %40 artar.',
+    benefits: ['Derin anlama ve çıkarım becerisi gelişir', 'Cümle yapısını çözümlemeyi öğretir', 'Akademik metin okuma için ideal'],
+    steps:    ['Her adımda 1 cümle gösterilir', 'İleri butonuyla bir sonraki cümleye geç', 'Her 5 cümlede kısa özet sorusu'],
+    stats:    [{ label: 'Format', value: 'Cümle cümle' }, { label: 'Kavrama', value: '+40%' }, { label: 'Hedef', value: 'Akademik' }],
+  },
+  'academic-mode': {
+    icon: '📚', label: 'Akademik Mod', accent: '#1D4ED8',
+    subtitle: 'Ağır paragrafları analiz et — derin çıkarım soruları',
+    tip: 'Üniversite sınav metinleri için idealdir.',
+    benefits: ['YKS/AYT metin analizini geliştir', 'Çıkarım ve değerlendirme sorularına hazırlan', 'Akademik kelime haznesini güçlendir'],
+    steps:    ['Uzun akademik metin gösterilir', 'Oku ve not al', 'Çıkarım + değerlendirme soruları gelir'],
+    stats:    [{ label: 'Metin', value: '400+ kelime' }, { label: 'Soru', value: '3-5 adet' }, { label: 'Hedef', value: 'AYT/YKS' }],
+  },
+  'focus-filter': {
+    icon: '🎯', label: 'Dikkat Filtresi', accent: '#B45309',
+    subtitle: 'Tek satır odak maskesi — dikkat dağınıklığını engeller',
+    tip: 'Çevresel gürültüye karşı göz odağını korur.',
+    benefits: ['Dikkat dağınıklığını tamamen engeller', 'Satır atlama hatasını sıfırlar', 'ADHD dostu okuma modu'],
+    steps:    ['Sadece aktif satır görünür', 'Geri kalan karartılmış olur', 'Satır aşağı otomatik ilerler'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Görünen', value: '1 satır' }, { label: 'Mod', value: 'Odak maskesi' }],
+  },
+  'memory-anchor': {
+    icon: '🧠', label: 'Hafıza Sabitleme', accent: '#6D28D9',
+    subtitle: 'Oku-gizle-hatırla — bilgiyi uzun süreli belleğe aktar',
+    tip: 'Spaced repetition prensibinin okuma versiyonu.',
+    benefits: ['Uzun süreli bellek pekiştirir', 'Aktif hatırlama becerisini geliştirir', 'Sınav öncesi bilgi kalıcılığını artırır'],
+    steps:    ['Metin 8 saniye gösterilir', 'Metin solar ve kaybolur', 'Hafızadan MCQ sorularını yanıtla'],
+    stats:    [{ label: 'Süre', value: '8 sn görünür' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Etki', value: '+60% kalıcılık' }],
+  },
+  'vocabulary': {
+    icon: '📖', label: 'Kelime Haznesi', accent: '#047857',
+    subtitle: 'Bağlam içinde kelime öğren — MCQ formatında anlam testi',
+    tip: 'Kelime başına yanıt süresi ölçülür.',
+    benefits: ['TYT/LGS kelime sorularını çözme becerisi', 'Bağlamdan anlam çıkarmayı öğretir', '10 kelime/seans ile düzenli büyüme'],
+    steps:    ['Kelime cümle içinde gösterilir', '4 şıktan doğru anlamı seç', 'XP kazan ve kelimeleri işaretle'],
+    stats:    [{ label: 'Kelime/Seans', value: '10 adet' }, { label: 'Format', value: '4 şıklı MCQ' }, { label: 'Bank', value: '40+ kelime' }],
+  },
+  'prediction-reading': {
+    icon: '🔮', label: 'Tahmin Okuma', accent: '#C2410C',
+    subtitle: 'Cümle sonunu tahmin et — anlam bağlantısı kur',
+    tip: 'Öngörü yeteneği hız okumada en önemli bilişsel beceridir.',
+    benefits: ['Anlam tahmin yeteneğini güçlendirir', 'Hız okumada öngörü kapasitesini artırır', 'Bağlam duyarlılığını geliştirir'],
+    steps:    ['Cümle yarıda kesilir', 'Devamını 4 şıktan tahmin et', 'Doğru tahmin WPM bonusu verir'],
+    stats:    [{ label: 'Tur', value: '10 cümle' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Bonus', value: '+XP tahmin' }],
+  },
+  'subvocal-free': {
+    icon: '🤫', label: 'Sessiz Okuma', accent: '#1E40AF',
+    subtitle: 'İç sesi bastır — subvokalizasyonu kır, hızı ikiye katla',
+    tip: 'İç ses okumayı konuşma hızına kilitler (180 WPM).',
+    benefits: ['İç ses (subvokalizasyon) kırılır', 'Okuma hızı konuşma hızının üstüne çıkar', '300+ WPM potansiyelini açar'],
+    steps:    ['Metni okurken zihinsel sesi bastır', 'Görsel anlama kanalını kullan', 'Hız limitin 2 katına çıkar'],
+    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Limit', value: '180 → 400 WPM' }, { label: 'Teknik', value: 'Görsel okuma' }],
+  },
+  'speed-camp': {
+    icon: '🏕️', label: 'Hızlı Okuma Kampı', accent: '#15803D',
+    subtitle: 'Günlük antrenman programı — WPM gelişimini takip et',
+    tip: '21 günlük kamp ortalama +80 WPM kazandırır.',
+    benefits: ['Sistematik 21 günlük gelişim programı', 'Her gün WPM ölçümü ve takibi', 'Streak bonusu ile motivasyon desteği'],
+    steps:    ['Günlük 5 dakikalık antrenman', 'WPM ölçümü ve grafiği', '21. günde büyük test ve rozet'],
+    stats:    [{ label: 'Program', value: '21 gün' }, { label: 'Günlük', value: '5 dk' }, { label: 'Hedef', value: '+80 WPM' }],
+  },
+  'vanishing-reading': {
+    icon: '🌫️', label: 'Kaybolma Okuma', accent: '#4338CA',
+    subtitle: 'Metin yavaşça solar — gördüklerini hafızadan tamamla',
+    tip: 'Periferik bellek kapasiteni zorlar.',
+    benefits: ['Kısa süreli görsel belleği güçlendirir', 'Anlama derinliğini artırır', 'Sınav metnini parça parça okuma stratejisi'],
+    steps:    ['Metin 8 saniye tam görünür', 'Ardından yavaşça solar ve kaybolur', '3 MCQ anlama sorusunu yanıtla'],
+    stats:    [{ label: 'Görünürlük', value: '8 saniye' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Zorluk', value: 'Orta-İleri' }],
+  },
+  'fading-word': {
+    icon: '🗑️', label: 'Kelime Silme', accent: '#BE185D',
+    subtitle: 'Kelimeler birer birer kaybolur — cümleyi hafızadan tamamla',
+    tip: 'Kısa süreli çalışma belleğini güçlendirir.',
+    benefits: ['Çalışma belleği kapasitesini artırır', 'Kelime sırasını zihinsel olarak tutar', 'LGS cümle tamamlama stratejisi'],
+    steps:    ['Tam cümle gösterilir', 'Kelimeler 500ms aralıklarla kaybolur', 'Silinen kelimeleri hafızadan tamamla'],
+    stats:    [{ label: 'Cümle', value: '10-15 kelime' }, { label: 'Aralık', value: '500 ms' }, { label: 'Tur', value: '8 cümle' }],
+  },
+  'cloze-test': {
+    icon: '📋', label: 'Cloze Testi', accent: '#7E22CE',
+    subtitle: 'Her 7. kelime boş — bağlamdan tahminde bulun',
+    tip: 'LGS okuma sorusu formatıyla özdeş strateji.',
+    benefits: ['LGS okuma soru tipini birebir simüle eder', 'Bağlamdan kelime tahmini becerisi gelişir', 'Sınav puanı doğrudan artar'],
+    steps:    ['Paragraf her 7. kelime boşlukla verilir', '4 şıktan doğru kelimeyi seç', 'Tüm boşluklar tamamlanınca skor'],
+    stats:    [{ label: 'Boşluk', value: 'Her 7. kelime' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Hedef', value: 'LGS format' }],
+  },
+  'dual-column': {
+    icon: '📰', label: 'Çift Sütun', accent: '#0369A1',
+    subtitle: 'İki kolon aynı anda oku — periferik span kapasiteni artır',
+    tip: 'Gazete okuma tekniği: sütun ortasına odaklan.',
+    benefits: ['Periferik görüş genişliğini artırır', 'Sütun ortasına odaklanma disiplini kurar', 'Okunan alan iki katına çıkar'],
+    steps:    ['Metin 2 kolona bölünür', 'Gözlerini orta çizgiye sabitle', 'Her iki kolonu tek bakışla tara'],
+    stats:    [{ label: 'Kolon', value: '2 sütun' }, { label: 'Teknik', value: 'Merkez odak' }, { label: 'Etki', value: '+80% alan' }],
+  },
+  'soru-treni': {
+    icon: '🚂', label: 'Soru Treni', accent: '#B91C1C',
+    subtitle: '40 LGS sorusu · 45 dakika timer · gerçek sınav simülasyonu',
+    tip: 'Sınav koşullarında pratik yapmak başarıyı %35 artırır.',
+    benefits: ['Gerçek LGS sınav koşullarını simüle eder', 'Zaman yönetimi becerisini geliştirir', 'Performans analiziyle zayıf noktaları bulur'],
+    steps:    ['45 dakika geri sayım başlar', '40 soru sırayla gelir', 'Süre bitince detaylı analiz raporun hazır'],
+    stats:    [{ label: 'Soru', value: '40 adet' }, { label: 'Süre', value: '45 dakika' }, { label: 'Format', value: 'LGS gerçek' }],
+  },
+  'hatali-cumle': {
+    icon: '🔎', label: 'Hatalı Cümle', accent: '#92400E',
+    subtitle: 'Dil bilgisi hatasını bul — 20 tur dikkat egzersizi',
+    tip: 'Türkçe soru hatasını fark etme becerisini geliştirir.',
+    benefits: ['Türkçe dil bilgisi kurallarını pekiştirir', 'Hata fark etme refleksini hızlandırır', 'LGS Türkçe sorusunda +5 puan potansiyeli'],
+    steps:    ['Dil bilgisi hatalı cümle gösterilir', '4 şıktan hatayı içeren seçeneği bul', '20 tur sonunda doğruluk oranını gör'],
+    stats:    [{ label: 'Tur', value: '20 soru' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Konu', value: 'Dil bilgisi' }],
+  },
+  'flashcard-bank': {
+    icon: '🃏', label: 'Flash Kart Bankası', accent: '#0E7490',
+    subtitle: 'Soruları kart formatında geç — işaretle ve tekrar et',
+    tip: '375 soru, serbest tempo, işaretleme sistemi.',
+    benefits: ['375 soru serbest tempoda çalışılır', 'Yanlışları işaretle, sonra tekrar et', 'Konuya göre filtreleme imkânı'],
+    steps:    ['Kart önü: soru gösterilir', 'Kartı çevir: cevap ve açıklama görünür', 'Doğru/Yanlış işaretle, sonraki karta geç'],
+    stats:    [{ label: 'Soru', value: '375 kart' }, { label: 'Tempo', value: 'Serbest' }, { label: 'Filtre', value: 'Konuya göre' }],
+  },
+  'kelime-baglami': {
+    icon: '🔤', label: 'Kelime Bağlamı', accent: '#3730A3',
+    subtitle: 'Altı çizili kelimeyi cümleden anlamlandır · 4 şık',
+    tip: 'LGS kelime anlam sorusunun tam format eğitimi.',
+    benefits: ['LGS kelime-anlam sorusu birebir format', 'Bağlamdan anlam çıkarma becerisini geliştirir', 'Kelime haznesini genişletir'],
+    steps:    ['Cümle içinde altı çizili kelime gösterilir', '4 şıktan doğru anlamı seç', 'Her turda farklı bağlam ve kelime'],
+    stats:    [{ label: 'Format', value: 'LGS birebir' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Tur', value: '10 soru' }],
+  },
+  'poetry-analysis': {
+    icon: '🖊️', label: 'Şiir Analizi', accent: '#86198F',
+    subtitle: '5 şiir · edebi sanat + anlam soruları · AYT Edebiyat',
+    tip: 'Edebi sanatları cümle içinde tanıma egzersizi.',
+    benefits: ['AYT Edebiyat şiir sorularına hazırlar', 'Teşbih, istiare, mecaz sanatlarını tanır', 'Anlam ve tema analizi becerisi kazandırır'],
+    steps:    ['Şiir dörtlükleriyle gösterilir', 'Edebi sanat ve anlam soruları gelir', '5 şiir tamamlandığında analiz raporu'],
+    stats:    [{ label: 'Şiir', value: '5 adet' }, { label: 'Soru', value: 'Edebi sanat' }, { label: 'Hedef', value: 'AYT Ede.' }],
+  },
+  'graph-reading': {
+    icon: '📊', label: 'Grafik Okuma', accent: '#164E63',
+    subtitle: 'Veri grafiklerini yorumla · çıkarım soruları · AYT/LGS',
+    tip: 'Görsel veri okuma hızı AYT puanını doğrudan etkiler.',
+    benefits: ['Tablo ve grafik yorumlama hızını artırır', 'Veri çıkarımı ve karşılaştırma becerisi', 'AYT Matematik ve LGS Fen soruları için şart'],
+    steps:    ['Çubuk/çizgi/pasta grafik gösterilir', 'Veri yorumlama soruları gelir', 'Çıkarım ve karşılaştırma sorularını yanıtla'],
+    stats:    [{ label: 'Grafik', value: '5 farklı tip' }, { label: 'Soru', value: 'Veri çıkarım' }, { label: 'Hedef', value: 'AYT/LGS' }],
+  },
+}
+
 interface Props {
-  moduleKey: string   // route adı: 'chunk-rsvp', 'timed-reading', vb.
+  moduleKey: string
   onStart:  () => void
   onBack:   () => void
 }
@@ -65,7 +256,6 @@ interface Props {
 export default function ReadingModuleIntro({ moduleKey, onStart, onBack }: Props) {
   const info = MODULE_INTRO[moduleKey]
   if (!info) {
-    // Bilinmeyen modül — hemen başlat
     onStart()
     return null
   }
@@ -95,24 +285,50 @@ export default function ReadingModuleIntro({ moduleKey, onStart, onBack }: Props
         </View>
       </View>
 
-      {/* ── İçerik ──────────────────────────────────────────────── */}
-      <View style={s.body}>
+      {/* ── Kaydırılabilir İçerik ─────────────────────────────── */}
+      <ScrollView style={s.scroll} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
 
-        {/* İpucu kartı */}
-        <View style={[s.tipCard, { borderLeftColor: info.accent, backgroundColor: '#fff' }]}>
-          <Text style={[s.tipLabel, { color: info.accent }]}>💡 Nasıl Çalışır?</Text>
-          <Text style={s.tipText}>{info.tip}</Text>
+        {/* İstatistik Çubukları */}
+        <View style={s.statsRow}>
+          {info.stats.map((st, i) => (
+            <View key={i} style={[s.statBox, { borderColor: info.accent + '40', backgroundColor: '#fff' }]}>
+              <Text style={[s.statVal, { color: info.accent }]}>{st.value}</Text>
+              <Text style={s.statLabel}>{st.label}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Renk çubuğu (dekoratif) */}
-        <View style={[s.colorBar, { backgroundColor: info.accent + '20', borderColor: info.accent + '35' }]}>
-          <View style={[s.colorDot, { backgroundColor: info.accent }]} />
-          <Text style={[s.colorBarTxt, { color: info.accent }]}>
-            {info.label} hazır
-          </Text>
+        {/* Nasıl Çalışır */}
+        <View style={[s.sectionCard, { borderLeftColor: info.accent, backgroundColor: '#fff' }]}>
+          <Text style={[s.sectionHead, { color: info.accent }]}>💡 Nasıl Çalışır?</Text>
+          <Text style={s.sectionTxt}>{info.tip}</Text>
         </View>
 
-      </View>
+        {/* Adımlar */}
+        <View style={[s.sectionCard, { borderLeftColor: info.accent, backgroundColor: '#fff' }]}>
+          <Text style={[s.sectionHead, { color: info.accent }]}>📋 Bu Egzersizde</Text>
+          {info.steps.map((step, i) => (
+            <View key={i} style={s.stepRow}>
+              <View style={[s.stepNum, { backgroundColor: info.accent }]}>
+                <Text style={s.stepNumTxt}>{i + 1}</Text>
+              </View>
+              <Text style={s.stepTxt}>{step}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Kazanımlar */}
+        <View style={[s.sectionCard, { borderLeftColor: info.accent, backgroundColor: '#fff' }]}>
+          <Text style={[s.sectionHead, { color: info.accent }]}>🏆 Ne Kazanacaksın?</Text>
+          {info.benefits.map((b, i) => (
+            <View key={i} style={s.benefitRow}>
+              <Text style={[s.checkMark, { color: info.accent }]}>✓</Text>
+              <Text style={s.benefitTxt}>{b}</Text>
+            </View>
+          ))}
+        </View>
+
+      </ScrollView>
 
       {/* ── Başlat Butonu ─────────────────────────────────────────── */}
       <View style={[s.footer, { backgroundColor: pal.bottom }]}>
@@ -130,25 +346,17 @@ export default function ReadingModuleIntro({ moduleKey, onStart, onBack }: Props
 }
 
 const s = StyleSheet.create({
-  root:    { flex: 1 },
+  root:   { flex: 1 },
 
   // Header
-  header: {
-    paddingBottom: 24,
-  },
+  header: { paddingBottom: 20 },
   backBtn: {
     paddingHorizontal: 20,
-    paddingTop:        12,
-    paddingBottom:     10,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  backTxt: { fontSize: 15, color: 'rgba(255,255,255,0.90)', fontWeight: '600' },
-  heroRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            14,
-    paddingHorizontal: 20,
-    paddingTop:     4,
-  },
+  backTxt:  { fontSize: 15, color: 'rgba(255,255,255,0.90)', fontWeight: '600' },
+  heroRow:  { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 4 },
   iconWrap: {
     width: 64, height: 64, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
@@ -158,51 +366,44 @@ const s = StyleSheet.create({
   label:    { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.4 },
   subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.80)', marginTop: 4, lineHeight: 17 },
 
-  // Body
-  body: {
-    flex: 1,
-    padding: 20,
-    gap:     14,
-  },
-  tipCard: {
-    borderRadius:    16,
-    borderLeftWidth: 4,
-    padding:         16,
-    shadowColor:     '#000',
-    shadowOpacity:   0.06,
-    shadowRadius:    8,
-    shadowOffset:    { width: 0, height: 2 },
-    elevation:       2,
-  },
-  tipLabel: { fontSize: 12, fontWeight: '800', marginBottom: 6, letterSpacing: 0.3 },
-  tipText:  { fontSize: 14, lineHeight: 20, color: '#374151', fontWeight: '500' },
+  // Scroll & Body
+  scroll: { flex: 1 },
+  body:   { padding: 16, gap: 12, paddingBottom: 24 },
 
-  colorBar: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            10,
-    borderRadius:   14,
-    borderWidth:    1,
-    padding:        14,
+  // Stats row
+  statsRow:  { flexDirection: 'row', gap: 8 },
+  statBox:   {
+    flex: 1, borderRadius: 14, borderWidth: 1.5,
+    paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
-  colorDot:    { width: 10, height: 10, borderRadius: 5 },
-  colorBarTxt: { fontSize: 13, fontWeight: '700' },
+  statVal:   { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
+  statLabel: { fontSize: 10, fontWeight: '600', color: '#6B7280', marginTop: 3 },
+
+  // Section cards
+  sectionCard: {
+    borderRadius: 16, borderLeftWidth: 4, padding: 16,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  sectionHead: { fontSize: 12, fontWeight: '800', marginBottom: 10, letterSpacing: 0.3 },
+  sectionTxt:  { fontSize: 14, lineHeight: 21, color: '#374151', fontWeight: '500' },
+
+  // Steps
+  stepRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  stepNum:   { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumTxt:{ fontSize: 11, fontWeight: '900', color: '#fff' },
+  stepTxt:   { flex: 1, fontSize: 13, lineHeight: 19, color: '#374151', fontWeight: '500' },
+
+  // Benefits
+  benefitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
+  checkMark:  { fontSize: 14, fontWeight: '900', marginTop: 1 },
+  benefitTxt: { flex: 1, fontSize: 13, lineHeight: 19, color: '#374151', fontWeight: '500' },
 
   // Footer
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop:        14,
-    paddingBottom:     12,
-  },
+  footer: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12 },
   startBtn: {
-    borderRadius:   18,
-    paddingVertical: 18,
-    alignItems:     'center',
-    shadowColor:    '#000',
-    shadowOpacity:  0.25,
-    shadowRadius:   10,
-    shadowOffset:   { width: 0, height: 4 },
-    elevation:      6,
+    borderRadius: 18, paddingVertical: 18, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
   startTxt: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.2 },
 })
