@@ -28,7 +28,7 @@ const TYPE_LABELS: Record<string, string> = {
 function riskColor(level: number, t: AppTheme): string {
   if (level >= 4) return '#EF4444'   // kırmızı
   if (level >= 3) return '#F59E0B'   // sarı
-  return t.colors.energyGreen ?? '#00C853'
+  return t.colors.energyGreen ?? '#1877F2'
 }
 
 // Risk seviyesi etiketi
@@ -111,7 +111,7 @@ export const ExamInsightCard = React.memo(function ExamInsightCard({
                     s.barFill,
                     {
                       width:           `${Math.min(100, pct)}%`,
-                      backgroundColor: isWeak ? rColor : (t.colors.energyGreen ?? '#00C853'),
+                      backgroundColor: isWeak ? rColor : (t.colors.energyGreen ?? '#1877F2'),
                     },
                   ]}
                 />

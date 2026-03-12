@@ -1,25 +1,23 @@
 /**
- * XPProgressBar — Sport Premium Edition
- * Seviye · XP ilerleme · withTiming fill · Level-up glow · Floating +XP
+ * XPProgressBar — v4 Modern Design
+ * Koyu lacivert kart · Teal ilerleme çubuğu · Mavi seviye rozeti
+ * Level-up glow · Floating +XP animasyonu
  */
-import React, {
-  useCallback, useEffect, useMemo, useRef, useState,
-} from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, Animated, StyleSheet } from 'react-native'
 import RAnimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withSequence,
-  interpolate,
+  useSharedValue, useAnimatedStyle,
+  withSpring, withTiming, withSequence, interpolate,
 } from 'react-native-reanimated'
 import { useAuthStore } from '../../../stores/authStore'
-import { useAppTheme } from '../../../theme/useAppTheme'
-import type { AppTheme } from '../../../theme'
 import { EventBus } from '../../rewards/EventBus'
 
-// ─── Sabitler ─────────────────────────────────────────────────────
+const NAVY   = '#0D1B3E'
+const BLUE   = '#2D5BE3'
+const TEAL   = '#40C8F0'   // İş Bankası accent blue
+const TEXT_L = '#FFFFFF'
+const TEXT_LS= 'rgba(255,255,255,0.60)'
+
 const LEVEL_XP = 500
 
 const LEVEL_HINTS = [
@@ -35,10 +33,7 @@ function getLevelHint(level: number): string {
   return LEVEL_HINTS[level % LEVEL_HINTS.length]
 }
 
-// ─── Bileşen ─────────────────────────────────────────────────────
 export function XPProgressBar() {
-  const t = useAppTheme()
-  const s = useMemo(() => ms(t), [t])
   const { student } = useAuthStore()
 
   const totalXp   = student?.totalXp ?? 0
@@ -47,43 +42,39 @@ export function XPProgressBar() {
   const progress  = xpInLevel / LEVEL_XP
   const hint      = getLevelHint(level)
 
-  // ── RN Animated bar (% width) ───────────────────────────────────
-  const barAnim    = useRef(new Animated.Value(0)).current
+  // RN Animated bar fill
+  const barAnim      = useRef(new Animated.Value(0)).current
   const prevLevelRef = useRef(level)
 
-  // ── Reanimated glow (level-up のみ) ────────────────────────────
+  // Reanimated level-up glow
   const glowSV = useSharedValue(0)
 
   useEffect(() => {
     Animated.timing(barAnim, {
-      toValue:         progress,
-      duration:        800,
-      useNativeDriver: false,
+      toValue: progress, duration: 800, useNativeDriver: false,
     }).start()
-
     if (level > prevLevelRef.current) {
       prevLevelRef.current = level
       glowSV.value = withSequence(
-        withSpring(1,  { damping: 6, stiffness: 200 }),
-        withTiming(0,  { duration: 1200 }),
+        withSpring(1, { damping: 6, stiffness: 200 }),
+        withTiming(0, { duration: 1200 }),
       )
     }
   }, [totalXp])
 
   const glowStyle = useAnimatedStyle(() => ({
-    shadowOpacity: interpolate(glowSV.value, [0, 1], [0, 0.70]),
+    shadowOpacity: interpolate(glowSV.value, [0, 1], [0, 0.55]),
     shadowRadius:  interpolate(glowSV.value, [0, 1], [4, 18]),
-    shadowColor:   t.colors.energyGreen,
+    shadowColor:   TEAL,
     shadowOffset:  { width: 0, height: 0 },
-    elevation:     interpolate(glowSV.value, [0, 1], [2, 10]),
+    elevation:     interpolate(glowSV.value, [0, 1], [3, 10]),
   }))
 
   const barWidth = barAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: ['0%', '100%'],
+    inputRange: [0, 1], outputRange: ['0%', '100%'],
   })
 
-  // ── Floating +XP animasyonu ─────────────────────────────────────
+  // Floating +XP animasyonu
   const [floatDelta, setFloatDelta] = useState<number | null>(null)
   const floatY  = useRef(new Animated.Value(0)).current
   const floatOp = useRef(new Animated.Value(0)).current
@@ -108,20 +99,15 @@ export function XPProgressBar() {
 
   return (
     <RAnimated.View style={[s.card, glowStyle]}>
-      {/* Floating +XP */}
       {floatDelta !== null && (
         <Animated.View
-          style={[
-            s.floatXP,
-            { transform: [{ translateY: floatY }], opacity: floatOp },
-          ]}
+          style={[s.floatXP, { transform: [{ translateY: floatY }], opacity: floatOp }]}
           pointerEvents="none"
         >
           <Text style={s.floatTxt}>+{floatDelta} XP ⭐</Text>
         </Animated.View>
       )}
 
-      {/* Üst satır */}
       <View style={s.topRow}>
         <View style={s.levelBadge}>
           <Text style={s.levelTxt}>Lv.{level}</Text>
@@ -129,10 +115,9 @@ export function XPProgressBar() {
         <Text style={s.xpFraction}>
           {xpInLevel.toLocaleString('tr')} / {LEVEL_XP} XP
         </Text>
-        <Text style={s.hintTxt} numberOfLines={1}>Sonraki: {hint}</Text>
+        <Text style={s.hintTxt} numberOfLines={1}>→ {hint}</Text>
       </View>
 
-      {/* Progress bar */}
       <View style={s.barBg}>
         <Animated.View style={[s.barFill, { width: barWidth }]} />
       </View>
@@ -140,74 +125,33 @@ export function XPProgressBar() {
   )
 }
 
-// ─── Stiller ─────────────────────────────────────────────────────
-function ms(t: AppTheme) {
-  return StyleSheet.create({
-    card: {
-      backgroundColor:  t.colors.sportCard,
-      marginHorizontal: 16,
-      marginTop:        12,
-      borderRadius:     16,
-      padding:          14,
-      shadowColor:      '#000',
-      shadowOffset:     { width: 0, height: 2 },
-      shadowOpacity:    0.06,
-      shadowRadius:     6,
-      elevation:        2,
-      overflow:         'visible',
-    },
-
-    // Floating
-    floatXP: {
-      position: 'absolute',
-      top:      0,
-      right:    16,
-      zIndex:   999,
-    },
-    floatTxt: {
-      fontSize:   13,
-      fontWeight: '800',
-      color:      t.colors.energyGreen,
-    },
-
-    // Üst satır
-    topRow: {
-      flexDirection:  'row',
-      alignItems:     'center',
-      gap:            8,
-      marginBottom:   10,
-      flexWrap:       'wrap',
-    },
-    levelBadge: {
-      backgroundColor:   t.colors.deepGreen,
-      borderRadius:      8,
-      paddingHorizontal: 10,
-      paddingVertical:   4,
-    },
-    levelTxt: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
-    xpFraction: {
-      fontSize:   13,
-      fontWeight: '700',
-      color:      t.colors.text,
-    },
-    hintTxt: {
-      fontSize:  11,
-      color:     t.colors.textHint,
-      flex:      1,
-      textAlign: 'right',
-    },
-
-    // Bar
-    barBg: {
-      height:          8,
-      backgroundColor: t.colors.sportSoft,
-      borderRadius:    4,
-      overflow:        'hidden',
-    },
-    barFill: {
-      height:          8,
-      backgroundColor: t.colors.energyGreen,
-      borderRadius:    4,
-    },
-  })
-}
+const s = StyleSheet.create({
+  card: {
+    backgroundColor: NAVY,
+    marginHorizontal: 16, marginTop: 12,
+    borderRadius: 16, padding: 16,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 8,
+    elevation: 4, overflow: 'visible',
+  },
+  floatXP: { position: 'absolute', top: 0, right: 16, zIndex: 999 },
+  floatTxt: { fontSize: 13, fontWeight: '800', color: TEAL },
+  topRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 8, marginBottom: 12, flexWrap: 'wrap',
+  },
+  levelBadge: {
+    backgroundColor: BLUE, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  levelTxt:  { fontSize: 12, fontWeight: '800', color: TEXT_L },
+  xpFraction:{ fontSize: 13, fontWeight: '700', color: TEXT_L },
+  hintTxt:   { fontSize: 11, color: TEXT_LS, flex: 1, textAlign: 'right' },
+  barBg: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 4, overflow: 'hidden',
+  },
+  barFill: { height: 8, backgroundColor: TEAL, borderRadius: 4 },
+})

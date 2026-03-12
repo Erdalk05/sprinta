@@ -28,8 +28,9 @@ const FAB_SIZE  = 62
 const MINI_SIZE = 58           // daire içinde ikon + label sığsın diye büyütüldü
 const RADIUS    = 112          // px — büyük daire için biraz daha geniş yay
 
-const ENERGY_GREEN = '#00C853'
-const DEEP_GREEN   = '#0F3D2E'
+const FAB_NAVY  = '#0D1B3E'   // Ana FAB rengi
+const MINI_BG   = '#162444'   // Mini buton arka planı
+const TEAL_GLOW = '#00D4AA'   // Nabız hale + gölge rengi
 
 // 6 item · 180° yay: -90° (sol) → -54 → -18 → 18 → 54 → 90° (sağ)
 // step = 180 / (6-1) = 36°
@@ -220,7 +221,6 @@ export function RadialFab({ theme: t, tabBarHeight }: RadialFabProps) {
             <Animated.View
               style={[
                 s.fabInner,
-                { borderColor: t.colors.sportCard },
                 fabRotateAnim,
               ]}
             >
@@ -237,7 +237,7 @@ export function RadialFab({ theme: t, tabBarHeight }: RadialFabProps) {
 // ─── Stiller ─────────────────────────────────────────────────────
 const s = StyleSheet.create({
   overlay: {
-    backgroundColor: DEEP_GREEN,
+    backgroundColor: FAB_NAVY,
     zIndex: 90,
   },
 
@@ -264,15 +264,17 @@ const s = StyleSheet.create({
     width:           MINI_SIZE,
     height:          MINI_SIZE,
     borderRadius:    MINI_SIZE / 2,
-    backgroundColor: DEEP_GREEN,
+    backgroundColor: MINI_BG,
     alignItems:      'center',
     justifyContent:  'center',
     gap:             2,
     elevation:       8,
-    shadowColor:     DEEP_GREEN,
+    shadowColor:     FAB_NAVY,
     shadowOffset:    { width: 0, height: 3 },
-    shadowOpacity:   0.30,
-    shadowRadius:    6,
+    shadowOpacity:   0.35,
+    shadowRadius:    8,
+    borderWidth:     1,
+    borderColor:     TEAL_GLOW + '30',
   },
   miniIcon:  { fontSize: 18 },
   miniLabel: {
@@ -292,7 +294,7 @@ const s = StyleSheet.create({
     width:           FAB_SIZE + 16,
     height:          FAB_SIZE + 16,
     borderRadius:    (FAB_SIZE + 16) / 2,
-    backgroundColor: ENERGY_GREEN + '30',
+    backgroundColor: TEAL_GLOW + '22',
   },
 
   // Ana FAB
@@ -305,12 +307,13 @@ const s = StyleSheet.create({
     width:           FAB_SIZE,
     height:          FAB_SIZE,
     borderRadius:    FAB_SIZE / 2,
-    backgroundColor: ENERGY_GREEN,
+    backgroundColor: FAB_NAVY,
     alignItems:      'center',
     justifyContent:  'center',
     borderWidth:     3,
+    borderColor:     TEAL_GLOW + '60',
     elevation:       14,
-    shadowColor:     ENERGY_GREEN,
+    shadowColor:     TEAL_GLOW,
     shadowOffset:    { width: 0, height: 0 },
     shadowOpacity:   0.55,
     shadowRadius:    16,

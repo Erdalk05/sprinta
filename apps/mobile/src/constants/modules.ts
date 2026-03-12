@@ -44,7 +44,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     label: 'Kartal Gözü',
     icon: '👁️',
     color: '#F59E0B',
-    description: 'Periferik görüşü genişlet, sakkad hareketini geliştir',
+    description: 'Geniş Görüş (Periferik) görüşü genişlet, Göz Hareketi (Sakkad) hareketini geliştir',
     duration: '5–10 dk',
     tip: 'Merkezdeki noktaya odaklan, etrafındakileri de görmaya çalış.',
   },

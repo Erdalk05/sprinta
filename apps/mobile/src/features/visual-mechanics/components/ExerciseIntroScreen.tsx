@@ -1,7 +1,12 @@
 /**
- * ExerciseIntroScreen — Her egzersiz öncesi tanıtım ve level seçim ekranı
- * Scroll YOK — tüm içerik tek ekrana sığdırılmıştır (iPhone SE – Pro Max / Android)
+ * ExerciseIntroScreen — Sprinta Design System v1.0
+ * BG #0F1F4B · Surface #162449 · Accent #38B6D8
+ * Press animasyonu: scale 0.97 / 120ms
  */
+
+// Sprinta DS v1.0 renkleri (yerel sabit — immersive dark ekran)
+const ACCENT   = '#38B6D8'   // Sprinta accent cyan
+const SURFACE  = '#162449'   // Dark card surface
 
 import React, { useState } from 'react'
 import {
@@ -11,23 +16,23 @@ import {
   StyleSheet,
   Dimensions,
   SafeAreaView,
+  ScrollView,
+  Platform,
 } from 'react-native'
-import { useAppTheme } from '../../../theme/useAppTheme'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated'
+import { LinearGradient } from 'expo-linear-gradient'
+import { S, R, T } from '../../../ui'
 import type { DifficultyLevel, VisualExerciseConfig } from '../constants/exerciseConfig'
 import { DURATION_BY_LEVEL } from '../constants/exerciseConfig'
 import { useVisualMechanicsStore } from '../store/visualMechanicsStore'
 
-// ─── Renkler ─────────────────────────────────────────────────────
-const NEON_CYAN  = '#00F5FF'
-const NEON_GREEN = '#00FF94'
-const DARK_BG    = '#0A0F1F'
-const DARK_SURF  = '#0E1628'
-const DARK_BRD   = 'rgba(0,245,255,0.15)'
-
-// ─── Responsive yardımcı ─────────────────────────────────────────
 const { height: SH } = Dimensions.get('window')
-// iPhone SE (1st gen) min usable ~580; ölçekleme için 700 referans
-const scale = (v: number) => Math.round(v * Math.min(SH / 812, 1))
+const sc = (v: number) => Math.round(v * Math.min(SH / 812, 1))
 
 interface ExerciseIntroScreenProps {
   config: VisualExerciseConfig
@@ -35,26 +40,53 @@ interface ExerciseIntroScreenProps {
   onBack:  () => void
 }
 
-const LEVEL_LABELS: Record<DifficultyLevel, string> = {
-  1: 'Başlangıç', 2: 'Orta', 3: 'İleri', 4: 'Uzman',
+const LEVEL_META: Record<DifficultyLevel, { label: string; emoji: string }> = {
+  1: { label: 'Başlangıç', emoji: '🌱' },
+  2: { label: 'Orta',      emoji: '⚡' },
+  3: { label: 'İleri',     emoji: '🔥' },
+  4: { label: 'Uzman',     emoji: '🦅' },
 }
 
-// ─── Mini bilgi kutusu (3-sütun) ──────────────────────────────────
-function InfoChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+// ─── InfoCard ─────────────────────────────────────────────────────
+function InfoCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
-    <View style={s.chip}>
-      <Text style={s.chipIcon}>{icon}</Text>
-      <Text style={s.chipLabel}>{label}</Text>
-      <Text style={s.chipValue} numberOfLines={3}>{value}</Text>
+    <View style={s.infoCard}>
+      <Text style={s.infoIcon}>{icon}</Text>
+      <Text style={s.infoTitle}>{title}</Text>
+      <Text style={s.infoDesc} numberOfLines={3}>{desc}</Text>
     </View>
   )
 }
 
-// ─── Ana bileşen ─────────────────────────────────────────────────
+// ─── LevelCard ────────────────────────────────────────────────────
+function LevelCard({ lvl, selected, onPress }: {
+  lvl: DifficultyLevel; selected: boolean; onPress: () => void
+}) {
+  const meta  = LEVEL_META[lvl]
+  const scale = useSharedValue(1)
+  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+  return (
+    <Animated.View style={[{ flex: 1 }, anim]}>
+      <TouchableOpacity
+        style={[s.lvlCard, selected && s.lvlCardActive]}
+        onPress={onPress}
+        onPressIn={() => { scale.value = withTiming(0.96, { duration: 120, easing: Easing.out(Easing.quad) }) }}
+        onPressOut={() => { scale.value = withTiming(1.00, { duration: 120, easing: Easing.out(Easing.quad) }) }}
+        activeOpacity={1}
+      >
+        <Text style={s.lvlEmoji}>{meta.emoji}</Text>
+        <Text style={[s.lvlNum, selected && s.lvlNumActive]}>{lvl}</Text>
+        <Text style={[s.lvlLabel, selected && s.lvlLabelActive]}>{meta.label}</Text>
+        {selected && <View style={s.lvlDot} />}
+      </TouchableOpacity>
+    </Animated.View>
+  )
+}
+
+// ─── Ana bileşen ──────────────────────────────────────────────────
 export const ExerciseIntroScreen: React.FC<ExerciseIntroScreenProps> = ({
   config, onStart, onBack,
 }) => {
-  const t = useAppTheme()
   const lastLevel            = useVisualMechanicsStore((st) => st.lastSelectedLevel)
   const setLastSelectedLevel = useVisualMechanicsStore((st) => st.setLastSelectedLevel)
   const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>(lastLevel)
@@ -67,172 +99,173 @@ export const ExerciseIntroScreen: React.FC<ExerciseIntroScreenProps> = ({
 
   return (
     <SafeAreaView style={s.root}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ right: 8 }}
+      >
+        {/* Geri */}
+        <TouchableOpacity style={s.backBtn} onPress={onBack}>
+          <Text style={s.backTxt}>← Geri</Text>
+        </TouchableOpacity>
 
-      {/* ── Geri butonu ── */}
-      <TouchableOpacity style={s.backBtn} onPress={onBack}>
-        <Text style={s.backTxt}>← Geri</Text>
-      </TouchableOpacity>
-
-      {/* ── Başlık + Açıklama ── */}
-      <Text style={s.title} numberOfLines={2}>{config.titleTR}</Text>
-      <Text style={[s.desc, { color: t.colors.textHint }]} numberOfLines={2}>
-        {config.descriptionTR}
-      </Text>
-
-      {/* ── 3 bilgi kutusu (yatay) ── */}
-      <View style={s.chipRow}>
-        <InfoChip icon="💪" label="Göz Kasları"    value={config.targetMusclesTR} />
-        <InfoChip icon="📖" label="Okuma Katkısı"  value={config.readingBenefitTR} />
-        <InfoChip icon="📝" label="Sınav Katkısı"  value={config.examBenefitTR} />
-      </View>
-
-      {/* ── ARP özeti (tek satır, compact) ── */}
-      <View style={s.arpBar}>
-        <Text style={s.arpTitle}>🧠 ARP</Text>
-        <View style={s.arpStats}>
-          <Text style={s.arpStat}>
-            Reg <Text style={s.arpVal}>{Math.round(config.arpEffect.regressionReduction * 100)}%</Text>
+        {/* Hero */}
+        <LinearGradient
+          colors={['rgba(56,182,216,0.12)', SURFACE]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.heroCard}
+        >
+          <Text style={s.catLabel}>
+            {config.categoryIcon}  {config.categoryTR}
           </Text>
-          <Text style={s.arpDot}>·</Text>
-          <Text style={s.arpStat}>
-            Hata <Text style={s.arpVal}>{Math.round(config.arpEffect.errorRateReduction * 100)}%</Text>
-          </Text>
-          <Text style={s.arpDot}>·</Text>
-          <Text style={s.arpStat}>
-            Yorg <Text style={s.arpVal}>{Math.round(config.arpEffect.fatigueReduction * 100)}%</Text>
-          </Text>
+          <Text style={s.heroTitle}>{config.titleTR}</Text>
+          <Text style={s.heroDesc}>{config.descriptionTR}</Text>
+        </LinearGradient>
+
+        {/* 3 bilgi kartı */}
+        <Text style={s.sectionTitle}>Egzersiz Detayları</Text>
+        <View style={s.infoRow}>
+          <InfoCard icon="💪" title="Göz Kasları"   desc={config.targetMusclesTR} />
+          <InfoCard icon="📖" title="Okuma"         desc={config.readingBenefitTR} />
+          <InfoCard icon="📝" title="Sınav"         desc={config.examBenefitTR} />
         </View>
-      </View>
 
-      {/* ── Level seçimi ── */}
-      <Text style={s.sectionLbl}>SEVİYE SEÇ</Text>
-      <View style={s.levelRow}>
-        {([1, 2, 3, 4] as DifficultyLevel[]).map((lvl) => (
-          <TouchableOpacity
-            key={lvl}
-            style={[s.lvlBtn, selectedLevel === lvl && s.lvlBtnActive]}
-            onPress={() => setSelectedLevel(lvl)}
+        {/* ARP */}
+        <View style={s.arpCard}>
+          <View style={s.arpHeader}>
+            <Text style={s.arpIcon}>🧠</Text>
+            <View>
+              <Text style={s.arpHeading}>ARP Katkısı</Text>
+              <Text style={s.arpSub}>Okuma Performans Skoru üzerindeki etki</Text>
+            </View>
+          </View>
+          <View style={s.arpGrid}>
+            <View style={s.arpItem}>
+              <Text style={s.arpVal}>{Math.round(config.arpEffect.regressionReduction * 100)}%</Text>
+              <Text style={s.arpLbl}>Regresyon ↓</Text>
+            </View>
+            <View style={s.arpDiv} />
+            <View style={s.arpItem}>
+              <Text style={s.arpVal}>{Math.round(config.arpEffect.errorRateReduction * 100)}%</Text>
+              <Text style={s.arpLbl}>Hata ↓</Text>
+            </View>
+            <View style={s.arpDiv} />
+            <View style={s.arpItem}>
+              <Text style={s.arpVal}>{Math.round(config.arpEffect.fatigueReduction * 100)}%</Text>
+              <Text style={s.arpLbl}>Yorgunluk ↓</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Seviye */}
+        <Text style={s.sectionTitle}>Seviye Seç</Text>
+        <View style={s.levelGrid}>
+          {([1, 2, 3, 4] as DifficultyLevel[]).map((lvl) => (
+            <LevelCard
+              key={lvl}
+              lvl={lvl}
+              selected={selectedLevel === lvl}
+              onPress={() => setSelectedLevel(lvl)}
+            />
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Başlat */}
+      <View style={s.bottomBar}>
+        <TouchableOpacity style={s.startWrap} onPress={handleStart} activeOpacity={0.85}>
+          <LinearGradient
+            colors={['#4DA3F5', ACCENT]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={s.startBtn}
           >
-            <Text style={[s.lvlNum, { color: selectedLevel === lvl ? DARK_BG : NEON_CYAN }]}>
-              {lvl}
-            </Text>
-            <Text style={[s.lvlLbl, { color: selectedLevel === lvl ? DARK_BG : '#8696A0' }]}>
-              {LEVEL_LABELS[lvl]}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            <Text style={s.startTxt}>Egzersizi Başlat</Text>
+            <Text style={s.startSub}>⏱ {dur.min}–{dur.max} saniye</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
-
-      {/* ── Başlat butonu + süre ── */}
-      <TouchableOpacity style={s.startBtn} onPress={handleStart} activeOpacity={0.85}>
-        <Text style={s.startTxt}>Egzersizi Başlat</Text>
-        <Text style={s.startDur}>⏱ {dur.min}–{dur.max} saniye</Text>
-      </TouchableOpacity>
-
     </SafeAreaView>
   )
 }
 
-// ─── Stiller ─────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: {
-    flex:            1,
-    backgroundColor: DARK_BG,
-    paddingHorizontal: 18,
-    paddingBottom:   12,
-    justifyContent:  'space-between',
+  root:          { flex: 1, backgroundColor: '#0F1F4B' },
+  scrollContent: { paddingHorizontal: S.xxl, paddingBottom: S.xxl },
+
+  backBtn: { paddingTop: sc(12), paddingBottom: sc(8), alignSelf: 'flex-start' },
+  backTxt: { ...T.body, color: ACCENT },
+
+  heroCard: {
+    borderRadius: R.xl, padding: S.xl, marginBottom: S.xxl, gap: sc(6),
+    borderWidth: 1, borderColor: 'rgba(56,182,216,0.35)',
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25, shadowRadius: 16, elevation: 8,
+  },
+  catLabel:  { fontSize: 12, fontWeight: '700', color: ACCENT, letterSpacing: 0.3 },
+  heroTitle: { fontSize: sc(24), fontWeight: '700', color: '#FFFFFF', lineHeight: sc(30) },
+  heroDesc:  { fontSize: sc(14), color: 'rgba(255,255,255,0.80)', lineHeight: sc(20) },
+
+  sectionTitle: {
+    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.40)',
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: S.md,
   },
 
-  // Geri
-  backBtn: { paddingTop: scale(10), paddingBottom: scale(4), alignSelf: 'flex-start' },
-  backTxt: { fontSize: scale(14), color: '#8696A0' },
+  infoRow:  { flexDirection: 'row', gap: sc(10), marginBottom: S.xxl },
+  infoCard: {
+    flex: 1, backgroundColor: '#162449', borderRadius: R.lg,
+    padding: sc(12), borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center', gap: sc(4),
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 8, elevation: 4,
+  },
+  infoIcon:  { fontSize: sc(20) },
+  infoTitle: { fontSize: sc(11), fontWeight: '600', color: '#FFFFFF', textAlign: 'center' },
+  infoDesc:  { fontSize: sc(10), color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: sc(14) },
 
-  // Başlık
-  title: {
-    fontSize:   scale(22),
-    fontWeight: '800',
-    color:      NEON_CYAN,
-    marginBottom: scale(4),
+  arpCard: {
+    backgroundColor: '#162449', borderRadius: R.xl, padding: sc(16),
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', marginBottom: S.xxl, gap: sc(14),
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22, shadowRadius: 12, elevation: 6,
   },
-  desc: {
-    fontSize:   scale(12),
-    lineHeight: scale(17),
-  },
+  arpHeader:  { flexDirection: 'row', alignItems: 'center', gap: S.md },
+  arpIcon:    { fontSize: sc(20) },
+  arpHeading: { fontSize: sc(15), fontWeight: '700', color: '#FFFFFF' },
+  arpSub:     { fontSize: sc(11), color: 'rgba(255,255,255,0.55)', marginTop: 1 },
+  arpGrid:    { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  arpItem:    { alignItems: 'center', flex: 1 },
+  arpVal:     { fontSize: sc(22), fontWeight: '700', color: '#38B6D8' },
+  arpLbl:     { fontSize: sc(11), color: 'rgba(255,255,255,0.55)', marginTop: sc(3) },
+  arpDiv:     { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.10)' },
 
-  // 3-sütun chip
-  chipRow: {
-    flexDirection: 'row',
-    gap:           8,
-    marginTop:     scale(10),
+  levelGrid: { flexDirection: 'row', gap: sc(10) },
+  lvlCard: {
+    flex: 1, backgroundColor: '#162449', borderRadius: R.lg,
+    paddingVertical: sc(14), alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', gap: sc(3),
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 8, elevation: 4,
   },
-  chip: {
-    flex:            1,
-    backgroundColor: DARK_SURF,
-    borderRadius:    12,
-    padding:         scale(10),
-    borderWidth:     1,
-    borderColor:     DARK_BRD,
-  },
-  chipIcon:  { fontSize: scale(16), marginBottom: scale(4) },
-  chipLabel: {
-    fontSize:      scale(9),
-    color:         '#8696A0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom:  scale(3),
-  },
-  chipValue: { fontSize: scale(11), color: '#E9EDEF', lineHeight: scale(15) },
+  lvlCardActive:  { backgroundColor: '#1877F220', borderColor: ACCENT, borderWidth: 1.5 },
+  lvlEmoji:       { fontSize: sc(18) },
+  lvlNum:         { fontSize: sc(18), fontWeight: '700', color: 'rgba(255,255,255,0.50)' },
+  lvlNumActive:   { color: '#FFFFFF' },
+  lvlLabel:       { fontSize: sc(9), color: 'rgba(255,255,255,0.40)', fontWeight: '600', textAlign: 'center' },
+  lvlLabelActive: { color: ACCENT },
+  lvlDot:         { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT, marginTop: sc(2) },
 
-  // ARP tek satır
-  arpBar: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    backgroundColor: DARK_SURF,
-    borderRadius:    12,
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(10),
-    borderWidth:     1,
-    borderColor:     'rgba(0,255,148,0.15)',
-    marginTop:       scale(10),
-    gap:             10,
+  bottomBar: {
+    paddingHorizontal: S.xxl, paddingBottom: sc(16), paddingTop: sc(8),
+    backgroundColor: '#0F1F4B', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
   },
-  arpTitle: { fontSize: scale(12), fontWeight: '700', color: NEON_GREEN },
-  arpStats: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6 },
-  arpStat:  { fontSize: scale(11), color: '#8696A0' },
-  arpVal:   { fontWeight: '800', color: NEON_GREEN },
-  arpDot:   { fontSize: scale(11), color: '#8696A0' },
-
-  // Level
-  sectionLbl: {
-    fontSize:      scale(11),
-    fontWeight:    '700',
-    color:         '#8696A0',
-    letterSpacing: 0.8,
-    marginTop:     scale(12),
-    marginBottom:  scale(8),
+  startWrap: { borderRadius: R.xl, overflow: 'hidden' },
+  startBtn:  {
+    height: sc(60), borderRadius: R.xl,
+    alignItems: 'center', justifyContent: 'center', gap: 3,
   },
-  levelRow: { flexDirection: 'row', gap: 8 },
-  lvlBtn: {
-    flex:            1,
-    backgroundColor: DARK_SURF,
-    borderRadius:    12,
-    paddingVertical: scale(10),
-    alignItems:      'center',
-    borderWidth:     1,
-    borderColor:     DARK_BRD,
-  },
-  lvlBtnActive: { backgroundColor: NEON_CYAN, borderColor: NEON_CYAN },
-  lvlNum:  { fontSize: scale(18), fontWeight: '800' },
-  lvlLbl:  { fontSize: scale(9), marginTop: scale(3) },
-
-  // Başlat
-  startBtn: {
-    backgroundColor: NEON_CYAN,
-    borderRadius:    14,
-    paddingVertical: scale(14),
-    alignItems:      'center',
-    marginTop:       scale(12),
-  },
-  startTxt: { fontSize: scale(16), fontWeight: '800', color: DARK_BG, letterSpacing: 0.3 },
-  startDur: { fontSize: scale(11), color: DARK_BG, opacity: 0.65, marginTop: scale(2) },
+  startTxt: { fontSize: sc(17), fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 },
+  startSub: { fontSize: sc(12), color: 'rgba(255,255,255,0.72)' },
 })

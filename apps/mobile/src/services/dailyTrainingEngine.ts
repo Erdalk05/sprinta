@@ -36,6 +36,8 @@ export const EXERCISE_CATEGORIES: Record<ExerciseId, ExerciseCategory> = {
   split_screen_mirror:      'periferik',
   micro_pause_react:        'refleks',
   tunnel_vision_breaker:    'periferik',
+  yagmur_hedef:             'periferik',
+  renk_hafiza:              'sakkadik',
 }
 
 const ALL_CATEGORIES: ExerciseCategory[] = [
@@ -176,7 +178,7 @@ export function generateDailyPlan(stats: UserStats): DailyPlan {
 // ─── Kategori görsel yardımcıları ─────────────────────────────────
 export const CATEGORY_META: Record<ExerciseCategory, { icon: string; label: string; color: string }> = {
   sakkadik:     { icon: '⚡', label: 'Sakkadik',     color: '#F59E0B' },
-  periferik:    { icon: '👁️', label: 'Periferik',    color: '#0EA5E9' },
+  periferik:    { icon: '👁️', label: 'Geniş Görüş (Periferik)',    color: '#0EA5E9' },
   fiksasyon:    { icon: '🎯', label: 'Fiksasyon',    color: '#8B5CF6' },
   dayanıklılık: { icon: '🔥', label: 'Dayanıklılık', color: '#EF4444' },
   refleks:      { icon: '⚡', label: 'Refleks',      color: '#10B981' },

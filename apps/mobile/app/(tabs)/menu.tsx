@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, Modal, TextInput, Animated, Alert, Dimensions,
+  SafeAreaView, Modal, TextInput, Animated, Alert, Dimensions, Pressable,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
@@ -118,39 +118,37 @@ function buildCategories(t: ReturnType<typeof import('../../src/theme').buildThe
 }
 
 // ─── WhatsApp Flat Grid Card ──────────────────────────────────────
-const WA_GREEN = '#25D366'
+const WA_GREEN = '#1877F2'   // Facebook primary blue
+
+const ISB_BLUE = '#1877F2'   // Facebook / İş Bankası mavi
 
 function GridCard({ cat, t, onPress, cardW }: {
   cat: Category; t: import('../../src/theme').AppTheme
   onPress: () => void; cardW: number
 }) {
-  const scale = useRef(new Animated.Value(1)).current
   return (
-    <Animated.View style={{ transform: [{ scale }], width: cardW, marginBottom: 10 }}>
-      <TouchableOpacity
-        activeOpacity={1}
-        onPressIn={() =>
-          Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
-        }
-        onPressOut={() =>
-          Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start()
-        }
-        onPress={onPress}
-        style={[gCard.card, {
-          backgroundColor: t.colors.surface,
-          borderColor: t.colors.border,
-        }]}
-      >
-        {/* Yeşil ikon kutusu */}
-        <View style={[gCard.iconBox, { backgroundColor: WA_GREEN + '15' }]}>
-          <Text style={gCard.icon}>{cat.icon}</Text>
-        </View>
-        <Text style={[gCard.label, { color: t.colors.text }]}>{cat.label}</Text>
-        <Text style={[gCard.sub, { color: t.colors.textSub }]} numberOfLines={2}>{cat.sub}</Text>
-        {/* Sağ alt: yeşil ok */}
-        <Text style={[gCard.arrow, { color: WA_GREEN }]}>›</Text>
-      </TouchableOpacity>
-    </Animated.View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        gCard.card,
+        {
+          width:           cardW,
+          marginBottom:    10,
+          backgroundColor: pressed ? ISB_BLUE + '10' : t.colors.surface,
+          borderColor:     pressed ? ISB_BLUE + '60' : t.colors.border,
+          transform:       [{ scale: pressed ? 0.96 : 1 }],
+        },
+      ]}
+    >
+      {/* Mavi ikon kutusu */}
+      <View style={[gCard.iconBox, { backgroundColor: ISB_BLUE + '12' }]}>
+        <Text style={gCard.icon}>{cat.icon}</Text>
+      </View>
+      <Text style={[gCard.label, { color: t.colors.text }]}>{cat.label}</Text>
+      <Text style={[gCard.sub, { color: t.colors.textSub }]} numberOfLines={2}>{cat.sub}</Text>
+      {/* Sağ alt: mavi ok */}
+      <Text style={[gCard.arrow, { color: ISB_BLUE }]}>›</Text>
+    </Pressable>
   )
 }
 

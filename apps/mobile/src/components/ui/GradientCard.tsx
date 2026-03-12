@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function GradientCard({
-  colors: gradColors = ['#1A1033', '#0B141A'],
+  colors: gradColors = ['#0F2357', '#1A3594'],
   style,
   children,
   radius = 16,

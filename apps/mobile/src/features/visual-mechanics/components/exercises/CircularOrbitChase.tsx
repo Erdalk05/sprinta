@@ -9,6 +9,7 @@ import { buildDifficultyParams } from '../../engines/difficultyEngine'
 import type { DifficultyLevel } from '../../constants/exerciseConfig'
 import type { RawMetrics } from '../../engines/scoringEngine'
 import { ExerciseProgressBar } from '../ExerciseProgressBar'
+import { useSoundFeedback } from '../../hooks/useSoundFeedback'
 
 const { width: W, height: H } = Dimensions.get('window')
 const DARK_BG    = '#0A0F1F'
@@ -28,6 +29,7 @@ interface Props {
 
 export default function CircularOrbitChase({ level, onComplete, onExit }: Props) {
   const params   = useMemo(() => buildDifficultyParams(level), [level])
+  const { playHit, playMiss, playAppear, resetCombo } = useSoundFeedback()
   const rps      = params.animationSpeedMultiplier * 0.55   // rotations per second
   const zoneHalf = ZONE_HALF / params.animationSpeedMultiplier
 
@@ -55,7 +57,7 @@ export default function CircularOrbitChase({ level, onComplete, onExit }: Props)
       const wasIn = inZoneRef.current
       const isIn  = Math.abs(normalised) < zoneHalf
       inZoneRef.current = isIn
-      if (!wasIn && isIn) { m.current.total++; m.current.lastAt = Date.now() }
+      if (!wasIn && isIn) { m.current.total++; m.current.lastAt = Date.now(); playAppear() }
 
       frameRef.current = setTimeout(tick, 16)
     }
@@ -68,6 +70,7 @@ export default function CircularOrbitChase({ level, onComplete, onExit }: Props)
     const dur = params.durationSeconds * 1000
     const avg = m.current.rts.length
       ? Math.round(m.current.rts.reduce((a, b) => a + b, 0) / m.current.rts.length) : 500
+    resetCombo()
     onComplete({
       correctFocusDurationMs: Math.round((m.current.hits / Math.max(m.current.total, 1)) * dur),
       totalDurationMs: dur, reactionTimeMs: avg,
@@ -79,10 +82,10 @@ export default function CircularOrbitChase({ level, onComplete, onExit }: Props)
   const handleTap = useCallback(() => {
     if (inZoneRef.current) {
       m.current.hits++; m.current.rts.push(Math.min(Date.now() - m.current.lastAt, 800))
-      setHits(h => h + 1); Haptics.selectionAsync()
+      setHits(h => h + 1); Haptics.selectionAsync(); playHit()
     } else {
       m.current.misses++
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); playMiss()
     }
   }, [])
 

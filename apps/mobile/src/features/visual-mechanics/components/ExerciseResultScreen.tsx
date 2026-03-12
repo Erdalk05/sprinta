@@ -1,51 +1,47 @@
 /**
- * ExerciseResultScreen — Tek ekran, scroll yok, GamificationStatusCard entegre
+ * ExerciseResultScreen — iOS Design
+ * Zemin: #F2F2F7 · Kartlar: #FFFFFF · Aksan: #1877F2
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
+  ScrollView,
 } from 'react-native'
-import { useAppTheme } from '../../../theme/useAppTheme'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useSoundFeedback } from '../hooks/useSoundFeedback'
 import type { ExerciseScore } from '../engines/scoringEngine'
 import type { VisualExerciseConfig, DifficultyLevel } from '../constants/exerciseConfig'
 import type { GamificationState } from '@sprinta/api'
 
-const { width: W } = Dimensions.get('window')
+// ── Renk sabitleri ──────────────────────────────────────────────
+const BG      = '#0F1F4B'   // Lacivert zemin (değişmez)
+const PRIMARY = '#243C8F'   // Koyu mavi — kart yazıları
+const ACCENT  = '#38B6D8'   // Cyan — lid şeridi + XP
+const DARK    = PRIMARY     // Beyaz kartlarda koyu mavi metin
+const GREY    = '#6B7A99'   // Orta ton — etiketler
+const DIVIDER = '#E5ECFF'   // Açık mavi bölücü
+const BLUE    = ACCENT
+const BLUE_L  = ACCENT
+const BLUE_D  = PRIMARY
 
-const NEON_CYAN  = '#00F5FF'
-const NEON_GREEN = '#00FF94'
-const GOLD       = '#FFD700'
-const ORANGE     = '#F97316'
-const DARK_BG    = '#0A0F1F'
-const DARK_CARD  = '#0E1628'
-const BORDER     = 'rgba(0,245,255,0.12)'
-
-const GRADE_COLORS: Record<ExerciseScore['grade'], string> = {
-  S: GOLD,
-  A: NEON_CYAN,
-  B: NEON_GREEN,
-  C: '#F59E0B',
-  D: '#EF4444',
+const GRADE_COLOR: Record<ExerciseScore['grade'], string> = {
+  S: '#F59E0B',   // altın
+  A: '#1877F2',   // mavi
+  B: '#10B981',   // yeşil
+  C: '#F97316',   // turuncu
+  D: '#EF4444',   // kırmızı
 }
 
-const GRADE_BG: Record<ExerciseScore['grade'], string> = {
-  S: 'rgba(255,215,0,0.12)',
-  A: 'rgba(0,245,255,0.12)',
-  B: 'rgba(0,255,148,0.12)',
-  C: 'rgba(245,158,11,0.12)',
-  D: 'rgba(239,68,68,0.12)',
+const GRADE_LABEL: Record<ExerciseScore['grade'], string> = {
+  S: 'Mükemmel', A: 'Harika', B: 'İyi', C: 'Geliştirilmeli', D: 'Tekrar Dene',
 }
 
 const LEVEL_LABELS: Record<DifficultyLevel, string> = {
-  1: 'Başlangıç',
-  2: 'Orta',
-  3: 'İleri',
-  4: 'Uzman',
+  1: 'Başlangıç', 2: 'Orta', 3: 'İleri', 4: 'Uzman',
 }
 
 const MILESTONES = [
@@ -63,98 +59,117 @@ interface ExerciseResultScreenProps {
   gamState?: GamificationState | null
 }
 
-// ─── Mini stat kutusu ────────────────────────────────────────────────────────
-const StatBox = ({ label, value, color }: { label: string; value: string; color: string }) => (
-  <View style={s.statBox}>
-    <Text style={[s.statVal, { color }]}>{value}</Text>
-    <Text style={s.statLbl}>{label}</Text>
-  </View>
-)
-
-// ─── ExerciseResultScreen ────────────────────────────────────────────────────
 export const ExerciseResultScreen: React.FC<ExerciseResultScreenProps> = ({
-  score,
-  config,
-  level,
-  onRetry,
-  onExit,
-  gamState,
+  score, config, level, onRetry, onExit, gamState,
 }) => {
-  const t         = useAppTheme()
-  const gradeColor = GRADE_COLORS[score.grade]
-  const gradeBg    = GRADE_BG[score.grade]
-  const errorPct   = Math.round(score.errorRate * 100)
-  const errorColor = score.errorRate > 0.25 ? '#EF4444' : NEON_GREEN
-  const totalStars = gamState?.stats.totalStars ?? 0
+  const { playComplete } = useSoundFeedback()
+  const gradeColor  = GRADE_COLOR[score.grade]
+  const errorPct    = Math.round(score.errorRate * 100)
+  const errorColor  = score.errorRate > 0.25 ? '#EF4444' : '#10B981'
+  const totalStars  = gamState?.stats.totalStars ?? 0
+
+  useEffect(() => {
+    const id = setTimeout(() => playComplete(), 300)
+    return () => clearTimeout(id)
+  }, [])
 
   return (
-    <View style={s.root}>
+    <ScrollView
+      style={s.root}
+      contentContainerStyle={s.content}
+      showsVerticalScrollIndicator={false}
+    >
 
-      {/* ── HEADER: Grade + İsim ─────────────────────────────────────── */}
-      <View style={[s.header, { backgroundColor: gradeBg, borderColor: gradeColor + '30' }]}>
-        {/* Grade dairesi */}
-        <View style={[s.gradeCircle, { borderColor: gradeColor, shadowColor: gradeColor }]}>
-          <Text style={[s.gradeText, { color: gradeColor }]}>{score.grade}</Text>
-        </View>
+      {/* ── 1. HEADER: Grade dairesi + egzersiz adı ─────────────── */}
+      <View style={s.card}>
+        <View style={s.headerRow}>
+          {/* Grade dairesi */}
+          <View style={[s.gradeCircle, {
+            borderColor: gradeColor,
+            shadowColor: gradeColor,
+          }]}>
+            <Text style={[s.gradeLetter, { color: gradeColor }]}>{score.grade}</Text>
+          </View>
 
-        {/* Egzersiz bilgisi */}
-        <View style={s.headerInfo}>
-          <Text style={s.exerciseName} numberOfLines={2}>{config.titleTR}</Text>
-          <Text style={[s.levelBadge, { color: t.colors.textHint }]}>
-            Seviye {level} · {LEVEL_LABELS[level]}
-          </Text>
-          {/* Yeni yıldızlar */}
-          {gamState && gamState.newStars > 0 && (
-            <View style={s.newStarRow}>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Text key={i} style={s.starIcon}>
-                  {i < gamState.newStars ? '⭐' : '☆'}
-                </Text>
-              ))}
+          {/* Sağ taraf: isim + seviye + yıldızlar */}
+          <View style={s.headerInfo}>
+            <View style={[s.gradePill, { backgroundColor: gradeColor + '18' }]}>
+              <Text style={[s.gradePillTxt, { color: gradeColor }]}>
+                {GRADE_LABEL[score.grade]}
+              </Text>
             </View>
-          )}
+            <Text style={s.exerciseName} numberOfLines={2}>{config.titleTR}</Text>
+            <Text style={s.levelTxt}>Seviye {level} · {LEVEL_LABELS[level]}</Text>
+            {gamState && gamState.newStars > 0 && (
+              <View style={s.starsRow}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Text key={i} style={s.starIcon}>
+                    {i < gamState.newStars ? '⭐' : '☆'}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
-      {/* ── 4 STAT SATIRI ────────────────────────────────────────────── */}
-      <View style={s.statsRow}>
-        <StatBox label="Odak"   value={`${score.focusStabilityScore}%`} color={NEON_GREEN} />
-        <View style={s.statDivider} />
-        <StatBox label="Tepki"  value={`${score.reactionTimeMs}ms`}     color={NEON_CYAN}  />
-        <View style={s.statDivider} />
-        <StatBox label="Hata"   value={`${errorPct}%`}                  color={errorColor} />
-        <View style={s.statDivider} />
-        <StatBox label="Skor"   value={String(Math.round(score.baseScore))} color={gradeColor} />
-      </View>
-
-      {/* ── XP + GAMİFİKASYON SATIRI ─────────────────────────────────── */}
-      <View style={s.gamRow}>
-        {/* XP */}
-        <View style={[s.gamBox, s.xpBox]}>
-          <Text style={s.xpVal}>+{score.xpEarned}</Text>
-          <Text style={s.xpLbl}>XP ⚡</Text>
-        </View>
-        <View style={s.gamDivider} />
-        {/* Bugün */}
-        <View style={s.gamBox}>
-          <Text style={s.gamBigVal}>{gamState?.daily.starsToday ?? 0}/3</Text>
-          <Text style={s.gamLbl}>BUGÜN {'⭐'.repeat(Math.min(gamState?.daily.starsToday ?? 0, 3))}</Text>
-        </View>
-        <View style={s.gamDivider} />
-        {/* Seri */}
-        <View style={s.gamBox}>
-          <Text style={[s.gamBigVal, { color: ORANGE }]}>{gamState?.streak.currentStreak ?? 0}</Text>
-          <Text style={s.gamLbl}>SERİ 🔥</Text>
-        </View>
-        <View style={s.gamDivider} />
-        {/* Toplam */}
-        <View style={s.gamBox}>
-          <Text style={[s.gamBigVal, { color: GOLD }]}>{totalStars}</Text>
-          <Text style={s.gamLbl}>TOPLAM ⭐</Text>
+      {/* ── 2. STATS: 4 metrik ──────────────────────────────────── */}
+      <View style={s.card}>
+        <Text style={s.cardLabel}>Performans</Text>
+        <View style={s.statsRow}>
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: '#10B981' }]}>{score.focusStabilityScore}%</Text>
+            <Text style={s.statLbl}>Odak</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: BLUE }]}>{score.reactionTimeMs}<Text style={s.statUnit}> ms</Text></Text>
+            <Text style={s.statLbl}>Tepki</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: errorColor }]}>{errorPct}%</Text>
+            <Text style={s.statLbl}>Hata</Text>
+          </View>
+          <View style={s.divider} />
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: gradeColor }]}>{Math.round(score.baseScore)}</Text>
+            <Text style={s.statLbl}>Skor</Text>
+          </View>
         </View>
       </View>
 
-      {/* ── MİLESTONE ROZETLERİ ──────────────────────────────────────── */}
+      {/* ── 3. GAMİFİKASYON: XP + günlük + seri + toplam ────────── */}
+      <View style={s.card}>
+        <Text style={s.cardLabel}>İlerleme</Text>
+        <View style={s.statsRow}>
+          {/* XP */}
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: BLUE }]}>+{score.xpEarned}</Text>
+            <Text style={s.statLbl}>XP ⚡</Text>
+          </View>
+          <View style={s.divider} />
+          {/* Bugün */}
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: '#F59E0B' }]}>{gamState?.daily.starsToday ?? 0}/3</Text>
+            <Text style={s.statLbl}>Bugün ⭐</Text>
+          </View>
+          <View style={s.divider} />
+          {/* Seri */}
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: '#F97316' }]}>{gamState?.streak.currentStreak ?? 0}</Text>
+            <Text style={s.statLbl}>Seri 🔥</Text>
+          </View>
+          <View style={s.divider} />
+          {/* Toplam */}
+          <View style={s.statItem}>
+            <Text style={[s.statVal, { color: '#F59E0B' }]}>{totalStars}</Text>
+            <Text style={s.statLbl}>Toplam ⭐</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── 4. MİLESTONELAR ─────────────────────────────────────── */}
       <View style={s.milestoneRow}>
         {MILESTONES.map((m) => {
           const unlocked = totalStars >= m.stars
@@ -164,243 +179,160 @@ export const ExerciseResultScreen: React.FC<ExerciseResultScreenProps> = ({
               style={[s.milestoneBadge, unlocked && s.milestoneBadgeUnlocked]}
             >
               <Text style={s.milestoneIcon}>{unlocked ? m.badge : '🔒'}</Text>
-              <Text style={[s.milestoneLabel, unlocked && s.milestoneLabelUnlocked]}>
+              <Text style={[s.milestoneLabel, unlocked && { color: '#F59E0B' }]}>
                 {m.label}
               </Text>
-              <Text style={[s.milestoneStars, unlocked && s.milestoneStarsUnlocked]}>
-                {m.stars}⭐
+              <Text style={[s.milestoneStars, unlocked && { color: '#F59E0B', fontWeight: '700' as const }]}>
+                {m.stars} ⭐
               </Text>
             </View>
           )
         })}
       </View>
 
-      {/* ── ARP KATKISI ──────────────────────────────────────────────── */}
-      <View style={s.arpRow}>
+      {/* ── 5. ARP KATKISI ───────────────────────────────────────── */}
+      <View style={[s.card, s.arpCard]}>
         <Text style={s.arpIcon}>📈</Text>
-        <Text style={[s.arpText, { color: t.colors.textHint }]} numberOfLines={2}>
-          {config.readingBenefitTR}
-        </Text>
+        <Text style={s.arpText} numberOfLines={2}>{config.readingBenefitTR}</Text>
       </View>
 
-      {/* ── BUTONLAR ─────────────────────────────────────────────────── */}
-      <TouchableOpacity style={s.retryBtn} onPress={onRetry} activeOpacity={0.85}>
-        <Text style={s.retryBtnText}>↺  Tekrar Dene</Text>
+      {/* ── 6. BUTONLAR ──────────────────────────────────────────── */}
+      <TouchableOpacity style={s.retryWrap} onPress={onRetry} activeOpacity={0.85}>
+        <LinearGradient
+          colors={[BLUE_L, BLUE_D]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.retryBtn}
+        >
+          <Text style={s.retryTxt}>↺  Tekrar Dene</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity style={s.exitBtn} onPress={onExit} activeOpacity={0.7}>
-        <Text style={[s.exitBtnText, { color: t.colors.textHint }]}>Ana Menüye Dön</Text>
+        <Text style={s.exitTxt}>Ana Menüye Dön</Text>
       </TouchableOpacity>
 
-    </View>
+    </ScrollView>
   )
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: DARK_BG,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    justifyContent: 'space-between',
+  root:    { flex: 1, backgroundColor: BG },
+  content: { padding: 16, paddingBottom: 32, gap: 12 },
+
+  // Kart — beyaz + mavi derinlik (lid efekti)
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: DIVIDER,
+    borderTopWidth: 3,
+    borderTopColor: ACCENT,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 2, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 7,
+  },
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: GREY,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 12,
   },
 
   // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   gradeCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 3,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 14,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.30,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  gradeText: {
-    fontSize: 38,
-    fontWeight: '900',
+  gradeLetter: { fontSize: 38, fontWeight: '900' as const },
+  headerInfo:  { flex: 1, gap: 4 },
+  gradePill: {
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  headerInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  exerciseName: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#E9EDEF',
-    lineHeight: 22,
-  },
-  levelBadge: {
-    fontSize: 12,
-  },
-  newStarRow: {
-    flexDirection: 'row',
-    gap: 2,
-    marginTop: 2,
-  },
-  starIcon: {
-    fontSize: 16,
-  },
+  gradePillTxt:  { fontSize: 11, fontWeight: '700' as const },
+  exerciseName:  { fontSize: 16, fontWeight: '700' as const, color: PRIMARY, lineHeight: 21 },
+  levelTxt:      { fontSize: 12, color: GREY },
+  starsRow:      { flexDirection: 'row', gap: 2, marginTop: 2 },
+  starIcon:      { fontSize: 14 },
 
-  // 4-stat row
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: DARK_CARD,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 12,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 3,
-  },
-  statVal: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  statLbl: {
-    fontSize: 10,
-    color: '#8696A0',
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: BORDER,
-  },
-
-  // Gamification row
-  gamRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: DARK_CARD,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 10,
-  },
-  gamBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  xpBox: {
-    flex: 1.2,
-  },
-  xpVal: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: NEON_GREEN,
-  },
-  xpLbl: {
-    fontSize: 10,
-    color: '#8696A0',
-  },
-  gamBigVal: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: NEON_CYAN,
-  },
-  gamLbl: {
-    fontSize: 9,
-    color: '#8696A0',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  gamDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: BORDER,
-  },
+  // Stats / Gamification
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statItem: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
+  statVal:  { fontSize: 20, fontWeight: '800' as const, color: PRIMARY },
+  statUnit: { fontSize: 12, fontWeight: '400' as const },
+  statLbl:  { fontSize: 10, color: GREY, fontWeight: '500' as const },
+  divider:  { width: StyleSheet.hairlineWidth, height: 36, backgroundColor: DIVIDER },
 
   // Milestones
-  milestoneRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  milestoneRow: { flexDirection: 'row', gap: 10 },
   milestoneBadge: {
     flex: 1,
-    backgroundColor: DARK_CARD,
-    borderRadius: 14,
-    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 6,
     alignItems: 'center',
     gap: 4,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 1, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: DIVIDER,
+    borderTopWidth: 3,
+    borderTopColor: ACCENT,
   },
   milestoneBadgeUnlocked: {
-    borderColor: 'rgba(245,158,11,0.5)',
-    backgroundColor: '#1A1205',
+    borderTopColor: '#F59E0B',
+    borderColor: '#F59E0B40',
+    backgroundColor: '#FFFBF0',
   },
-  milestoneIcon: {
-    fontSize: 22,
-  },
-  milestoneLabel: {
-    fontSize: 11,
-    color: '#8696A0',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  milestoneLabelUnlocked: {
-    color: '#F59E0B',
-  },
-  milestoneStars: {
-    fontSize: 11,
-    color: '#8696A0',
-  },
-  milestoneStarsUnlocked: {
-    color: GOLD,
-    fontWeight: '800',
-  },
+  milestoneIcon:  { fontSize: 22 },
+  milestoneLabel: { fontSize: 11, color: GREY, fontWeight: '600' as const, textAlign: 'center' },
+  milestoneStars: { fontSize: 10, color: GREY },
 
   // ARP
-  arpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: DARK_CARD,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  arpIcon: { fontSize: 16, flexShrink: 0 },
-  arpText: { flex: 1, fontSize: 12, lineHeight: 17 },
+  arpCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  arpIcon: { fontSize: 18, flexShrink: 0 },
+  arpText: { flex: 1, fontSize: 12, color: GREY, lineHeight: 17 },
 
   // Buttons
-  retryBtn: {
-    backgroundColor: NEON_CYAN,
+  retryWrap: {
     borderRadius: 16,
-    paddingVertical: 15,
+    overflow: 'hidden',
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  retryBtn: {
+    height: 54,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  retryBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0A0F1F',
-  },
-  exitBtn: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  exitBtnText: {
-    fontSize: 14,
-  },
+  retryTxt: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF', letterSpacing: 0.2 },
+  exitBtn:  { paddingVertical: 12, alignItems: 'center' },
+  exitTxt:  { fontSize: 15, color: BLUE, fontWeight: '500' as const },
 })

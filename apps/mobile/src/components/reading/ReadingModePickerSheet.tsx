@@ -140,7 +140,7 @@ const MODE_OPTIONS: ModeOption[] = [
 
 // ─── Tag renkleri ─────────────────────────────────────────────
 const TAG_COLORS: Record<string, string> = {
-  hız:    '#00C853',
+  hız:    '#1877F2',
   anlama: '#2196F3',
   odak:   '#FF9800',
   kelime: '#9C27B0',

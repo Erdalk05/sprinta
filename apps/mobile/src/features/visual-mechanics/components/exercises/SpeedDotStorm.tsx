@@ -10,6 +10,7 @@ import { buildDifficultyParams } from '../../engines/difficultyEngine'
 import type { DifficultyLevel } from '../../constants/exerciseConfig'
 import type { RawMetrics } from '../../engines/scoringEngine'
 import { ExerciseProgressBar } from '../ExerciseProgressBar'
+import { useSoundFeedback } from '../../hooks/useSoundFeedback'
 
 const { width: W, height: H } = Dimensions.get('window')
 const DARK_BG  = '#0A0F1F'
@@ -31,6 +32,7 @@ let idSeed = 0
 
 export default function SpeedDotStorm({ level, onComplete, onExit }: Props) {
   const params    = useMemo(() => buildDifficultyParams(level), [level])
+  const { playHit, playMiss, playAppear, resetCombo } = useSoundFeedback()
   const dotCount  = Math.round(2 * params.targetCountMultiplier)
   const visibleMs = Math.max(500, Math.round(1400 / params.animationSpeedMultiplier))
 
@@ -52,6 +54,7 @@ export default function SpeedDotStorm({ level, onComplete, onExit }: Props) {
     m.current.total += dotCount
     m.current.spawnAt = Date.now()
     setDots(wave)
+    playAppear()
 
     timerRef.current = setTimeout(() => {
       setDots(prev => {
@@ -72,6 +75,7 @@ export default function SpeedDotStorm({ level, onComplete, onExit }: Props) {
     const dur = params.durationSeconds * 1000
     const avg = m.current.rts.length
       ? Math.round(m.current.rts.reduce((a, b) => a + b, 0) / m.current.rts.length) : 400
+    resetCombo()
     onComplete({
       correctFocusDurationMs: Math.round((m.current.hits / Math.max(m.current.total, 1)) * dur),
       totalDurationMs: dur, reactionTimeMs: avg,
@@ -86,7 +90,8 @@ export default function SpeedDotStorm({ level, onComplete, onExit }: Props) {
     setHits(h => h + 1)
     setDots(prev => prev.filter(d => d.id !== id))
     Haptics.selectionAsync()
-  }, [visibleMs])
+    playHit()
+  }, [visibleMs, playHit])
 
   return (
     <View style={s.root}>

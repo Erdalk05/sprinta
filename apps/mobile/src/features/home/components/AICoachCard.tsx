@@ -1,18 +1,21 @@
 /**
- * AICoachCard — Sport Premium Edition
- * Dynamic suggestion · Drill name · XP · Difficulty · Quick start
+ * AICoachCard — v4 Modern Design
+ * Beyaz kart · Teal sol çizgi · Mavi "Başla" butonu
  */
-import React, { useMemo } from 'react'
+import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
 import { useHomeStore } from '../../../stores/homeStore'
-import { useAppTheme } from '../../../theme/useAppTheme'
-import type { AppTheme } from '../../../theme'
+
+const BLUE   = '#2D5BE3'
+const TEAL   = '#40C8F0'   // İş Bankası accent blue
+const CARD   = '#FFFFFF'
+const BORDER = '#E2E8F8'
+const TEXT   = '#1A1A2E'
+const TEXT_S = '#6B7A99'
 
 export function AICoachCard() {
-  const t      = useAppTheme()
-  const s      = useMemo(() => ms(t), [t])
   const router = useRouter()
   const {
     aiCoachSuggestion,
@@ -32,20 +35,20 @@ export function AICoachCard() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.iconBox}>
-          <Text style={s.iconEmoji}>🤖</Text>
+          <Text style={{ fontSize: 22 }}>🤖</Text>
         </View>
-        <View style={s.headerTexts}>
+        <View style={{ flex: 1 }}>
           <Text style={s.title}>AI Koç</Text>
           <Text style={s.subtitle}>Kişisel Performans Analizi</Text>
         </View>
       </View>
 
-      {/* Suggestion */}
+      {/* Öneri metni */}
       <Text style={s.suggestion}>{aiCoachSuggestion}</Text>
 
-      {/* Drill details row */}
+      {/* Drill + Başla butonu */}
       <View style={s.detailRow}>
-        <View style={s.drillInfo}>
+        <View style={{ flex: 1 }}>
           <Text style={s.drillName}>📋 {aiCoachDrill}</Text>
           <View style={s.tagRow}>
             <View style={s.diffTag}>
@@ -57,95 +60,61 @@ export function AICoachCard() {
           </View>
         </View>
         <TouchableOpacity style={s.startBtn} onPress={handleStart} activeOpacity={0.85}>
-          <Text style={s.startTxt}>Başla</Text>
-          <Text style={s.startArrow}>⚡</Text>
+          <Text style={s.startTxt}>Başla ⚡</Text>
         </TouchableOpacity>
       </View>
     </View>
   )
 }
 
-// ─── Stiller ─────────────────────────────────────────────────────
-function ms(t: AppTheme) {
-  return StyleSheet.create({
-    card: {
-      backgroundColor:  t.colors.sportCard,
-      marginHorizontal: 16,
-      marginTop:        12,
-      borderRadius:     18,
-      padding:          18,
-      shadowColor:      '#000',
-      shadowOffset:     { width: 0, height: 2 },
-      shadowOpacity:    0.08,
-      shadowRadius:     8,
-      elevation:        3,
-    },
-
-    header: {
-      flexDirection: 'row',
-      alignItems:    'center',
-      gap:           12,
-      marginBottom:  14,
-    },
-    iconBox: {
-      width:           46,
-      height:          46,
-      borderRadius:    23,
-      backgroundColor: t.colors.energyLight,
-      alignItems:      'center',
-      justifyContent:  'center',
-    },
-    iconEmoji:    { fontSize: 24 },
-    headerTexts:  { flex: 1 },
-    title:        { fontSize: 14, fontWeight: '800', color: t.colors.deepGreen },
-    subtitle:     { fontSize: 11, color: t.colors.textHint, marginTop: 1 },
-
-    suggestion: {
-      fontSize:     13,
-      color:        t.colors.textSub,
-      lineHeight:   20,
-      marginBottom: 16,
-    },
-
-    detailRow: {
-      flexDirection:  'row',
-      alignItems:     'center',
-      justifyContent: 'space-between',
-      gap:            12,
-    },
-    drillInfo: { flex: 1 },
-    drillName: {
-      fontSize:     13,
-      fontWeight:   '700',
-      color:        t.colors.text,
-      marginBottom: 6,
-    },
-    tagRow: { flexDirection: 'row', gap: 6 },
-    diffTag: {
-      backgroundColor: t.colors.sportSoft,
-      borderRadius:    7,
-      paddingHorizontal: 8,
-      paddingVertical:   3,
-    },
-    diffTxt: { fontSize: 11, fontWeight: '700', color: t.colors.textSub },
-    xpTag:   {
-      backgroundColor: '#FEF3C7',
-      borderRadius:    7,
-      paddingHorizontal: 8,
-      paddingVertical:   3,
-    },
-    xpTxt:   { fontSize: 11, fontWeight: '700', color: '#92400E' },
-
-    startBtn: {
-      backgroundColor:   t.colors.deepGreen,
-      borderRadius:      14,
-      paddingHorizontal: 16,
-      paddingVertical:   12,
-      flexDirection:     'row',
-      alignItems:        'center',
-      gap:               6,
-    },
-    startTxt:   { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
-    startArrow: { fontSize: 14 },
-  })
-}
+const s = StyleSheet.create({
+  card: {
+    backgroundColor: CARD,
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: TEAL,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 12, marginBottom: 12,
+  },
+  iconBox: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#E6FDF8',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title:    { fontSize: 14, fontWeight: '800', color: BLUE },
+  subtitle: { fontSize: 11, color: TEXT_S, marginTop: 1 },
+  suggestion: {
+    fontSize: 13, color: TEXT_S,
+    lineHeight: 20, marginBottom: 14,
+  },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  drillName: { fontSize: 13, fontWeight: '700', color: TEXT, marginBottom: 6 },
+  tagRow:    { flexDirection: 'row', gap: 6 },
+  diffTag: {
+    backgroundColor: '#D9E5FF', borderRadius: 7,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  diffTxt: { fontSize: 11, fontWeight: '700', color: BLUE },
+  xpTag: {
+    backgroundColor: '#E8F0FE', borderRadius: 7,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  xpTxt: { fontSize: 11, fontWeight: '700', color: '#92400E' },
+  startBtn: {
+    backgroundColor: BLUE, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 11,
+  },
+  startTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+})

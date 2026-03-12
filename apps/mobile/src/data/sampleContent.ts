@@ -30,13 +30,13 @@ export const SAMPLE_EXERCISES: Record<string, SampleExercise> = {
         correctIndex: 2,
       },
       {
-        question: '"Sakkad" nedir?',
+        question: '"Göz Hareketi (Sakkad)" nedir?',
         options: ['Gözün durma anı', 'Gözün sıçrama hareketi', 'Beyin dalgası', 'Okuma hızı birimi'],
         correctIndex: 1,
       },
       {
         question: 'Hızlı okuyucular nasıl daha fazla kelime kavrar?',
-        options: ['Daha hızlı sakkad yaparak', 'Daha az fiksasyon yaparak', 'Gözlerini hızlı hareket ettirerek', 'Daha az uyuyarak'],
+        options: ['Daha hızlı Göz Hareketi (Sakkad) yaparak', 'Daha az fiksasyon yaparak', 'Gözlerini hızlı hareket ettirerek', 'Daha az uyuyarak'],
         correctIndex: 1,
       },
     ],

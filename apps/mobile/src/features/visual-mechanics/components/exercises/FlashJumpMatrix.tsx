@@ -25,6 +25,7 @@ import type { DifficultyLevel } from '../../constants/exerciseConfig'
 import { buildDifficultyParams } from '../../engines/difficultyEngine'
 import type { RawMetrics } from '../../engines/scoringEngine'
 import { ExerciseProgressBar } from '../ExerciseProgressBar'
+import { useSoundFeedback } from '../../hooks/useSoundFeedback'
 
 // ─── Neon Cyber Tema Renkleri ────────────────────────────────────────────────
 const NEON_CYAN = '#00F5FF'
@@ -46,6 +47,7 @@ const FlashJumpMatrix: React.FC<FlashJumpMatrixProps> = ({
   onExit,
 }) => {
   const t = useAppTheme()
+  const { playHit, playMiss, playAppear, resetCombo } = useSoundFeedback()
   const params = useMemo(() => buildDifficultyParams(level), [level])
 
   const gridSize = level <= 2 ? 4 : 6
@@ -82,6 +84,7 @@ const FlashJumpMatrix: React.FC<FlashJumpMatrixProps> = ({
       activeSinceRef.current = Date.now()
       activeCellRef.current = next
       setActiveCell(next)
+      playAppear()
       totalShownRef.current++
     }
 
@@ -115,6 +118,7 @@ const FlashJumpMatrix: React.FC<FlashJumpMatrixProps> = ({
       ),
     }
 
+    resetCombo()
     onComplete(metrics)
   }, [params.durationSeconds, onComplete])
 
@@ -129,6 +133,7 @@ const FlashJumpMatrix: React.FC<FlashJumpMatrixProps> = ({
       hitCountRef.current++
       setDisplayHits((prev) => prev + 1)
       void Haptics.selectionAsync()
+      playHit()
       setFlashCell({ index, correct: true })
       setTimeout(() => setFlashCell(null), 150)
     } else {
@@ -136,6 +141,7 @@ const FlashJumpMatrix: React.FC<FlashJumpMatrixProps> = ({
       missCountRef.current++
       setDisplayMisses((prev) => prev + 1)
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      playMiss()
       setFlashCell({ index, correct: false })
       setTimeout(() => setFlashCell(null), 200)
     }

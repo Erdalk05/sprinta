@@ -67,7 +67,7 @@ export function PerformanceHeader() {
   const glowStyle = useAnimatedStyle(() => ({
     shadowOpacity: interpolate(glow.value, [0, 1], [0, 0.45]),
     shadowRadius:  interpolate(glow.value, [0, 1], [0, 10]),
-    shadowColor:   '#00C853',
+    shadowColor:   '#1877F2',
     shadowOffset:  { width: 0, height: 0 },
     elevation:     interpolate(glow.value, [0, 1], [0, 6]),
   }))

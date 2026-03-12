@@ -154,7 +154,7 @@ export default function PracticeScreen() {
       >
         {EXAM_FILTERS.map(f => {
           const isActive = activeFilter === f.key
-          const col = f.key === 'all' ? '#075E54' : getExamColor(f.key).header
+          const col = f.key === 'all' ? '#1A3594' : getExamColor(f.key).header
           return (
             <TouchableOpacity
               key={f.key}
@@ -326,9 +326,13 @@ function ms(t: AppTheme) {
       borderRadius:    14,
       marginBottom:    10,
       overflow:        'hidden',
-      borderWidth:     StyleSheet.hairlineWidth,
+      borderWidth:     1.5,
       borderColor:     t.colors.border,
-      ...t.shadow.sm,
+      shadowColor:     '#1A3594',
+      shadowOffset:    { width: 0, height: 2 },
+      shadowOpacity:   0.10,
+      shadowRadius:    6,
+      elevation:       3,
     },
     colorBar: {
       width:  4,

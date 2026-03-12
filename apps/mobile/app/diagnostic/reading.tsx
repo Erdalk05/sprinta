@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { DIAGNOSTIC_CONTENT } from '../../src/data/diagnosticContent'
@@ -41,6 +41,17 @@ export default function DiagnosticReadingScreen() {
     return () => clearInterval(timer)
   }, [])
 
+  const handleExit = () => {
+    Alert.alert(
+      'Testi Bitir',
+      'Tanılama testi yarıda bırakılacak. Ana sayfaya dönmek istiyor musun?',
+      [
+        { text: 'Devam Et', style: 'cancel' },
+        { text: 'Ana Sayfaya Git', style: 'destructive', onPress: () => router.replace('/(tabs)') },
+      ],
+    )
+  }
+
   const handleDone = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     const store = useDiagnosticStore.getState()
@@ -56,6 +67,9 @@ export default function DiagnosticReadingScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.topBar}>
+        <TouchableOpacity onPress={handleExit} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={s.exitBtn}>
+          <Text style={s.exitTxt}>✕</Text>
+        </TouchableOpacity>
         <Text style={s.topLabel}>Okuma Testi</Text>
         <View style={s.timer}>
           <Text style={s.timerText}>{formatTime(elapsed)}</Text>
@@ -93,6 +107,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 16,
   },
+  exitBtn:       { padding: 4, marginRight: 8 },
+  exitTxt:       { fontSize: 20, color: SUB, fontWeight: '600' },
   topLabel:      { fontSize: 15, fontWeight: '700', color: TEXT, flex: 1 },
   timer:         {
     backgroundColor: SURF, borderRadius: 20,

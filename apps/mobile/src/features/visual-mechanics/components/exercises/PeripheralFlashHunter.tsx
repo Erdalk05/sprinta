@@ -10,6 +10,7 @@ import { buildDifficultyParams } from '../../engines/difficultyEngine'
 import type { DifficultyLevel } from '../../constants/exerciseConfig'
 import type { RawMetrics } from '../../engines/scoringEngine'
 import { ExerciseProgressBar } from '../ExerciseProgressBar'
+import { useSoundFeedback } from '../../hooks/useSoundFeedback'
 
 const { width: W, height: H } = Dimensions.get('window')
 const DARK_BG  = '#0A0F1F'
@@ -35,6 +36,7 @@ interface Props {
 
 export default function PeripheralFlashHunter({ level, onComplete, onExit }: Props) {
   const params    = useMemo(() => buildDifficultyParams(level), [level])
+  const { playHit, playMiss, playAppear, resetCombo } = useSoundFeedback()
   const flashMs   = Math.max(500, Math.round(1400 / params.animationSpeedMultiplier))
   const TARGET_R  = Math.max(20, Math.floor(params.targetSize / 2))
 
@@ -46,6 +48,7 @@ export default function PeripheralFlashHunter({ level, onComplete, onExit }: Pro
   const spawnNext = useCallback(() => {
     const idx = Math.floor(Math.random() * POSITIONS.length)
     setActive(idx)
+    playAppear()
     m.current.total++
     m.current.spawnAt = Date.now()
     timerRef.current = setTimeout(() => {
@@ -65,6 +68,7 @@ export default function PeripheralFlashHunter({ level, onComplete, onExit }: Pro
     const dur = params.durationSeconds * 1000
     const avg = m.current.rts.length
       ? Math.round(m.current.rts.reduce((a, b) => a + b, 0) / m.current.rts.length) : 500
+    resetCombo()
     onComplete({
       correctFocusDurationMs: Math.round((m.current.hits / Math.max(m.current.total, 1)) * dur),
       totalDurationMs: dur, reactionTimeMs: avg,
@@ -79,6 +83,7 @@ export default function PeripheralFlashHunter({ level, onComplete, onExit }: Pro
     m.current.hits++; m.current.rts.push(Math.min(Date.now() - m.current.spawnAt, 1500))
     setHits(h => h + 1); setActive(null)
     Haptics.selectionAsync()
+    playHit()
     setTimeout(spawnNext, 280)
   }, [active, spawnNext])
 
@@ -89,7 +94,7 @@ export default function PeripheralFlashHunter({ level, onComplete, onExit }: Pro
     <View style={s.root}>
       <View style={s.header}>
         <TouchableOpacity onPress={onExit}><Text style={s.exit}>✕</Text></TouchableOpacity>
-        <Text style={s.title}>Periferik Flash Avcısı</Text>
+        <Text style={s.title}>Geniş Görüş <Text style={{fontSize: 10, opacity: 0.6}}>(Periferik)</Text> Flash Avcısı</Text>
         <Text style={s.score}>{hits} ✓</Text>
       </View>
       <View style={s.barWrap}>
