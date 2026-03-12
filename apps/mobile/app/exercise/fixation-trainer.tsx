@@ -1,7 +1,6 @@
-// Sprint 11 — Göz Genişliği Antrenmanı route wrapper
+// Göz Genişliği Antrenmanı route wrapper
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
-import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import FixationTrainerExercise, {
   type FixationTrainerMetrics,
@@ -10,11 +9,9 @@ import { supabase } from '../../src/lib/supabase'
 
 export default function FixationTrainerScreen() {
   const router = useRouter()
-  const [started,  setStarted]  = useState(false)
   const [spanLevel, setSpanLevel] = useState(1)
   const [userId,    setUserId]    = useState<string | null>(null)
 
-  // Kayıtlı span seviyesini yükle
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
@@ -28,13 +25,10 @@ export default function FixationTrainerScreen() {
   const handleComplete = useCallback(async (metrics: FixationTrainerMetrics) => {
     try {
       if (userId) {
-        // Yeni span seviyesini kaydet
         await AsyncStorage.setItem(
           `fixation_span_${userId}`,
           String(metrics.newSpanLevel),
         )
-
-        // DB'ye oturum kaydet
         await (supabase as any)
           .from('fixation_sessions')
           .insert({
@@ -49,23 +43,17 @@ export default function FixationTrainerScreen() {
             duration_ms:    metrics.durationMs,
           })
       }
-    } catch (e) {
+    } catch {
       // sessiz hata
     }
     router.back()
   }, [userId, router])
 
-  const handleExit = useCallback(() => {
-    router.back()
-  }, [router])
-
-  if (!started) return <ReadingModuleIntro moduleKey="fixation-trainer" onStart={() => setStarted(true)} onBack={() => router.back()} />
-
   return (
     <FixationTrainerExercise
       spanLevel={spanLevel}
       onComplete={handleComplete}
-      onExit={handleExit}
+      onExit={() => router.back()}
     />
   )
 }

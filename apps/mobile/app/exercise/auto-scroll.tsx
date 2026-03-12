@@ -1,38 +1,26 @@
-import React, { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
-import { useAuthStore } from '../../src/stores/authStore'
-import { supabase } from '../../src/lib/supabase'
-import { usePendingContent } from '../../src/hooks/usePendingContent'
+import ReadingModuleFlow from '../../src/components/reading/ReadingModuleFlow'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
-import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
 
-export default function uautouscrollScreen() {
+export default function AutoScrollScreen() {
   const router = useRouter()
-  const { student } = useAuthStore()
-  const { ready, initialContent } = usePendingContent()
-  const [started, setStarted] = useState(false)
-
-  const handleComplete = useCallback(async (m: ReadingModesMetrics) => {
-    if (student?.id) {
-      try {
-        await (supabase as any).from('reading_mode_sessions').insert({
-          student_id: student.id, mode: 'auto_scroll', avg_wpm: m.avgWPM,
-          total_words: m.totalWords, duration_seconds: m.durationSeconds,
-          arp_score: m.arpScore, xp_earned: m.xpEarned, completion_ratio: m.completionRatio,
-        })
-      } catch { /* sessiz */ }
-    }
-  }, [student])
-
-  if (!started) return <ReadingModuleIntro moduleKey="auto-scroll" onStart={() => setStarted(true)} onBack={() => router.back()} />
-  if (!ready) return null
-
   return (
-    <ReadingModesExercise
-      mode="auto_scroll"
-      onComplete={handleComplete}
-      onExit={() => router.back()}
-      initialContent={initialContent}
+    <ReadingModuleFlow
+      moduleKey="auto-scroll"
+      onBack={() => router.back()}
+      renderExercise={(content, onComplete, onExit) => (
+        <ReadingModesExercise
+          mode="auto_scroll"
+          initialContent={content}
+          onComplete={(m: ReadingModesMetrics) => onComplete({
+            avgWPM: m.avgWPM, totalWords: m.totalWords,
+            durationSeconds: m.durationSeconds, completionRatio: m.completionRatio,
+            arpScore: m.arpScore, xpEarned: m.xpEarned,
+            libraryTextId: content.libraryTextId,
+          })}
+          onExit={onExit}
+        />
+      )}
     />
   )
 }
