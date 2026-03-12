@@ -12,11 +12,13 @@
 import { create } from 'zustand'
 
 export interface PendingReadingItem {
-  textId:    string
-  title:     string
-  examType:  string
-  category:  string
-  wordCount: number
+  textId:     string
+  title:      string
+  examType:   string
+  category:   string
+  wordCount:  number
+  /** Yapıştırılan/yazılan özel metin — textId yerine bu kullanılır */
+  customText?: string
 }
 
 interface PendingReadingStore {

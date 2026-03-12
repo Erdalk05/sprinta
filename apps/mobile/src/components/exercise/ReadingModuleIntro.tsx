@@ -1,10 +1,22 @@
 /**
  * ReadingModuleIntro — Tüm okuma modülleri için zengin intro ekranı.
  * Her modüle özgü renk + ikon + başlık + faydalar + adımlar + istatistikler.
+ * Metin gerektiren modüllerde Kütüphane/Yapıştır seçici gösterilir.
  */
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import ContentImportModal, { type ImportedContent } from '../exercises/shared/ContentImportModal'
+import { usePendingReadingStore } from '../../stores/pendingReadingStore'
+
+// Metin seçici gerektiren modüller
+const CONTENT_MODULES = new Set([
+  'chunk-rsvp', 'timed-reading', 'flow-reading', 'speed-ladder', 'bionic-reading',
+  'keyword-scan', 'fixation-trainer', 'word-burst', 'auto-scroll', 'sentence-step',
+  'academic-mode', 'focus-filter', 'memory-anchor', 'prediction-reading',
+  'subvocal-free', 'speed-camp', 'vanishing-reading', 'fading-word',
+  'cloze-test', 'dual-column',
+])
 
 function getPalette(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -255,6 +267,38 @@ interface Props {
 
 export default function ReadingModuleIntro({ moduleKey, onStart, onBack }: Props) {
   const info = MODULE_INTRO[moduleKey]
+  const setPending = usePendingReadingStore(s => s.set)
+  const needsContent = CONTENT_MODULES.has(moduleKey)
+
+  const [modalOpen,       setModalOpen]       = useState(false)
+  const [selectedTitle,   setSelectedTitle]   = useState<string | null>(null)
+  const [contentReady,    setContentReady]    = useState(!needsContent)
+
+  const handleContentSelected = useCallback((content: ImportedContent) => {
+    setModalOpen(false)
+    setSelectedTitle(content.title)
+    setContentReady(true)
+    if (content.source === 'library' && content.libraryTextId) {
+      setPending({
+        textId:    content.libraryTextId,
+        title:     content.title,
+        examType:  '',
+        category:  '',
+        wordCount: content.wordCount,
+      })
+    } else {
+      // Yapıştırılan / yazılan metin
+      setPending({
+        textId:     '__custom__',
+        title:      content.title,
+        examType:   '',
+        category:   '',
+        wordCount:  content.wordCount,
+        customText: content.text,
+      })
+    }
+  }, [setPending])
+
   if (!info) {
     onStart()
     return null
@@ -328,18 +372,54 @@ export default function ReadingModuleIntro({ moduleKey, onStart, onBack }: Props
           ))}
         </View>
 
+        {/* Metin Seçici — sadece metin gerektiren modüller */}
+        {needsContent && (
+          <TouchableOpacity
+            onPress={() => setModalOpen(true)}
+            style={[s.contentPicker, {
+              borderColor: contentReady ? info.accent : info.accent + '50',
+              backgroundColor: contentReady ? info.accent + '10' : '#fff',
+            }]}
+            activeOpacity={0.8}
+          >
+            <View style={[s.contentPickerIcon, { backgroundColor: info.accent + '20' }]}>
+              <Text style={{ fontSize: 20 }}>📄</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.contentPickerLabel, { color: info.accent }]}>METİN</Text>
+              <Text style={s.contentPickerVal} numberOfLines={1}>
+                {selectedTitle ?? 'Kütüphaneden seç veya yapıştır'}
+              </Text>
+            </View>
+            <View style={[s.contentPickerBtn, { backgroundColor: info.accent }]}>
+              <Text style={s.contentPickerBtnTxt}>{selectedTitle ? 'Değiştir' : 'Seç ›'}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
       </ScrollView>
 
       {/* ── Başlat Butonu ─────────────────────────────────────────── */}
       <View style={[s.footer, { backgroundColor: pal.bottom }]}>
         <TouchableOpacity
-          style={[s.startBtn, { backgroundColor: info.accent }]}
-          onPress={onStart}
+          style={[s.startBtn, { backgroundColor: contentReady ? info.accent : '#9CA3AF' }]}
+          onPress={contentReady ? onStart : () => setModalOpen(true)}
           activeOpacity={0.85}
         >
-          <Text style={s.startTxt}>⚡  Egzersizi Başlat</Text>
+          <Text style={s.startTxt}>
+            {contentReady ? '⚡  Egzersizi Başlat' : '📄  Önce Metin Seç'}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Metin Seçici Modal ──────────────────────────────────── */}
+      {needsContent && (
+        <ContentImportModal
+          visible={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onContentSelected={handleContentSelected}
+        />
+      )}
 
     </SafeAreaView>
   )
@@ -398,6 +478,18 @@ const s = StyleSheet.create({
   benefitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 7 },
   checkMark:  { fontSize: 14, fontWeight: '900', marginTop: 1 },
   benefitTxt: { flex: 1, fontSize: 13, lineHeight: 19, color: '#374151', fontWeight: '500' },
+
+  // Content picker row
+  contentPicker: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1.5, padding: 14,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  contentPickerIcon:    { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  contentPickerLabel:   { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 3 },
+  contentPickerVal:     { fontSize: 13, fontWeight: '600', color: '#374151' },
+  contentPickerBtn:     { borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12 },
+  contentPickerBtnTxt:  { fontSize: 12, fontWeight: '800', color: '#fff' },
 
   // Footer
   footer: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12 },

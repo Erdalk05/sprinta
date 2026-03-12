@@ -26,22 +26,37 @@ export function usePendingContent(): UsePendingContentResult {
     const load = async () => {
       if (!pending) { setReady(true); return }
       try {
-        const { data } = await supabase
-          .from('text_library')
-          .select('body')
-          .eq('id', pending.textId)
-          .single()
-        if (!cancelled && data?.body) {
-          const wc  = pending.wordCount || data.body.split(/\s+/).length
+        // Yapıştırılan özel metin — Supabase fetch gerekmez
+        if (pending.customText) {
+          const wc  = pending.wordCount || pending.customText.split(/\s+/).length
           const min = Math.max(1, Math.round(wc / 250))
-          setInitialContent({
-            text:             data.body,
-            title:            pending.title,
-            wordCount:        wc,
-            source:           'library',
-            estimatedMinutes: min,
-            libraryTextId:    pending.textId,
-          })
+          if (!cancelled) {
+            setInitialContent({
+              text:             pending.customText,
+              title:            pending.title,
+              wordCount:        wc,
+              source:           'text',
+              estimatedMinutes: min,
+            })
+          }
+        } else {
+          const { data } = await supabase
+            .from('text_library')
+            .select('body')
+            .eq('id', pending.textId)
+            .single()
+          if (!cancelled && data?.body) {
+            const wc  = pending.wordCount || data.body.split(/\s+/).length
+            const min = Math.max(1, Math.round(wc / 250))
+            setInitialContent({
+              text:             data.body,
+              title:            pending.title,
+              wordCount:        wc,
+              source:           'library',
+              estimatedMinutes: min,
+              libraryTextId:    pending.textId,
+            })
+          }
         }
       } catch { /* sessiz */ } finally {
         if (!cancelled) {
