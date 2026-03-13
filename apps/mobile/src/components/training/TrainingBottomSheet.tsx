@@ -165,9 +165,8 @@ const AKADEMI_CATEGORIES = [
   { id: 'tercihler',  icon: '⚙️', label: 'Tercihler',     sub: 'Bildirim, gizlilik, çıkış',     route: '/(tabs)/profile'  },
 ] as const
 
-// ─── Okuma modülü başlık renk paleti (29 modül) ───────────────────
+// ─── Okuma modülü başlık renk paleti (25 modül) ───────────────────
 const OKUMA_ACCENTS: Record<string, string> = {
-  '/exercise/deep_comprehension':  '#7C3AED',
   '/exercise/chunk-rsvp':          '#0891B2',
   '/exercise/timed-reading':       '#EA580C',
   '/exercise/flow-reading':        '#059669',
@@ -175,7 +174,6 @@ const OKUMA_ACCENTS: Record<string, string> = {
   '/exercise/bionic-reading':      '#0284C7',
   '/exercise/keyword-scan':        '#DC2626',
   '/exercise/fixation-trainer':    '#9333EA',
-  '/exercise/word-burst':          '#16A34A',
   '/exercise/auto-scroll':         '#E11D48',
   '/exercise/sentence-step':       '#0F766E',
   '/exercise/academic-mode':       '#1D4ED8',
@@ -186,28 +184,24 @@ const OKUMA_ACCENTS: Record<string, string> = {
   '/exercise/subvocal-free':       '#1E40AF',
   '/exercise/speed-camp':          '#15803D',
   '/exercise/vanishing-reading':   '#4338CA',
-  '/exercise/fading-word':         '#BE185D',
   '/exercise/cloze-test':          '#7E22CE',
   '/exercise/dual-column':         '#0369A1',
   '/exercise/soru-treni':          '#B91C1C',
   '/exercise/hatali-cumle':        '#92400E',
   '/exercise/flashcard-bank':      '#0E7490',
-  '/exercise/kelime-baglami':      '#3730A3',
   '/exercise/poetry-analysis':     '#86198F',
   '/exercise/graph-reading':       '#164E63',
 }
 
-// ─── Okuma module data (25 modül — ModeGrid ile aynı) ────────────
+// ─── Okuma module data (25 modül) ────────────────────────────────
 const OKUMA_MODULES = [
   { icon: '⚡', label: 'Chunk Okuma',        subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
-  { icon: '🧠', label: 'Derin Kavrama',      subtitle: 'Serbest okuma · yazı boyutu · anlama soruları',    route: '/exercise/deep_comprehension'},
   { icon: '⏱️', label: 'Zamanlı Okuma',      subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
   { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır pacing · anlama + hız dengesi',             route: '/exercise/flow-reading'      },
   { icon: '🪜', label: 'Hız Merdiveni',      subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',        route: '/exercise/speed-ladder'      },
   { icon: '🧬', label: 'Biyonik Okuma',      subtitle: 'İlk heceler kalın · beyin tamamlar',              route: '/exercise/bionic-reading'    },
   { icon: '🔍', label: 'Anahtar Kelime',     subtitle: 'Kritik bilgiyi tara · pasaj tekniği',             route: '/exercise/keyword-scan'      },
   { icon: '👁️', label: 'Göz Genişliği',      subtitle: 'Flash gruplar · daha az göz hareketi',            route: '/exercise/fixation-trainer'  },
-  { icon: '💫', label: 'Çok Kelime',         subtitle: '2-4 kelime aynı anda · span artır',               route: '/exercise/word-burst'        },
   { icon: '📜', label: 'Oto Kaydırma',       subtitle: 'Metin kendi hızında akar · ritim kur',            route: '/exercise/auto-scroll'       },
   { icon: '📝', label: 'Cümle Adım',         subtitle: 'Cümle cümle ilerle · anlama odaklı',              route: '/exercise/sentence-step'     },
   { icon: '📚', label: 'Akademik Mod',        subtitle: 'Derin anlama · ağır paragraf çözme',              route: '/exercise/academic-mode'     },
@@ -217,18 +211,16 @@ const OKUMA_MODULES = [
   { icon: '🔮', label: 'Tahmin Okuma',       subtitle: 'Cümle sonunu tahmin et · anlam bağlantısı',       route: '/exercise/prediction-reading'},
   { icon: '🤫', label: 'Sessiz Okuma',       subtitle: 'İç sesi bastır · subvokalizasyonu kır',           route: '/exercise/subvocal-free'     },
   { icon: '🏕️', label: 'Hızlı Okuma Kampı', subtitle: 'Günlük antrenman · WPM gelişimini izle',          route: '/exercise/speed-camp'        },
-  // ── Yeni Okuma Modülleri ─────────────────────────────────────
   { icon: '🌫️', label: 'Kaybolma Okuma',     subtitle: 'Metin solar · anlama soruları',                  route: '/exercise/vanishing-reading' },
-  { icon: '🗑️', label: 'Kelime Silme',       subtitle: 'Kelimeler kaybolur · hafızandan tamamla',         route: '/exercise/fading-word'       },
-  { icon: '📋', label: 'Cloze Testi',        subtitle: 'Her 7. kelime boşluk · LGS formatı',              route: '/exercise/cloze-test'        },
+  { icon: '📋', label: 'Cloze Testi',        subtitle: 'İçerik kelimeleri boşluk · LGS formatı',          route: '/exercise/cloze-test'        },
   { icon: '📰', label: 'Çift Sütun',         subtitle: 'İki kolon · periferik span egzersizi',            route: '/exercise/dual-column'       },
   { icon: '🚂', label: 'Soru Treni',         subtitle: '40 LGS sorusu · 45dk timer',                      route: '/exercise/soru-treni'        },
   { icon: '🔎', label: 'Hatalı Cümle',       subtitle: 'Dil bilgisi hatasını bul · 20 tur',               route: '/exercise/hatali-cumle'      },
   { icon: '🃏', label: 'Flash Kart Bankası',  subtitle: 'Soruları kart formatında · işaretle/tekrar',     route: '/exercise/flashcard-bank'    },
-  { icon: '🔤', label: 'Kelime Bağlamı',     subtitle: 'Altı çizili kelime · 4 şık anlam',                route: '/exercise/kelime-baglami'    },
   // ── AYT Özel Modüller ─────────────────────────────────────
-  { icon: '🖊️', label: 'Şiir Analizi',       subtitle: '5 şiir · edebi sanat + anlama · AYT Edebiyat',    route: '/exercise/poetry-analysis'   },
-  { icon: '📊', label: 'Grafik Okuma',       subtitle: '4 veri grafiği · yorum soruları · AYT/LGS',       route: '/exercise/graph-reading'     },
+  { icon: '🖊️', label: 'Şiir Analizi',       subtitle: '7 şiir · edebi sanat + anlama · AYT Edebiyat',    route: '/exercise/poetry-analysis'   },
+  { icon: '📊', label: 'Grafik Okuma',       subtitle: '6 grafik · veri yorumlama · AYT/LGS',              route: '/exercise/graph-reading'     },
+  { icon: '📅', label: 'Günlük Antrenman',   subtitle: 'Her gün bir metin · hızını ölç · anlama soruları', route: '/exercise/daily-training'    },
 ] as const
 
 // ─── İş Bankası Kart — Mavi → tıklayınca Beyaz ───────────────────

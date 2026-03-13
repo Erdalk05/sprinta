@@ -12,11 +12,10 @@ import { usePendingReadingStore } from '../../stores/pendingReadingStore'
 // Metin seçici gerektiren modüller
 const CONTENT_MODULES = new Set([
   'chunk-rsvp', 'timed-reading', 'flow-reading', 'speed-ladder', 'bionic-reading',
-  'keyword-scan', 'fixation-trainer', 'word-burst', 'auto-scroll', 'sentence-step',
+  'keyword-scan', 'fixation-trainer', 'auto-scroll', 'sentence-step',
   'academic-mode', 'focus-filter', 'memory-anchor', 'prediction-reading',
-  'subvocal-free', 'speed-camp', 'vanishing-reading', 'fading-word',
+  'subvocal-free', 'speed-camp', 'vanishing-reading',
   'cloze-test', 'dual-column',
-  'deep_comprehension',
 ])
 
 function getPalette(hex: string) {
@@ -98,14 +97,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Kelime grupları ekranın ortasında belirir', 'Gözlerini sabit tut, grubu algıla', 'Grup büyüklüğü ilerledikçe artar'],
     stats:    [{ label: 'Süre', value: '3 dk' }, { label: 'Flash', value: '0.3-0.8 sn' }, { label: 'Grup', value: '2-5 kelime' }],
   },
-  'word-burst': {
-    icon: '💫', label: 'Çok Kelime', accent: '#16A34A',
-    subtitle: '2-4 kelime aynı anda — periferik görüş alanını genişlet',
-    tip: 'Span kapasiten her seansta ~0.3 kelime büyür.',
-    benefits: ['Periferik görüş açısını genişletir', 'Satır tarama verimliliğini artırır', 'Düzenli pratikle span kapasiten gelişir'],
-    steps:    ['2 kelime birlikte flash olur', 'Gözlerini ortaya sabitle', 'Grup büyüdükçe span kapasiten artar'],
-    stats:    [{ label: 'Süre', value: '4 dk' }, { label: 'Başlangıç', value: '2 kelime' }, { label: 'Hedef', value: '4 kelime span' }],
-  },
   'auto-scroll': {
     icon: '📜', label: 'Oto Kaydırma', accent: '#E11D48',
     subtitle: 'Metin kendi hızında kayar — ritim ve duruş noktalarını kaldır',
@@ -186,14 +177,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Metin 8 saniye tam görünür', 'Ardından yavaşça solar ve kaybolur', '3 MCQ anlama sorusunu yanıtla'],
     stats:    [{ label: 'Görünürlük', value: '8 saniye' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Zorluk', value: 'Orta-İleri' }],
   },
-  'fading-word': {
-    icon: '🗑️', label: 'Kelime Silme', accent: '#BE185D',
-    subtitle: 'Kelimeler birer birer kaybolur — cümleyi hafızadan tamamla',
-    tip: 'Kısa süreli çalışma belleğini güçlendirir.',
-    benefits: ['Çalışma belleği kapasitesini artırır', 'Kelime sırasını zihinsel olarak tutar', 'LGS cümle tamamlama stratejisi'],
-    steps:    ['Tam cümle gösterilir', 'Kelimeler 500ms aralıklarla kaybolur', 'Silinen kelimeleri hafızadan tamamla'],
-    stats:    [{ label: 'Cümle', value: '10-15 kelime' }, { label: 'Aralık', value: '500 ms' }, { label: 'Tur', value: '8 cümle' }],
-  },
   'cloze-test': {
     icon: '📋', label: 'Cloze Testi', accent: '#7E22CE',
     subtitle: 'Anahtar kelimeler boş — bağlamdan anlam çıkar',
@@ -234,14 +217,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Kart önü: soru gösterilir', 'Kartı çevir: cevap ve açıklama görünür', 'Doğru/Yanlış işaretle, sonraki karta geç'],
     stats:    [{ label: 'Kart', value: '50+' }, { label: 'Tempo', value: 'Serbest' }, { label: 'Konu', value: 'LGS/TYT' }],
   },
-  'kelime-baglami': {
-    icon: '🔤', label: 'Kelime Bağlamı', accent: '#3730A3',
-    subtitle: 'Altı çizili kelimeyi cümleden anlamlandır · 4 şık',
-    tip: 'LGS kelime anlam sorusunun tam format eğitimi.',
-    benefits: ['LGS kelime-anlam sorusu birebir format', 'Bağlamdan anlam çıkarma becerisini geliştirir', 'Kelime haznesini genişletir'],
-    steps:    ['Cümle içinde altı çizili kelime gösterilir', '4 şıktan doğru anlamı seç', 'Her turda farklı bağlam ve kelime'],
-    stats:    [{ label: 'Format', value: 'LGS birebir' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Tur', value: '10 soru' }],
-  },
   'poetry-analysis': {
     icon: '🖊️', label: 'Şiir Analizi', accent: '#86198F',
     subtitle: '5 şiir · edebi sanat + anlam soruları · AYT Edebiyat',
@@ -266,15 +241,8 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Çubuk/çizgi/pasta grafik gösterilir', 'Veri yorumlama soruları gelir', 'Çıkarım ve karşılaştırma sorularını yanıtla'],
     stats:    [{ label: 'Grafik', value: '6 adet' }, { label: 'Soru', value: 'Veri çıkarım' }, { label: 'Hedef', value: 'AYT/LGS' }],
   },
-  'deep_comprehension': {
-    icon: '🧠', label: 'Derin Kavrama', accent: '#7C3AED',
-    subtitle: 'Serbest hızda oku · yazı boyutunu ayarla · anlama soruları',
-    tip: 'Ağır akademik metinleri derinlemesine çözümlemek için en etkili mod.',
-    benefits: ['Serbest tempoda derin anlama becerisi', 'Yazı boyutu konfora göre ayarlanabilir', 'Çıkarım ve değerlendirme sorularıyla pekiştir'],
-    steps:    ['Uzun akademik metin gösterilir', 'Yazı boyutunu ve hızı isteğine göre ayarla', 'Çıkarım + değerlendirme soruları gelir'],
-    stats:    [{ label: 'Metin', value: '400+ kelime' }, { label: 'Soru', value: '3-5 MCQ' }, { label: 'Hedef', value: 'AYT/YKS' }],
-  },
 }
+
 
 interface Props {
   moduleKey: string
