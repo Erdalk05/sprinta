@@ -547,7 +547,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
 
         {/* Açık alan: geri pill + WPM göstergesi */}
         <View style={s.lightBottomRow}>
-          <TouchableOpacity style={[s.backPill, { backgroundColor: navyBg }]} onPress={goBack}>
+          <TouchableOpacity style={[s.backPill, { backgroundColor: navyBg }]} onPress={() => { stopTimer(); onExit() }}>
             <Text style={s.backPillTxt}>← Geri</Text>
           </TouchableOpacity>
           <Text style={[s.liveWPM, { color: navyBg }]}>⚡ {displayWPM} WPM</Text>

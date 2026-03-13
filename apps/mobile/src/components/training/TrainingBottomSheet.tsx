@@ -167,7 +167,6 @@ const AKADEMI_CATEGORIES = [
 
 // ─── Okuma modülü başlık renk paleti (29 modül) ───────────────────
 const OKUMA_ACCENTS: Record<string, string> = {
-  '/exercise/speed_control':       '#2563EB',
   '/exercise/deep_comprehension':  '#7C3AED',
   '/exercise/chunk-rsvp':          '#0891B2',
   '/exercise/timed-reading':       '#EA580C',
@@ -200,9 +199,8 @@ const OKUMA_ACCENTS: Record<string, string> = {
 
 // ─── Okuma module data (25 modül — ModeGrid ile aynı) ────────────
 const OKUMA_MODULES = [
-  { icon: '⚡', label: 'Hız Kontrolü',       subtitle: 'İçerik seç · WPM ayarla · anlama soruları',        route: '/exercise/speed_control'     },
-  { icon: '🧠', label: 'Derin Kavrama',      subtitle: 'Serbest okuma · yazı boyutu · anlama soruları',    route: '/exercise/deep_comprehension'},
   { icon: '⚡', label: 'Chunk Okuma',        subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
+  { icon: '🧠', label: 'Derin Kavrama',      subtitle: 'Serbest okuma · yazı boyutu · anlama soruları',    route: '/exercise/deep_comprehension'},
   { icon: '⏱️', label: 'Zamanlı Okuma',      subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
   { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır pacing · anlama + hız dengesi',             route: '/exercise/flow-reading'      },
   { icon: '🪜', label: 'Hız Merdiveni',      subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',        route: '/exercise/speed-ladder'      },

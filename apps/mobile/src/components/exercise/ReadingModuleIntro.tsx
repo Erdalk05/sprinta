@@ -16,7 +16,7 @@ const CONTENT_MODULES = new Set([
   'academic-mode', 'focus-filter', 'memory-anchor', 'prediction-reading',
   'subvocal-free', 'speed-camp', 'vanishing-reading', 'fading-word',
   'cloze-test', 'dual-column',
-  'speed_control', 'deep_comprehension',
+  'deep_comprehension',
 ])
 
 function getPalette(hex: string) {
@@ -265,14 +265,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     benefits: ['Tablo ve grafik yorumlama hızını artırır', 'Veri çıkarımı ve karşılaştırma becerisi', 'AYT Matematik ve LGS Fen soruları için şart'],
     steps:    ['Çubuk/çizgi/pasta grafik gösterilir', 'Veri yorumlama soruları gelir', 'Çıkarım ve karşılaştırma sorularını yanıtla'],
     stats:    [{ label: 'Grafik', value: '5 farklı tip' }, { label: 'Soru', value: 'Veri çıkarım' }, { label: 'Hedef', value: 'AYT/LGS' }],
-  },
-  'speed_control': {
-    icon: '⚡', label: 'Hız Kontrolü', accent: '#2563EB',
-    subtitle: 'WPM ayarla · içerik seç · anlama soruları',
-    tip: 'Hız ve anlama dengesini bizzat kontrol ederek kalıcı WPM kazanımı sağla.',
-    benefits: ['Kendi hızını anlık olarak ayarlayabilirsin', 'WPM + anlama oranını dengeli geliştir', 'Sınav format sorularıyla gerçek pratik'],
-    steps:    ['Metin veya kütüphane içeriği seç', 'WPM kaydırıcısını isteğine göre ayarla', 'Okuma biter, anlama soruları gelir'],
-    stats:    [{ label: 'Süre', value: '3-8 dk' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Kontrol', value: 'WPM ayar' }],
   },
   'deep_comprehension': {
     icon: '🧠', label: 'Derin Kavrama', accent: '#7C3AED',
