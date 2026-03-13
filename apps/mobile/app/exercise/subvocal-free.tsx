@@ -8,7 +8,7 @@ export default function SubvocalFreeScreen() {
     <ReadingModuleFlow
       moduleKey="subvocal-free"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="subvocal"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function SubvocalFreeScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

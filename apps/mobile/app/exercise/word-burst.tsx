@@ -8,7 +8,7 @@ export default function WordBurstScreen() {
     <ReadingModuleFlow
       moduleKey="word-burst"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="word_burst"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function WordBurstScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

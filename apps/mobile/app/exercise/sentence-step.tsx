@@ -8,7 +8,7 @@ export default function SentenceStepScreen() {
     <ReadingModuleFlow
       moduleKey="sentence-step"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="sentence_step"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function SentenceStepScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

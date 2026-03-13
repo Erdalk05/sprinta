@@ -8,7 +8,7 @@ export default function TimedReadingScreen() {
     <ReadingModuleFlow
       moduleKey="timed-reading"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="timed"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function TimedReadingScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

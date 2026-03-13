@@ -8,7 +8,7 @@ export default function KeywordScanScreen() {
     <ReadingModuleFlow
       moduleKey="keyword-scan"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="keyword"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function KeywordScanScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

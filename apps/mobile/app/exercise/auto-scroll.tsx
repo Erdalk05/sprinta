@@ -8,7 +8,7 @@ export default function AutoScrollScreen() {
     <ReadingModuleFlow
       moduleKey="auto-scroll"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="auto_scroll"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function AutoScrollScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

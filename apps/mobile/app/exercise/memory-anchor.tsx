@@ -8,7 +8,7 @@ export default function MemoryAnchorScreen() {
     <ReadingModuleFlow
       moduleKey="memory-anchor"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="memory"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function MemoryAnchorScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

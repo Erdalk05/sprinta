@@ -80,9 +80,10 @@ interface Props {
   moduleKey: string
   onBack:    () => void
   renderExercise: (
-    content:    ImportedContent,
-    onComplete: (m: BaseReadingMetrics) => void,
-    onExit:     () => void,
+    content:     ImportedContent,
+    onComplete:  (m: BaseReadingMetrics) => void,
+    onExit:      () => void,
+    accentColor: string,
   ) => React.ReactNode
 }
 
@@ -547,13 +548,18 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
   const [showFeedback, setShowFeedback] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [savedBadges,  setSavedBadges]  = useState<Badge[]>([])
+  // Hızlı Başlat → sınav türüne filtreli aç; Metin Seç → tüm sınavları göster
+  const [pickFiltered, setPickFiltered] = useState(false)
 
   // ── Setup phase handlers ──────────────────────────────────────────
-  const handleSelectText = useCallback(() => setPhase('picking'), [])
+  const handleSelectText = useCallback(() => {
+    setPickFiltered(false)   // Tüm sınavları göster
+    setPhase('picking')
+  }, [])
 
   const handleQuickStart = useCallback(() => {
-    setContent(QUICK_START_CONTENT)
-    setPhase('exercising')
+    setPickFiltered(true)    // Sınav türüne filtreli aç
+    setPhase('picking')
   }, [])
 
   // ── Content selected (from ContentLibraryScreen) ──────────────────
@@ -712,6 +718,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
         moduleKey={moduleKey}
         onContentSelected={handleContentSelected}
         onBack={() => setPhase('setup')}
+        initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
       />
     )
   }
@@ -719,7 +726,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }:
   if (phase === 'exercising') {
     return (
       <>
-        {renderExercise(content!, handleExerciseComplete, onBack)}
+        {renderExercise(content!, handleExerciseComplete, onBack, accent)}
       </>
     )
   }

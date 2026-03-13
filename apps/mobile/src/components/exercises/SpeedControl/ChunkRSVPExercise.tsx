@@ -25,6 +25,7 @@ import type { SessionMetrics } from '../types'
 import { QuestionModal } from '../../reading/QuestionModal'
 import type { TextQuestion, QuestionAnswer } from '@sprinta/api'
 import { supabase } from '../../../lib/supabase'
+import { useAuthStore } from '../../../stores/authStore'
 
 // ─── Tipler ────────────────────────────────────────────────────────
 
@@ -44,10 +45,16 @@ export interface ChunkRSVPMetrics extends SessionMetrics {
 }
 
 interface Props {
-  onComplete:      (metrics: ChunkRSVPMetrics) => void
-  onExit:          () => void
+  onComplete:       (metrics: ChunkRSVPMetrics) => void
+  onExit:           () => void
   /** Kütüphaneden gelen metin — varsa seçim ekranını atla */
-  initialContent?: ImportedContent
+  initialContent?:  ImportedContent | null
+  /** Wizard'dan gelen ön-ayarlar */
+  initialSettings?: Settings
+  /** Tekrar butonuna basıldığında çağrılır (wizard akışı için) */
+  onRepeat?:        () => void
+  /** Modül accent rengi — tüm okuma ekranında kullanılır */
+  accentColor?:     string
 }
 
 interface Settings {
@@ -72,23 +79,54 @@ const DEFAULT_SETTINGS: Settings = {
 
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
-export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }: Props) {
+// ─── Color helpers ─────────────────────────────────────────────────
+function hexToRgb(hex: string): [number, number, number] {
+  const safe = hex.startsWith('#') ? hex : '#0891B2'
+  return [parseInt(safe.slice(1,3),16), parseInt(safe.slice(3,5),16), parseInt(safe.slice(5,7),16)]
+}
+function darken(hex: string, f = 0.55): string {
+  const [r,g,b] = hexToRgb(hex)
+  return `rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`
+}
+function lighten(hex: string): string {
+  const [r,g,b] = hexToRgb(hex)
+  return `rgb(${Math.min(255,Math.round(r*0.12+236))},${Math.min(255,Math.round(g*0.12+236))},${Math.min(255,Math.round(b*0.12+236))})`
+}
+
+const FONT_SIZES = [12, 14, 16, 18, 20, 22, 24] as const
+type FontSizeVal = typeof FONT_SIZES[number]
+
+export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, initialSettings, onRepeat, accentColor = '#0891B2' }: Props) {
   const t            = useAppTheme()
   const readingTheme = useThemeStore((s) => s.readingTheme)
   const rt           = READING_THEMES[readingTheme]
-  const s            = useMemo(() => ms(t, rt.background, rt.text), [t, readingTheme])
+  const navyBg       = darken(accentColor, 0.45)
+  const deepBg       = darken(accentColor, 0.30)
+  const lightBg      = lighten(accentColor)
+  const s            = useMemo(() => ms(t, rt.background, rt.text, accentColor, navyBg, deepBg, lightBg), [t, readingTheme, accentColor])
 
-  const [phase, setPhase]           = useState<Phase>(initialContent ? 'select' : 'select')
-  const [settings, setSettings]     = useState<Settings>(DEFAULT_SETTINGS)
+  const mergedSettings = initialSettings
+    ? { ...DEFAULT_SETTINGS, ...initialSettings }
+    : DEFAULT_SETTINGS
+
+  const [phase, setPhase]           = useState<Phase>(initialContent ? 'reading' : 'select')
+  const [settings, setSettings]     = useState<Settings>(mergedSettings)
   const [showSettings, setShowSettings] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [content, setContent]       = useState<ImportedContent | null>(initialContent ?? null)
 
   // Okuma state
-  const [chunks, setChunks]         = useState<Chunk[]>([])
+  const [chunks, setChunks]         = useState<Chunk[]>(() => {
+    // Wizard'dan initialContent geliyorsa hemen tokenize et
+    if (initialContent) {
+      const raw = tokenizeToChunks(initialContent.text, mergedSettings.chunkSize)
+      return applyDurations(raw, mergedSettings.targetWPM, mergedSettings.smartSlowing)
+    }
+    return []
+  })
   const [chunkIdx, setChunkIdx]     = useState(0)
   const [isPlaying, setIsPlaying]   = useState(false)
-  const [currentWPM, setCurrentWPM] = useState(DEFAULT_SETTINGS.targetWPM)
+  const [currentWPM, setCurrentWPM] = useState(mergedSettings.targetWPM)
   const [wpmHistory, setWpmHistory] = useState<number[]>([])
   const [regressionCount, setRegressionCount] = useState(0)
   const [elapsedMs, setElapsedMs]   = useState(0)
@@ -101,8 +139,11 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
   const [showQuiz,   setShowQuiz]   = useState(false)
   const [questions,  setQuestions]  = useState<TextQuestion[]>([])
 
-  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [fontSize, setFontSize] = useState<FontSizeVal>(14)
+
+  const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fontWidthRef    = useRef(0)
 
   // Her render'da güncellenen ref'ler (stale closure'ı önler)
   const chunksRef      = useRef<typeof chunks>([])
@@ -486,7 +527,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
                 {currentChunk.words.map((w, i) => {
                   const b = applyBionicReading(w)
                   return (
-                    <Text key={i} style={s.chunkWord}>
+                    <Text key={i} style={[s.chunkWord, { fontSize }]}>
                       <Text style={s.bionicBold}>{b.bold}</Text>
                       <Text style={s.bionicLight}>{b.light}</Text>
                       {i < currentChunk.words.length - 1 ? ' ' : ''}
@@ -495,71 +536,82 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
                 })}
               </View>
             ) : (
-              <Text style={s.chunkText}>{currentChunk?.rawText ?? ''}</Text>
+              <Text style={[s.chunkText, { fontSize, lineHeight: fontSize * 1.4 }]}>
+                {currentChunk?.rawText ?? ''}
+              </Text>
             )}
           </Animated.View>
         </View>
 
-        {/* Alt Panel: Kontroller + WPM + İstatistikler */}
-        <View style={s.bottomPanel}>
-          {/* Kontrol Çubuğu */}
-          <View style={s.controls}>
-            <TouchableOpacity style={s.controlBtn} onPress={goBack}>
-              <Text style={s.controlBtnTxt}>←</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.playBtn} onPress={togglePause} activeOpacity={0.8}>
-              <Text style={s.playBtnTxt}>{isPlaying ? '⏸' : '▶'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.controlBtn} onPress={goForward} disabled={settings.readingMode !== 'sprint'}>
-              <Text style={[s.controlBtnTxt, settings.readingMode !== 'sprint' && { opacity: 0.3 }]}>→</Text>
-            </TouchableOpacity>
+        {/* ── Yeni Alt Bölüm (Hız Kontrolü stili) ───────────────── */}
+
+        {/* Açık alan: geri pill + WPM göstergesi */}
+        <View style={s.lightBottomRow}>
+          <TouchableOpacity style={[s.backPill, { backgroundColor: navyBg }]} onPress={goBack}>
+            <Text style={s.backPillTxt}>← Geri</Text>
+          </TouchableOpacity>
+          <Text style={[s.liveWPM, { color: navyBg }]}>⚡ {displayWPM} WPM</Text>
+        </View>
+
+        {/* Duraklat / Devam Et butonu */}
+        <TouchableOpacity
+          style={[s.pauseBtn, { borderColor: navyBg + '60' }]}
+          onPress={togglePause}
+          activeOpacity={0.8}
+        >
+          <Text style={[s.pauseBtnTxt, { color: navyBg }]}>
+            {isPlaying ? '⏸  Duraklat' : '▶  Devam Et'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Koyu panel: WPM slider + Yazı boyutu slider */}
+        <View style={[s.darkSlidersPanel, { backgroundColor: navyBg }]}>
+          {/* OKUMA HIZI */}
+          <View style={s.sliderLabelRow}>
+            <Text style={s.sliderLabel}>⚡ OKUMA HIZI</Text>
+            <Text style={s.sliderValue}>{currentWPM} WPM</Text>
+          </View>
+          <View
+            style={s.sliderTrack}
+            onLayout={(e) => { trackWidthRef.current = e.nativeEvent.layout.width }}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => {
+              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
+              adjustWPM(100 + pct * 700)
+            }}
+            onResponderMove={(e) => {
+              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
+              adjustWPM(100 + pct * 700)
+            }}
+          >
+            <View style={[s.sliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
+            <View style={[s.sliderThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
           </View>
 
-          {/* WPM Slider */}
-          <View style={s.wpmSliderRow}>
-            <Text style={s.wpmLabel}>100</Text>
-            <View
-              style={s.wpmSliderTrack}
-              onLayout={(e) => { trackWidthRef.current = e.nativeEvent.layout.width }}
-              onStartShouldSetResponder={() => true}
-              onMoveShouldSetResponder={() => true}
-              onResponderGrant={(e) => {
-                const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
-                adjustWPM(100 + pct * 700)
-              }}
-              onResponderMove={(e) => {
-                const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
-                adjustWPM(100 + pct * 700)
-              }}
-            >
-              <View style={[s.wpmSliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
-              <View style={[s.wpmThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
-            </View>
-            <Text style={s.wpmLabel}>800</Text>
+          {/* YAZI BOYUTU */}
+          <View style={[s.sliderLabelRow, { marginTop: 10 }]}>
+            <Text style={s.sliderLabel}>YAZI BOYUTU</Text>
+            <Text style={s.sliderValue}>{fontSize}pt</Text>
           </View>
-          <View style={s.wpmBtnsRow}>
-            <TouchableOpacity style={s.wpmAdjBtn} onPress={() => adjustWPM(currentWPM - 25)}>
-              <Text style={s.wpmAdjTxt}>−25</Text>
-            </TouchableOpacity>
-            <Text style={s.wpmDisplay}>{currentWPM} WPM</Text>
-            <TouchableOpacity style={s.wpmAdjBtn} onPress={() => adjustWPM(currentWPM + 25)}>
-              <Text style={s.wpmAdjTxt}>+25</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Canlı İstatistikler */}
-          <View style={s.statsBar}>
-            {[
-              { label: 'WPM', value: String(displayWPM) },
-              { label: 'Chunk', value: `${settings.chunkSize}/${chunks.length}` },
-              { label: 'Süre', value: formatTime(Math.floor(elapsedMs / 1000)) },
-              { label: 'ARP', value: String(computeSessionARP(displayWPM, 70, regressionCount, Math.floor(elapsedMs / 1000)).arp) },
-            ].map((item) => (
-              <View key={item.label} style={s.statItem}>
-                <Text style={s.statValue}>{item.value}</Text>
-                <Text style={s.statLabel}>{item.label}</Text>
-              </View>
-            ))}
+          <View
+            style={s.sliderTrack}
+            onLayout={(e) => { fontWidthRef.current = e.nativeEvent.layout.width }}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => {
+              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+              const idx = Math.round(pct * (FONT_SIZES.length - 1))
+              setFontSize(FONT_SIZES[idx])
+            }}
+            onResponderMove={(e) => {
+              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+              const idx = Math.round(pct * (FONT_SIZES.length - 1))
+              setFontSize(FONT_SIZES[idx])
+            }}
+          >
+            <View style={[s.sliderFill, { width: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%` }]} />
+            <View style={[s.sliderThumb, { left: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%` }]} />
           </View>
         </View>
 
@@ -577,11 +629,16 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
         <ResultScreen
           metrics={finalMetrics}
           content={content}
+          accentColor={accentColor}
           onRepeat={() => {
-            setPhase('select')
-            setChunkIdx(0)
-            setWpmHistory([])
-            setRegressionCount(0)
+            if (onRepeat) {
+              onRepeat()
+            } else {
+              setPhase('select')
+              setChunkIdx(0)
+              setWpmHistory([])
+              setRegressionCount(0)
+            }
           }}
           onComplete={() => onComplete(finalMetrics)}
           onExit={onExit}
@@ -608,22 +665,88 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent }
   return null
 }
 
-// ─── Result Screen ─────────────────────────────────────────────────
+// ─── Tier Helpers ──────────────────────────────────────────────────
 
-interface ResultProps {
-  metrics: ChunkRSVPMetrics
-  content: ImportedContent | null
-  onRepeat: () => void
-  onComplete: () => void
-  onExit: () => void
-  onQuiz?: () => void
-  hasQuiz?: boolean
-  t: AppTheme
-  s: ReturnType<typeof ms>
+function getSpeedTier(wpm: number) {
+  if (wpm < 150) return { label: 'Yeni Başlayan',  icon: '🌱', color: '#6B7280', desc: '< 150 WPM — Temelleri öğreniyorsun' }
+  if (wpm < 200) return { label: 'Geliştiriyor',   icon: '📈', color: '#3B82F6', desc: '150-200 WPM — İyi bir başlangıç' }
+  if (wpm < 280) return { label: 'Orta Seviye',    icon: '⚡', color: '#0891B2', desc: '200-280 WPM — Ortalamanın üzerinde' }
+  if (wpm < 350) return { label: 'Hızlı Okuyucu', icon: '🚀', color: '#7C3AED', desc: '280-350 WPM — İleri seviye' }
+  return               { label: 'Uzman',            icon: '🏆', color: '#D97706', desc: '350+ WPM — Elit okuyucu' }
 }
 
-function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, hasQuiz, t, s }: ResultProps) {
-  const xp = calculateXP(metrics.arpScore, metrics.totalWords, metrics.bionicEnabled, metrics.durationSeconds)
+function getComprehensionTier(score: number) {
+  if (score < 40) return { label: 'Geliştirilmeli', icon: '📚', color: '#EF4444', desc: 'Anlama odakla çalış' }
+  if (score < 60) return { label: 'Orta Kavrama',   icon: '📖', color: '#F59E0B', desc: 'Daha fazla pratik yap' }
+  if (score < 75) return { label: 'İyi Kavrama',    icon: '💡', color: '#10B981', desc: 'Dengeli okuma profili' }
+  if (score < 90) return { label: 'Çok İyi',        icon: '🌟', color: '#3B82F6', desc: 'Yüksek anlama kapasitesi' }
+  return               { label: 'Mükemmel',          icon: '💎', color: '#7C3AED', desc: 'Elit kavrama seviyesi' }
+}
+
+// ─── Result Screen ──────────────────────────────────────────────────
+
+interface ResultProps {
+  metrics:     ChunkRSVPMetrics
+  content:     ImportedContent | null
+  accentColor: string
+  onRepeat:    () => void
+  onComplete:  () => void
+  onExit:      () => void
+  onQuiz?:     () => void
+  hasQuiz?:    boolean
+  t:           AppTheme
+  s:           ReturnType<typeof ms>
+}
+
+function ResultScreen({ metrics, content, accentColor, onRepeat, onComplete, onExit, onQuiz, hasQuiz, t, s }: ResultProps) {
+  const xp         = calculateXP(metrics.arpScore, metrics.totalWords, metrics.bionicEnabled, metrics.durationSeconds)
+  const speedTier  = getSpeedTier(metrics.avgWPM)
+  const compTier   = getComprehensionTier(metrics.comprehensionScore)
+  const { student } = useAuthStore()
+
+  // ── Kişisel en iyi + sıralama ──────────────────────────────────
+  const [weeklyBest,  setWeeklyBest]  = useState<number | null>(null)
+  const [rank,        setRank]        = useState<number | null>(null)
+  const [streak,      setStreak]      = useState<number>(0)
+  const isNewRecord = weeklyBest !== null && metrics.arpScore >= weeklyBest
+
+  useEffect(() => {
+    if (!student?.id) return
+    const sid = student.id
+
+    // Haftalık en iyi ARP
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    (supabase as any)
+      .from('reading_mode_sessions')
+      .select('arp_score')
+      .eq('student_id', sid)
+      .gte('created_at', weekAgo)
+      .order('arp_score', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }: any) => {
+        if (data?.arp_score) setWeeklyBest(data.arp_score as number)
+      })
+
+    // Streak (daily_stats tablosundan)
+    ;(supabase as any)
+      .from('daily_stats')
+      .select('streak_days')
+      .eq('student_id', sid)
+      .order('date', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }: any) => {
+        if (data?.streak_days) setStreak(data.streak_days as number)
+      })
+
+    // Genel sıralama (approx)
+    ;(supabase as any)
+      .rpc('get_reading_rank', { p_arp: metrics.arpScore })
+      .then(({ data }: any) => {
+        if (typeof data === 'number') setRank(data)
+      })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <SafeAreaView style={s.container}>
@@ -637,17 +760,28 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, 
           <Text style={{ fontSize:18, color: t.colors.textHint, fontWeight:'700' }}>✕</Text>
         </TouchableOpacity>
       </View>
-      <View style={s.resultScroll}>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.resultScroll} showsVerticalScrollIndicator={false}>
         <Text style={s.resultEmoji}>🎉</Text>
         <Text style={s.resultTitle}>Seans Tamamlandı!</Text>
 
-        {/* ARP Kartı */}
-        <View style={s.arpCard}>
-          <Text style={s.arpLabel}>ARP Skoru</Text>
+        {/* ARP Kartı — tier inline */}
+        <View style={[s.arpCard, { backgroundColor: accentColor }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Text style={s.arpLabel}>ARP Skoru</Text>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 11, color: '#fff', fontWeight: '800' }}>{speedTier.icon} {speedTier.label}</Text>
+            </View>
+          </View>
           <Text style={s.arpValue}>{metrics.arpScore}</Text>
+          {isNewRecord && (
+            <View style={{ backgroundColor: '#F59E0B', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 3, marginTop: 4 }}>
+              <Text style={{ fontSize: 11, color: '#fff', fontWeight: '900' }}>🆕 Haftalık Rekor!</Text>
+            </View>
+          )}
         </View>
 
-        {/* Metrikler */}
+        {/* 4 Metrik */}
         <View style={s.metricsGrid}>
           {[
             { label: 'Ort. WPM',  value: String(metrics.avgWPM) },
@@ -662,16 +796,81 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, 
           ))}
         </View>
 
-        {/* XP */}
-        <View style={s.xpBadge}>
-          <Text style={s.xpTxt}>+{xp} XP kazandın!</Text>
+        {/* ── Tier Rozetleri ─────────────────────────────────── */}
+        <View style={s.badgeSection}>
+          <Text style={s.badgeSectionTitle}>BAŞARILAR</Text>
+
+          {/* SpeedTier */}
+          <View style={[s.badgeRow, { borderLeftColor: speedTier.color }]}>
+            <View style={[s.badgeIconWrap, { backgroundColor: speedTier.color + '18' }]}>
+              <Text style={s.badgeIcon}>{speedTier.icon}</Text>
+            </View>
+            <View style={s.badgeInfo}>
+              <Text style={[s.badgeLabel, { color: speedTier.color }]}>{speedTier.label}</Text>
+              <Text style={s.badgeDesc}>{speedTier.desc}</Text>
+            </View>
+            <View style={[s.badgePill, { backgroundColor: speedTier.color }]}>
+              <Text style={s.badgePillTxt}>{metrics.avgWPM} WPM</Text>
+            </View>
+          </View>
+
+          {/* ComprehensionTier */}
+          <View style={[s.badgeRow, { borderLeftColor: compTier.color }]}>
+            <View style={[s.badgeIconWrap, { backgroundColor: compTier.color + '18' }]}>
+              <Text style={s.badgeIcon}>{compTier.icon}</Text>
+            </View>
+            <View style={s.badgeInfo}>
+              <Text style={[s.badgeLabel, { color: compTier.color }]}>{compTier.label}</Text>
+              <Text style={s.badgeDesc}>{compTier.desc}</Text>
+            </View>
+            <View style={[s.badgePill, { backgroundColor: compTier.color }]}>
+              <Text style={s.badgePillTxt}>%{metrics.comprehensionScore}</Text>
+            </View>
+          </View>
+
+          {/* Streak */}
+          {streak > 0 && (
+            <View style={[s.badgeRow, { borderLeftColor: '#F59E0B' }]}>
+              <View style={[s.badgeIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={s.badgeIcon}>🔥</Text>
+              </View>
+              <View style={s.badgeInfo}>
+                <Text style={[s.badgeLabel, { color: '#D97706' }]}>{streak} Günlük Seri</Text>
+                <Text style={s.badgeDesc}>Her gün çalışmaya devam et!</Text>
+              </View>
+              <View style={[s.badgePill, { backgroundColor: '#F59E0B' }]}>
+                <Text style={s.badgePillTxt}>{streak} gün</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* ── Kişisel Kıyaslama ──────────────────────────────── */}
+        <View style={s.statsRow}>
+          <View style={s.statBox}>
+            <Text style={s.statBoxIcon}>📊</Text>
+            <Text style={s.statBoxValue}>
+              {weeklyBest ? (isNewRecord ? 'Rekor!' : String(weeklyBest)) : '—'}
+            </Text>
+            <Text style={s.statBoxLabel}>Haftalık en iyi</Text>
+          </View>
+          <View style={[s.statBox, { borderLeftWidth: 1, borderLeftColor: '#E5E7EB' }]}>
+            <Text style={s.statBoxIcon}>🏅</Text>
+            <Text style={s.statBoxValue}>{rank ? `#${rank}` : '—'}</Text>
+            <Text style={s.statBoxLabel}>Genel sıralama</Text>
+          </View>
+          <View style={[s.statBox, { borderLeftWidth: 1, borderLeftColor: '#E5E7EB' }]}>
+            <Text style={s.statBoxIcon}>⭐</Text>
+            <Text style={s.statBoxValue}>+{xp}</Text>
+            <Text style={s.statBoxLabel}>XP kazanıldı</Text>
+          </View>
         </View>
 
         {/* Quiz Butonu */}
         {hasQuiz && onQuiz && (
           <TouchableOpacity
             style={{ backgroundColor:'#10B981', borderRadius:14, paddingVertical:14,
-              alignItems:'center', width:'100%', marginBottom:4 }}
+              alignItems:'center', width:'100%' }}
             onPress={onQuiz}
           >
             <Text style={{ color:'#fff', fontWeight:'800', fontSize:16 }}>📝 Anlama Soruları</Text>
@@ -683,11 +882,11 @@ function ResultScreen({ metrics, content, onRepeat, onComplete, onExit, onQuiz, 
           <TouchableOpacity style={s.repeatBtn} onPress={onRepeat}>
             <Text style={s.repeatBtnTxt}>Tekrar Yap</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.continueBtn} onPress={onComplete}>
+          <TouchableOpacity style={[s.continueBtn, { backgroundColor: accentColor }]} onPress={onComplete}>
             <Text style={s.continueBtnTxt}>İleri →</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
@@ -771,11 +970,10 @@ function SettingsSheet({ settings, onUpdate, onClose, t, s, currentWPM, onWPMCha
 
 // ─── Stiller ───────────────────────────────────────────────────────
 
-function ms(t: AppTheme, rtBg: string, rtText: string) {
-  const SPEED_COLOR = '#6C3EE8'
+function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyBg = '#055a75', deepBg = '#044a62', lightBg = '#E8F6FB') {
+  const SPEED_COLOR = accent
   return StyleSheet.create({
     container:    { flex: 1, backgroundColor: t.colors.background },
-    readingBg:    { backgroundColor: t.colors.background },
 
     // Top bar
     topBar:       {
@@ -875,88 +1073,111 @@ function ms(t: AppTheme, rtBg: string, rtText: string) {
     startBtnDisabled: { opacity: 0.4 },
     startBtnTxt:  { fontSize: 18, fontWeight: '800', color: '#fff' },
 
-    // Reading — mor modül rengi tabanlı canlı paneller
+    // Reading — Hız Kontrolü stili: accent header + açık okuma alanı
+    readingBg:    { backgroundColor: lightBg },
+
     readingHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingHorizontal: 16, paddingVertical: 10,
-      backgroundColor: '#4A1FA8',   // derin canlı mor
+      backgroundColor: navyBg,
     },
     readingBack:  { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
     modeRow:      { flexDirection: 'row', gap: 4 },
     modePill:     {
       borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: 'rgba(255,255,255,0.16)',
     },
-    modePillActive: { backgroundColor: SPEED_COLOR },
-    modePillTxt:  { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
-    modePillTxtActive: { color: '#fff' },
+    modePillActive: { backgroundColor: 'rgba(255,255,255,0.30)' },
+    modePillTxt:   { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)' },
+    modePillTxtActive: { color: '#fff', fontWeight: '800' },
 
     progressPanel: {
-      backgroundColor: '#3D1890',   // biraz daha derin mor
-      paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8,
+      backgroundColor: lightBg,
+      paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6,
     },
-    progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 2 },
-    progressFill:  { height: 3, backgroundColor: '#C4A8FF', borderRadius: 2 },  // açık lila fill
-    progressInfo:  { fontSize: 11, color: 'rgba(255,255,255,0.78)', textAlign: 'center', marginTop: 6 },
+    progressTrack: { height: 4, backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: 2 },
+    progressFill:  { height: 4, backgroundColor: navyBg, borderRadius: 2 },
+    progressInfo:  { fontSize: 11, color: navyBg, textAlign: 'center', marginTop: 6, fontWeight: '600' },
 
-    chunkStage:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+    chunkStage:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, backgroundColor: lightBg },
     chunkBox:     { alignItems: 'center', justifyContent: 'center' },
-    chunkText:    { fontSize: 28, fontWeight: '700', color: t.colors.text, textAlign: 'center', lineHeight: 40 },
+    chunkText:    { fontSize: 16, fontWeight: '800', color: navyBg, textAlign: 'center', lineHeight: 24 },
     chunkWordsRow:{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
-    chunkWord:    { fontSize: 28, color: t.colors.text, lineHeight: 40 },
+    chunkWord:    { fontSize: 16, color: navyBg },
     bionicBold:   { fontWeight: '900' },
     bionicLight:  { fontWeight: '300' },
 
-    bottomPanel:  { backgroundColor: '#2E1280' },  // koyu-canlı mor-lacivert
-    controls:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 12 },
-    controlBtn:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-    controlBtnTxt:{ fontSize: 22, color: '#D4B8FF' },  // açık lila ok tuşları
-    playBtn:      {
-      width: 60, height: 60, borderRadius: 30,
-      backgroundColor: SPEED_COLOR, alignItems: 'center', justifyContent: 'center',
+    // Yeni alt bölüm
+    lightBottomRow: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: 16, paddingVertical: 10,
+      backgroundColor: lightBg,
     },
-    playBtnTxt:   { fontSize: 24 },
+    backPill: {
+      borderRadius: 999, paddingHorizontal: 18, paddingVertical: 8,
+    },
+    backPillTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
+    liveWPM: { fontSize: 17, fontWeight: '800' },
 
-    wpmSliderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
-    wpmLabel:     { fontSize: 11, color: '#B8A0E8', width: 30 },  // pastel mor etiket
-    wpmSliderTrack: {
-      flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 2, position: 'relative',
+    pauseBtn: {
+      marginHorizontal: 16, marginBottom: 8,
+      borderWidth: 1.5, borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: '#fff',
     },
-    wpmSliderFill:{ height: 4, backgroundColor: '#A78BFA', borderRadius: 2 },  // canlı lila fill
-    wpmThumb:     {
-      position: 'absolute', top: -6, width: 16, height: 16,
-      borderRadius: 8, backgroundColor: '#E9D5FF', marginLeft: -8,  // pastel mor thumb
+    pauseBtnTxt: { fontSize: 16, fontWeight: '700' },
+
+    darkSlidersPanel: {
+      paddingHorizontal: 16, paddingVertical: 14,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 14,
     },
-    wpmBtnsRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 4, paddingBottom: 8 },
+    sliderLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    sliderLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.8 },
+    sliderValue: { fontSize: 13, fontWeight: '800', color: '#fff' },
+    sliderTrack: {
+      height: 6, backgroundColor: 'rgba(255,255,255,0.20)',
+      borderRadius: 3, position: 'relative',
+    },
+    sliderFill:  { height: 6, backgroundColor: '#fff', borderRadius: 3 },
+    sliderThumb: {
+      position: 'absolute', top: -7, width: 20, height: 20,
+      borderRadius: 10, backgroundColor: '#fff', marginLeft: -10,
+      shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 }, elevation: 3,
+    },
+
+    // Keep unused refs for settings sheet / select phase
+    bottomPanel:   { backgroundColor: navyBg },
+    controls:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 12 },
+    controlBtn:    { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    controlBtnTxt: { fontSize: 22, color: 'rgba(255,255,255,0.7)' },
+    playBtn:       { width: 60, height: 60, borderRadius: 30, backgroundColor: accent, alignItems: 'center', justifyContent: 'center' },
+    playBtnTxt:    { fontSize: 24 },
+    wpmSliderRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
+    wpmLabel:      { fontSize: 11, color: 'rgba(255,255,255,0.6)', width: 30 },
+    wpmSliderTrack:{ flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, position: 'relative' },
+    wpmSliderFill: { height: 4, backgroundColor: '#fff', borderRadius: 2 },
+    wpmThumb:      { position: 'absolute', top: -6, width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', marginLeft: -8 },
+    wpmBtnsRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 4, paddingBottom: 8 },
     wpmPresetsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', marginBottom: 8 },
-    wpmAdjBtn:    {
-      backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999,
-      paddingHorizontal: 16, paddingVertical: 6,
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-    },
-    wpmAdjTxt:    { fontSize: 14, fontWeight: '700', color: '#E9D5FF' },  // pastel mor
-    wpmDisplay:   { fontSize: 16, fontWeight: '800', color: '#fff', minWidth: 90, textAlign: 'center' },
-
-    statsBar:     {
-      flexDirection: 'row', justifyContent: 'space-around',
-      backgroundColor: '#231060',  // en derin mor — istatistik şeridi
-      paddingVertical: 10, paddingHorizontal: 8,
-      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
-    },
-    statItem:     { alignItems: 'center' },
-    statValue:    { fontSize: 14, fontWeight: '800', color: '#E9D5FF' },  // pastel mor değer
-    statLabel:    { fontSize: 10, color: '#A78BFA', marginTop: 2 },  // canlı lila etiket
+    wpmAdjBtn:     { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+    wpmAdjTxt:     { fontSize: 14, fontWeight: '700', color: '#fff' },
+    wpmDisplay:    { fontSize: 16, fontWeight: '800', color: '#fff', minWidth: 90, textAlign: 'center' },
+    statsBar:      { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: deepBg, paddingVertical: 10, paddingHorizontal: 8 },
+    statItem:      { alignItems: 'center' },
+    statValue:     { fontSize: 14, fontWeight: '800', color: '#fff' },
+    statLabel:     { fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
 
     // Result
-    resultScroll: { flex: 1, padding: 16, alignItems: 'center', gap: 10 },
+    resultScroll: { padding: 16, gap: 12, paddingBottom: 32, alignItems: 'center' },
     resultEmoji:  { fontSize: 44 },
     resultTitle:  { fontSize: 22, fontWeight: '900', color: t.colors.text },
     arpCard:      {
-      backgroundColor: SPEED_COLOR, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 32,
-      alignItems: 'center', width: '100%',
+      borderRadius: 16, paddingVertical: 18, paddingHorizontal: 32,
+      alignItems: 'center', width: '100%', gap: 4,
     },
-    arpLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
+    arpLabel:     { fontSize: 13, color: 'rgba(255,255,255,0.80)', marginBottom: 2 },
     arpValue:     { fontSize: 52, fontWeight: '900', color: '#fff', lineHeight: 58 },
     metricsGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', width: '100%' },
     metricCard:   {
@@ -970,6 +1191,51 @@ function ms(t: AppTheme, rtBg: string, rtText: string) {
       borderWidth: 1, borderColor: '#F59E0B',
     },
     xpTxt:        { fontSize: 15, fontWeight: '700', color: '#F59E0B' },
+
+    // Badge section
+    badgeSection: {
+      width: '100%', backgroundColor: t.colors.surface, borderRadius: 16,
+      padding: 14, gap: 2,
+      shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    },
+    badgeSectionTitle: {
+      fontSize: 10, fontWeight: '800', color: t.colors.textHint,
+      letterSpacing: 1.2, marginBottom: 8,
+    },
+    badgeRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingVertical: 8, borderLeftWidth: 3, paddingLeft: 10,
+      marginBottom: 4,
+    },
+    badgeIconWrap: {
+      width: 38, height: 38, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    badgeIcon:  { fontSize: 18 },
+    badgeInfo:  { flex: 1, gap: 2 },
+    badgeLabel: { fontSize: 13, fontWeight: '800' },
+    badgeDesc:  { fontSize: 11, color: t.colors.textHint, fontWeight: '500' },
+    badgePill:  {
+      borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
+    },
+    badgePillTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
+
+    // Stats row (personal best + rank + xp)
+    statsRow: {
+      width: '100%', flexDirection: 'row',
+      backgroundColor: t.colors.surface, borderRadius: 14,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6,
+      shadowOffset: { width: 0, height: 1 }, elevation: 1,
+    },
+    statBox: {
+      flex: 1, alignItems: 'center', paddingVertical: 12, gap: 3,
+    },
+    statBoxIcon:  { fontSize: 18 },
+    statBoxValue: { fontSize: 16, fontWeight: '900', color: t.colors.text },
+    statBoxLabel: { fontSize: 10, color: t.colors.textHint, fontWeight: '600' },
+
     resultBtns:   { flexDirection: 'row', gap: 12, width: '100%' },
     repeatBtn:    {
       flex: 1, backgroundColor: t.colors.surface, borderRadius: 14,
@@ -978,7 +1244,7 @@ function ms(t: AppTheme, rtBg: string, rtText: string) {
     },
     repeatBtnTxt: { fontSize: 15, fontWeight: '700', color: t.colors.text },
     continueBtn:  {
-      flex: 2, backgroundColor: SPEED_COLOR, borderRadius: 14,
+      flex: 2, borderRadius: 14,
       paddingVertical: 16, alignItems: 'center',
     },
     continueBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },

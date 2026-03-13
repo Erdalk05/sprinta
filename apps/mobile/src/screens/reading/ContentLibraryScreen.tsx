@@ -13,10 +13,11 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
+import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system'
 import { supabase } from '../../lib/supabase'
 import { mmkvStorage } from '../../stores/mmkvStorage'
 import { EXAM_STRUCTURE } from '../../data/examContentStructure'
@@ -78,9 +79,11 @@ interface Props {
   moduleKey:         string
   onContentSelected: (c: ImportedContent) => void
   onBack:            () => void
+  /** Kullanıcının kayıtlı sınav türü — Kütüphane o sınava otomatik açılır */
+  initialExamKey?:   string
 }
 
-type Tab = 'library' | 'paste' | 'recent'
+type Tab = 'library' | 'paste' | 'dosya' | 'recent'
 
 // ─── Difficulty Helpers ───────────────────────────────────────────────
 
@@ -103,6 +106,7 @@ export default function ContentLibraryScreen({
   accentColor,
   onContentSelected,
   onBack,
+  initialExamKey,
 }: Props) {
   const [tab,             setTab]             = useState<Tab>('library')
   const [level,           setLevel]           = useState<LibraryLevel>('exams')
@@ -114,6 +118,9 @@ export default function ContentLibraryScreen({
   const [searchQuery,     setSearchQuery]     = useState('')
   const [pasteText,       setPasteText]       = useState('')
   const [recentItems,     setRecentItems]     = useState<RecentContent[]>([])
+  const [pickedFile,      setPickedFile]      = useState<{ name: string; text: string } | null>(null)
+  const [pickingFile,     setPickingFile]     = useState(false)
+  const [pickError,       setPickError]       = useState<string | null>(null)
 
   // Recent yükle
   useEffect(() => {
@@ -121,6 +128,19 @@ export default function ContentLibraryScreen({
       loadRecent().then(setRecentItems)
     }
   }, [tab])
+
+  // Hızlı Başlat: kullanıcının sınav türüne otomatik git
+  useEffect(() => {
+    if (!initialExamKey) return
+    const exam = EXAM_STRUCTURE.find(
+      (e) => e.key.toUpperCase() === initialExamKey.toUpperCase()
+    )
+    if (exam) {
+      setSelectedExam(exam)
+      setLevel('lessons')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Library Navigation ─────────────────────────────────────────────
 
@@ -178,6 +198,47 @@ export default function ContentLibraryScreen({
       setFetchingBody(false)
     }
   }, [onContentSelected])
+
+  // ── File Picker ────────────────────────────────────────────────────
+  const handlePickFile = useCallback(async () => {
+    setPickError(null)
+    setPickingFile(true)
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      })
+      if (result.canceled || !result.assets?.length) return
+      const asset = result.assets[0]
+      const mime = asset.mimeType ?? ''
+      if (mime === 'text/plain' || asset.name.endsWith('.txt')) {
+        const text = await FileSystem.readAsStringAsync(asset.uri)
+        setPickedFile({ name: asset.name, text })
+      } else {
+        setPickError('Sadece .txt dosyaları okunabilir. PDF/Word desteği yakında ekleniyor.')
+        setPickedFile({ name: asset.name, text: '' })
+      }
+    } catch {
+      setPickError('Dosya açılamadı. Lütfen tekrar deneyin.')
+    } finally {
+      setPickingFile(false)
+    }
+  }, [])
+
+  const handleFileSubmit = useCallback(() => {
+    if (!pickedFile || pickedFile.text.length < 30) return
+    const words = pickedFile.text.trim().split(/\s+/).filter(Boolean).length
+    const content: ImportedContent = {
+      text:             pickedFile.text.trim(),
+      title:            pickedFile.name.replace(/\.[^.]+$/, ''),
+      wordCount:        words,
+      source:           'text',
+      estimatedMinutes: Math.max(1, Math.ceil(words / 220)),
+    }
+    saveToRecent(content)
+    onContentSelected(content)
+  }, [pickedFile, onContentSelected])
 
   const handleLibraryBack = useCallback(() => {
     if (level === 'texts') {
@@ -244,6 +305,11 @@ export default function ContentLibraryScreen({
     handleLibraryBack()
   }, [tab, handleLibraryBack, onBack])
 
+  const pickedFileWordCount = useMemo(() =>
+    pickedFile?.text.trim().split(/\s+/).filter(Boolean).length ?? 0,
+    [pickedFile]
+  )
+
   // ── Header title ──────────────────────────────────────────────────
 
   const headerTitle = useMemo(() => {
@@ -272,19 +338,24 @@ export default function ContentLibraryScreen({
         <View style={s.headerSpacer} />
       </View>
 
-      {/* Tab Bar */}
-      <View style={[s.tabBar, { borderBottomColor: accentColor + '20' }]}>
-        {(['library', 'paste', 'recent'] as Tab[]).map((t) => {
-          const labels: Record<Tab, string> = { library: '📚 Kütüphane', paste: '✏️ Yapıştır', recent: '🕐 Son Kullanılan' }
-          const active = tab === t
+      {/* Tab Bar — 4 sekme */}
+      <View style={[s.tabBar, { borderBottomColor: accentColor + '30' }]}>
+        {([
+          { key: 'library', icon: '📚', label: 'Kütüphane' },
+          { key: 'paste',   icon: '✏️',  label: 'Metin'     },
+          { key: 'dosya',   icon: '📄',  label: 'Dosya'     },
+          { key: 'recent',  icon: '🕐',  label: 'Son'       },
+        ] as { key: Tab; icon: string; label: string }[]).map(({ key, icon, label }) => {
+          const active = tab === key
           return (
             <TouchableOpacity
-              key={t}
+              key={key}
               style={[s.tabItem, active && [s.tabItemActive, { borderBottomColor: accentColor }]]}
-              onPress={() => setTab(t)}
+              onPress={() => setTab(key)}
             >
+              <Text style={s.tabIcon}>{icon}</Text>
               <Text style={[s.tabLabel, active && { color: accentColor, fontWeight: '800' }]}>
-                {labels[t]}
+                {label}
               </Text>
             </TouchableOpacity>
           )
@@ -409,12 +480,11 @@ export default function ContentLibraryScreen({
           style={s.flex1}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView
-            style={s.scroll}
-            contentContainerStyle={s.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Text style={s.pasteLabel}>Metni buraya yapıştırın</Text>
+          <View style={s.pasteContainer}>
+            <View style={s.pasteLabelRow}>
+              <Text style={s.pasteLabel}>Metni buraya yapıştırın</Text>
+              <Text style={s.pasteCount}>{pasteWordCount} kelime</Text>
+            </View>
             <TextInput
               style={[s.pasteInput, { borderColor: accentColor + '40' }]}
               multiline
@@ -424,9 +494,6 @@ export default function ContentLibraryScreen({
               placeholderTextColor="#9CA3AF"
               textAlignVertical="top"
             />
-            <View style={s.pasteMeta}>
-              <Text style={s.pasteCount}>{pasteWordCount} kelime</Text>
-            </View>
             <TouchableOpacity
               style={[
                 s.pasteSubmit,
@@ -441,8 +508,85 @@ export default function ContentLibraryScreen({
             >
               <Text style={s.pasteSubmitText}>✓ Bu Metni Kullan</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
+      )}
+
+      {tab === 'dosya' && (
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Desteklenen formatlar */}
+          <View style={s.formatRow}>
+            {[
+              { icon: '📄', label: 'TXT', color: '#22C55E', note: 'Tam destek' },
+              { icon: '📕', label: 'PDF', color: '#EF4444', note: 'Yakında'    },
+              { icon: '📘', label: 'DOC', color: '#3B82F6', note: 'Yakında'    },
+              { icon: '📗', label: 'DOCX',color: '#10B981', note: 'Yakında'    },
+            ].map(({ icon, label, color, note }) => (
+              <View key={label} style={[s.formatCard, { borderColor: color + '40' }]}>
+                <Text style={s.formatIcon}>{icon}</Text>
+                <Text style={[s.formatLabel, { color }]}>{label}</Text>
+                <Text style={s.formatNote}>{note}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Pick button */}
+          <TouchableOpacity
+            style={[s.pickBtn, { borderColor: accentColor + '50', backgroundColor: accentColor + '08' }]}
+            onPress={handlePickFile}
+            disabled={pickingFile}
+            activeOpacity={0.8}
+          >
+            {pickingFile ? (
+              <ActivityIndicator color={accentColor} />
+            ) : (
+              <>
+                <Text style={s.pickBtnIcon}>📂</Text>
+                <Text style={[s.pickBtnTxt, { color: accentColor }]}>Dosya Seç</Text>
+                <Text style={s.pickBtnSub}>TXT, PDF, Word</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Error */}
+          {pickError && (
+            <View style={s.pickErrorBox}>
+              <Text style={s.pickErrorTxt}>⚠️ {pickError}</Text>
+            </View>
+          )}
+
+          {/* Seçilen dosya */}
+          {pickedFile && (
+            <View style={[s.pickedCard, { borderColor: accentColor + '40' }]}>
+              <View style={s.pickedHeader}>
+                <Text style={[s.pickedName, { color: accentColor }]} numberOfLines={1}>
+                  📄 {pickedFile.name}
+                </Text>
+                <Text style={s.pickedMeta}>{pickedFileWordCount} kelime</Text>
+              </View>
+              {pickedFile.text.length > 0 && (
+                <Text style={s.pickedPreview} numberOfLines={3}>
+                  {pickedFile.text.slice(0, 200)}…
+                </Text>
+              )}
+              <TouchableOpacity
+                style={[
+                  s.pasteSubmit,
+                  { backgroundColor: pickedFile.text.length >= 30 ? accentColor : '#D1D5DB', marginTop: 10 },
+                ]}
+                onPress={handleFileSubmit}
+                disabled={pickedFile.text.length < 30}
+                activeOpacity={0.85}
+              >
+                <Text style={s.pasteSubmitText}>✓ Bu Dosyayı Kullan</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
       )}
 
       {tab === 'recent' && (
@@ -520,16 +664,82 @@ const s = StyleSheet.create({
   },
   tabItem: {
     flex:            1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems:      'center',
-    borderBottomWidth: 2,
+    gap:             2,
+    borderBottomWidth: 2.5,
     borderBottomColor: 'transparent',
   },
   tabItemActive: {},
-  tabLabel: {
+  tabIcon:  { fontSize: 18 },
+  tabLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+
+  // Dosya tab
+  formatRow: {
+    flexDirection: 'row',
+    gap:           10,
+    marginBottom:  4,
+  },
+  formatCard: {
+    flex:          1,
+    borderRadius:  12,
+    borderWidth:   1.5,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    alignItems:    'center',
+    gap:           3,
+  },
+  formatIcon:  { fontSize: 22 },
+  formatLabel: { fontSize: 12, fontWeight: '800' },
+  formatNote:  { fontSize: 9,  color: '#9CA3AF', fontWeight: '600' },
+
+  pickBtn: {
+    borderWidth:   2,
+    borderRadius:  18,
+    borderStyle:   'dashed',
+    paddingVertical: 28,
+    alignItems:    'center',
+    gap:           6,
+  },
+  pickBtnIcon: { fontSize: 36 },
+  pickBtnTxt:  { fontSize: 17, fontWeight: '800' },
+  pickBtnSub:  { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
+
+  pickErrorBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius:    12,
+    padding:         12,
+    borderWidth:     1,
+    borderColor:     '#FECACA',
+  },
+  pickErrorTxt: { fontSize: 13, color: '#DC2626', fontWeight: '600', lineHeight: 18 },
+
+  pickedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius:    14,
+    borderWidth:     1.5,
+    padding:         14,
+    gap:             6,
+    shadowColor:     '#000',
+    shadowOpacity:   0.05,
+    shadowRadius:    8,
+    shadowOffset:    { width: 0, height: 2 },
+    elevation:       2,
+  },
+  pickedHeader: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
+  pickedName: { flex: 1, fontSize: 14, fontWeight: '700' },
+  pickedMeta: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
+  pickedPreview: {
     fontSize:   12,
-    fontWeight: '600',
     color:      '#6B7280',
+    lineHeight: 18,
+    backgroundColor: '#F9FAFB',
+    borderRadius:    8,
+    padding:         8,
   },
 
   // Search
@@ -691,13 +901,23 @@ const s = StyleSheet.create({
   },
 
   // Paste
+  pasteContainer: {
+    flex:    1,
+    padding: 16,
+    gap:     10,
+  },
+  pasteLabelRow: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    justifyContent: 'space-between',
+  },
   pasteLabel: {
-    fontSize:     14,
-    fontWeight:   '700',
-    color:        '#374151',
-    marginBottom: 6,
+    fontSize:   14,
+    fontWeight: '700',
+    color:      '#374151',
   },
   pasteInput: {
+    flex:              1,
     backgroundColor:   '#FFFFFF',
     borderWidth:       1.5,
     borderRadius:      14,
@@ -705,13 +925,7 @@ const s = StyleSheet.create({
     paddingVertical:   14,
     fontSize:          14,
     color:             '#111827',
-    minHeight:         200,
     lineHeight:        21,
-  },
-  pasteMeta: {
-    flexDirection:  'row',
-    justifyContent: 'flex-end',
-    marginTop:      6,
   },
   pasteCount: {
     fontSize:   12,

@@ -29,6 +29,11 @@ const NO_CONTENT_MODULES = new Set([
   'kelime-baglami',
   'poetry-analysis',
   'graph-reading',
+  // Yerleşik içerik kullananlar:
+  'vanishing-reading',
+  'fading-word',
+  'cloze-test',
+  'dual-column',
 ])
 
 // ─── Helpers ─────────────────────────────────────────────────────────

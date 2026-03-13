@@ -59,6 +59,8 @@ interface Props {
   onExit:          () => void
   /** Kütüphaneden gelen metin — varsa seçim ekranını atla */
   initialContent?: ImportedContent
+  /** Modüle özgü vurgu rengi */
+  accentColor?:    string
 }
 
 interface Settings {
@@ -91,8 +93,9 @@ const LINE_OPACITIES = [0.12, 0.30, 1.0, 0.45, 0.22] // past2, past1, current, n
 
 // ─── Ana Bileşen ───────────────────────────────────────────────────
 
-export default function FlowReadingExercise({ onComplete, onExit, initialContent }: Props) {
+export default function FlowReadingExercise({ onComplete, onExit, initialContent, accentColor }: Props) {
   const t            = useAppTheme()
+  const accentClr    = accentColor ?? t.module.speed_control.color
   const readingTheme = useThemeStore((s) => s.readingTheme)
   const rt           = READING_THEMES[readingTheme]
   const s            = useMemo(() => ms(t, rt.background, rt.text), [t, readingTheme])
@@ -403,7 +406,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
   // ── AŞAMA 1: İçerik Seç ────────────────────────────────────────
 
   if (phase === 'select') {
-    const accent = t.module.speed_control.color
+    const accent = accentClr
     return (
       <SafeAreaView style={s.root}>
 
@@ -540,7 +543,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           </TouchableOpacity>
           <Text style={s.readTitle} numberOfLines={1}>{content?.title ?? 'Akış Okuma'}</Text>
           <TouchableOpacity onPress={toggleMode} style={s.modeBtn}>
-            <Text style={[s.modeBtnTxt, { color: settings.readingMode === 'cruise' ? t.module.speed_control.color : t.colors.textHint }]}>
+            <Text style={[s.modeBtnTxt, { color: settings.readingMode === 'cruise' ? accentClr : t.colors.textHint }]}>
               {settings.readingMode === 'sprint' ? 'Sprint' : 'Cruise'}
             </Text>
           </TouchableOpacity>
@@ -553,7 +556,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
         {/* Progress */}
         <View style={s.progressWrap}>
           <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${progressPct}%` as any, backgroundColor: t.module.speed_control.color }]} />
+            <View style={[s.progressFill, { width: `${progressPct}%` as any, backgroundColor: accentClr }]} />
           </View>
           <Text style={s.progressTxt}>{wordsRead}/{totalWords} kelime · {Math.floor(remainSec / 60)}:{String(remainSec % 60).padStart(2, '0')} kaldı</Text>
         </View>
@@ -581,7 +584,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                           style={[
                             s.word,
                             { fontSize, lineHeight, opacity: 1, fontWeight },
-                            wi < highlightState.endWord && { color: t.module.speed_control.color, fontWeight: '700' },
+                            wi < highlightState.endWord && { color: accentClr, fontWeight: '700' },
                           ]}
                         >
                           {w}{' '}
@@ -612,14 +615,14 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                   >
                     {settings.cursorStyle === 'line' && (
                       // Sabit genişlik kayan kılavuz — metnin sonunu geçmez
-                      <Animated.View style={[s.cursorLine, { backgroundColor: t.module.speed_control.color }, cursorLineStyle]} />
+                      <Animated.View style={[s.cursorLine, { backgroundColor: accentClr }, cursorLineStyle]} />
                     )}
                     {settings.cursorStyle === 'underline' && (
                       // Kelime kelime büyüyen alt çizgi (Easing.steps)
-                      <Animated.View style={[s.cursorUnderline, { backgroundColor: t.module.speed_control.color + 'AA' }, cursorUnderlineStyle]} />
+                      <Animated.View style={[s.cursorUnderline, { backgroundColor: accentClr + 'AA' }, cursorUnderlineStyle]} />
                     )}
                     {settings.cursorStyle === 'dot' && (
-                      <Animated.View style={[s.cursorDot, { backgroundColor: t.module.speed_control.color }, cursorDotStyle]} />
+                      <Animated.View style={[s.cursorDot, { backgroundColor: accentClr }, cursorDotStyle]} />
                     )}
                   </View>
                 )}
@@ -633,14 +636,14 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           <TouchableOpacity onPress={goBack} style={s.ctrlBtn}>
             <Text style={s.ctrlBtnTxt}>←10</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={togglePlay} style={[s.playBtn, { backgroundColor: t.module.speed_control.color }]}>
+          <TouchableOpacity onPress={togglePlay} style={[s.playBtn, { backgroundColor: accentClr }]}>
             <Text style={s.playBtnTxt}>{isPlaying ? '⏸' : '▶'}</Text>
           </TouchableOpacity>
           <View style={s.wpmSlider}>
             <TouchableOpacity onPress={() => changeWPM(-25)} style={s.wpmStepBtn}>
               <Text style={s.wpmStepTxt}>−</Text>
             </TouchableOpacity>
-            <Text style={[s.wpmValueLive, { color: t.module.speed_control.color }]}>{currentWPM} WPM</Text>
+            <Text style={[s.wpmValueLive, { color: accentClr }]}>{currentWPM} WPM</Text>
             <TouchableOpacity onPress={() => changeWPM(+25)} style={s.wpmStepBtn}>
               <Text style={s.wpmStepTxt}>+</Text>
             </TouchableOpacity>
@@ -652,7 +655,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           {WPM_PRESETS.map((w) => (
             <TouchableOpacity
               key={w}
-              style={[s.presetBtn, currentWPM === w && { backgroundColor: t.module.speed_control.color }]}
+              style={[s.presetBtn, currentWPM === w && { backgroundColor: accentClr }]}
               onPress={() => changeWPM(w - currentWPM)}
             >
               <Text style={[s.presetTxt, currentWPM === w && s.presetTxtActive]}>{w}</Text>
@@ -698,7 +701,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                 ] as const).map((cs) => (
                   <TouchableOpacity
                     key={cs.id}
-                    style={[s.sheetOptionBtn, settings.cursorStyle === cs.id && { borderColor: t.module.speed_control.color, backgroundColor: t.module.speed_control.color + '20' }]}
+                    style={[s.sheetOptionBtn, settings.cursorStyle === cs.id && { borderColor: accentClr, backgroundColor: accentClr + '20' }]}
                     onPress={() => saveSettings({ ...settings, cursorStyle: cs.id })}
                   >
                     <Text style={s.sheetOptionIcon}>{cs.icon}</Text>
@@ -712,7 +715,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                 {([8, 10, 12] as const).map((n) => (
                   <TouchableOpacity
                     key={n}
-                    style={[s.sheetOptionBtn, settings.wordsPerLine === n && { borderColor: t.module.speed_control.color, backgroundColor: t.module.speed_control.color + '20' }]}
+                    style={[s.sheetOptionBtn, settings.wordsPerLine === n && { borderColor: accentClr, backgroundColor: accentClr + '20' }]}
                     onPress={() => {
                       const ns = { ...settings, wordsPerLine: n }
                       saveSettings(ns)
@@ -732,7 +735,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                 {(['small', 'medium', 'large'] as const).map((fs) => (
                   <TouchableOpacity
                     key={fs}
-                    style={[s.sheetOptionBtn, settings.fontSize === fs && { borderColor: t.module.speed_control.color, backgroundColor: t.module.speed_control.color + '20' }]}
+                    style={[s.sheetOptionBtn, settings.fontSize === fs && { borderColor: accentClr, backgroundColor: accentClr + '20' }]}
                     onPress={() => saveSettings({ ...settings, fontSize: fs })}
                   >
                     <Text style={s.sheetOptionLabel}>{fs === 'small' ? 'Küçük' : fs === 'medium' ? 'Orta' : 'Büyük'}</Text>
@@ -743,7 +746,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
               <View style={s.sheetToggleRow}>
                 <Text style={s.sheetToggleLabel}>Akıllı Yavaşlama</Text>
                 <TouchableOpacity
-                  style={[s.toggle, settings.smartSlowing && { backgroundColor: t.module.speed_control.color }]}
+                  style={[s.toggle, settings.smartSlowing && { backgroundColor: accentClr }]}
                   onPress={() => {
                     const ns = { ...settings, smartSlowing: !settings.smartSlowing }
                     saveSettings(ns)
@@ -757,7 +760,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={[s.sheetClose, { backgroundColor: t.module.speed_control.color }]} onPress={() => setShowSettings(false)}>
+              <TouchableOpacity style={[s.sheetClose, { backgroundColor: accentClr }]} onPress={() => setShowSettings(false)}>
                 <Text style={s.sheetCloseTxt}>Kapat</Text>
               </TouchableOpacity>
             </View>
@@ -822,7 +825,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
         </View>
 
         {/* ARP Kartı */}
-        <View style={[s.arpCard, { backgroundColor: t.module.speed_control.color }]}>
+        <View style={[s.arpCard, { backgroundColor: accentClr }]}>
           <Text style={s.arpLabel}>ARP Puanın</Text>
           <Text style={s.arpValue}>{finalMetrics.arpScore}</Text>
           <Text style={s.arpNote}>{regrNote}</Text>
@@ -864,7 +867,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
         {/* Butonlar */}
         <View style={s.resultActions}>
           <TouchableOpacity
-            style={[s.repeatBtn, { borderColor: t.module.speed_control.color }]}
+            style={[s.repeatBtn, { borderColor: accentClr }]}
             onPress={() => {
               setPhase('select')
               setFinalMetrics(null)
@@ -873,10 +876,10 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
               setRegressionCount(0)
             }}
           >
-            <Text style={[s.repeatBtnTxt, { color: t.module.speed_control.color }]}>Tekrar Yap</Text>
+            <Text style={[s.repeatBtnTxt, { color: accentClr }]}>Tekrar Yap</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.saveBtn, { backgroundColor: t.module.speed_control.color }]}
+            style={[s.saveBtn, { backgroundColor: accentClr }]}
             onPress={() => { onComplete(finalMetrics); onExit() }}
           >
             <Text style={s.saveBtnTxt}>İleri →</Text>

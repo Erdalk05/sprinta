@@ -1588,17 +1588,22 @@ interface Props {
   mode:            ReadingModeKey
   onComplete:      (metrics: ReadingModesMetrics) => void
   onExit:          () => void
-  /** Kütüphaneden gelen metin — varsa seçim ekranını atla */
+  /** Kütüphaneden gelen metin — varsa okuma fazına direkt geç */
   initialContent?: ImportedContent
+  /** Modüle özgü vurgu rengi — ReadingModuleFlow'dan gelir */
+  accentColor?:    string
 }
 
-export default function ReadingModesExercise({ mode, onComplete, onExit, initialContent }: Props) {
+export default function ReadingModesExercise({ mode, onComplete, onExit, initialContent, accentColor }: Props) {
   const t      = useAppTheme()
   const config = MODE_CONFIGS[mode]
   const student = useAuthStore(st => st.student)
+  // Modülün kendi rengi yoksa MODE_CONFIGS rengi, varsa accentColor kullan
+  const color  = accentColor ?? config.color
 
   type Phase = 'select' | 'reading' | 'result'
-  const [phase,        setPhase]        = useState<Phase>('select')
+  // initialContent varsa okuma fazına direkt başla
+  const [phase,        setPhase]        = useState<Phase>(initialContent ? 'reading' : 'select')
   const [content,      setContent]      = useState<ImportedContent | null>(initialContent ?? null)
   const [showImport,   setShowImport]   = useState(false)
   const [wpm,          setWpm]          = useState(config.defaultWpm)
@@ -1692,7 +1697,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
   if (phase === 'select') {
     return (
       <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
-        <TopBar title={config.label} onExit={onExit} color={config.color} />
+        <TopBar title={config.label} onExit={onExit} color={color} />
 
         <View style={{ flex:1, padding:20, gap:14 }}>
           {/* Hero */}
@@ -1733,7 +1738,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
               >
                 <Text style={{ fontSize:16, fontWeight:'700', color: t.colors.text }}>−</Text>
               </TouchableOpacity>
-              <Text style={{ fontSize:32, fontWeight:'900', color: config.color }}>
+              <Text style={{ fontSize:32, fontWeight:'900', color }}>
                 {wpm} <Text style={{ fontSize:14, color: t.colors.textHint }}>WPM</Text>
               </Text>
               <TouchableOpacity
@@ -1750,8 +1755,8 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
                 <TouchableOpacity
                   key={preset}
                   style={{ borderRadius:10, paddingHorizontal:8, paddingVertical:6,
-                    backgroundColor: wpm === preset ? config.color : t.colors.background,
-                    borderWidth:1, borderColor: wpm === preset ? config.color : t.colors.border }}
+                    backgroundColor: wpm === preset ? color : t.colors.background,
+                    borderWidth:1, borderColor: wpm === preset ? color : t.colors.border }}
                   onPress={() => setWpm(preset)}
                 >
                   <Text style={{ fontSize:12, fontWeight:'700',
@@ -1777,13 +1782,13 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
                 style={{ alignSelf:'flex-start', borderRadius:999, paddingHorizontal:12,
                   paddingVertical:6, backgroundColor: t.colors.background,
                   borderWidth:1, borderColor: t.colors.border }}>
-                <Text style={{ fontSize:12, color: config.color, fontWeight:'700' }}>Değiştir</Text>
+                <Text style={{ fontSize:12, color, fontWeight:'700' }}>Değiştir</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               style={{ backgroundColor: t.colors.surface, borderRadius:20, padding:28,
-                alignItems:'center', borderWidth:2, borderColor: config.color + '50',
+                alignItems:'center', borderWidth:2, borderColor: color + '50',
                 borderStyle:'dashed', gap:8 }}
               onPress={() => setShowImport(true)}
             >
@@ -1795,7 +1800,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
 
           {/* Başlat */}
           <TouchableOpacity
-            style={{ backgroundColor: config.color, borderRadius:18,
+            style={{ backgroundColor: color, borderRadius:18,
               paddingVertical:20, alignItems:'center',
               opacity: content ? 1 : 0.45 }}
             onPress={handleStart}
@@ -1818,7 +1823,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
   if (phase === 'reading' && content) {
     const props: ReadingViewProps = {
       content, config, wpm, onFinish: handleFinish,
-      onExit: () => setPhase('select'), t, color: config.color,
+      onExit: () => setPhase('select'), t, color,
     }
     let readEl: React.ReactElement | null = null
     switch (mode) {
@@ -1858,7 +1863,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       <>
         <ResultView
           metrics={finalMetrics}
-          config={config}
+          config={{ ...config, color }}
           onRepeat={() => {
             setPhase('select')
             setFinalMetrics(null)

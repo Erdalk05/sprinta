@@ -8,7 +8,7 @@ export default function FocusFilterScreen() {
     <ReadingModuleFlow
       moduleKey="focus-filter"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="focus_filter"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function FocusFilterScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

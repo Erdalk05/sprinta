@@ -8,7 +8,7 @@ export default function BionicReadingScreen() {
     <ReadingModuleFlow
       moduleKey="bionic-reading"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="bionic"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function BionicReadingScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

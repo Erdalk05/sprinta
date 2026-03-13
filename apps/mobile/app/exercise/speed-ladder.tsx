@@ -8,7 +8,7 @@ export default function SpeedLadderScreen() {
     <ReadingModuleFlow
       moduleKey="speed-ladder"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="speed_ladder"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function SpeedLadderScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />

@@ -8,7 +8,7 @@ export default function AcademicModeScreen() {
     <ReadingModuleFlow
       moduleKey="academic-mode"
       onBack={() => router.back()}
-      renderExercise={(content, onComplete, onExit) => (
+      renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="academic"
           initialContent={content}
@@ -19,6 +19,7 @@ export default function AcademicModeScreen() {
             libraryTextId: content.libraryTextId,
           })}
           onExit={onExit}
+          accentColor={accentColor}
         />
       )}
     />
