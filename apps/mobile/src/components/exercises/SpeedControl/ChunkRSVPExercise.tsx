@@ -230,7 +230,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
 
   // adjustWPM: hem chunk sürelerini günceller hem oynarken timer'ı yeniden başlatır
   const adjustWPM = useCallback((newWPM: number) => {
-    const clamped = Math.max(100, Math.min(800, Math.round(newWPM / 25) * 25))
+    const clamped = Math.max(100, Math.min(500, Math.round(newWPM / 25) * 25))
     if (chunksRef.current.length === 0) { setCurrentWPM(clamped); return }
     const newChunks = applyDurations(chunksRef.current, clamped, settings.smartSlowing)
     chunksRef.current = newChunks  // ref'i hemen güncelle
@@ -395,7 +395,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
               </Text>
               <TouchableOpacity
                 style={s.wpmAdjBtnSelect}
-                onPress={() => setCurrentWPM(w => Math.min(800, w + 25))}
+                onPress={() => setCurrentWPM(w => Math.min(500, w + 25))}
               >
                 <Text style={s.wpmAdjTxtSelect}>+</Text>
               </TouchableOpacity>

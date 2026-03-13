@@ -1608,9 +1608,10 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
   const [showImport,   setShowImport]   = useState(false)
   const [wpm,          setWpm]          = useState(config.defaultWpm)
   const [adaptiveWpm,  setAdaptiveWpm]  = useState<number | null>(null)
-  const [finalMetrics, setFinalMetrics] = useState<ReadingModesMetrics | null>(null)
-  const [showQuiz,     setShowQuiz]     = useState(false)
-  const [questions,    setQuestions]    = useState<TextQuestion[]>([])
+  const [finalMetrics,  setFinalMetrics]  = useState<ReadingModesMetrics | null>(null)
+  const [pendingResult, setPendingResult] = useState<FinishResult | null>(null)
+  const [showQuiz,      setShowQuiz]      = useState(false)
+  const [questions,     setQuestions]     = useState<TextQuestion[]>([])
 
   // ── Adaptif WPM: son 5 seanstan genel WPM ortalaması ─────────
   useEffect(() => {
@@ -1629,7 +1630,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
         const arr = (data as { avg_wpm: number }[]).map(r => r.avg_wpm)
         const avg = Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
         // Geçerli aralığa sıkıştır (60–800)
-        const suggested = Math.max(60, Math.min(800, avg))
+        const suggested = Math.max(60, Math.min(500, avg))
         setAdaptiveWpm(suggested)
         setWpm(suggested)
       } catch {
@@ -1670,8 +1671,9 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     setPhase('reading')
   }
 
-  const handleFinish = useCallback((result: FinishResult) => {
-    const arp = calcARP(result.avgWPM, result.comprehension, 0, result.durationSec)
+  // Quiz cevaplarından gerçek comprehension + ARP/XP hesapla, result'a geç
+  const finalizeMetrics = useCallback((result: FinishResult, realComprehension: number) => {
+    const arp = calcARP(result.avgWPM, realComprehension, 0, result.durationSec)
     const xp  = calcXP(arp, content?.wordCount ?? 0, result.durationSec)
     const metrics: ReadingModesMetrics = {
       mode,
@@ -1685,13 +1687,39 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     }
     setFinalMetrics(metrics)
     if (content) saveRecentContent(content, result.avgWPM)
+    setPhase('result')
+  }, [content, mode])
+
+  const handleQuizComplete = useCallback((answers: QuestionAnswer[]) => {
+    setShowQuiz(false)
+    const correct = answers.filter(a => a.isCorrect).length
+    const realComprehension = answers.length > 0
+      ? Math.round((correct / answers.length) * 100)
+      : 60
+    if (pendingResult) {
+      finalizeMetrics(pendingResult, realComprehension)
+      setPendingResult(null)
+    }
+  }, [pendingResult, finalizeMetrics])
+
+  const handleQuizSkip = useCallback(() => {
+    setShowQuiz(false)
+    if (pendingResult) {
+      finalizeMetrics(pendingResult, pendingResult.comprehension)
+      setPendingResult(null)
+    }
+  }, [pendingResult, finalizeMetrics])
+
+  const handleFinish = useCallback((result: FinishResult) => {
     if (content?.source === 'library') {
-      // Okuma biter bitmez quiz modal'ı aç — sonuç ekranı quiz bittikten sonra
+      // Önce quiz aç — cevaplar gelince finalizeMetrics çağrılır
+      setPendingResult(result)
       fetchAndShowQuiz()
     } else {
-      setPhase('result')
+      // Kütüphane dışı: varsayılan comprehension ile direkt sonuç
+      finalizeMetrics(result, result.comprehension)
     }
-  }, [content, mode, fetchAndShowQuiz])
+  }, [content, fetchAndShowQuiz, finalizeMetrics])
 
   // ── AŞAMA 1: İçerik Seç ──────────────────────────────────────────
   if (phase === 'select') {
@@ -1745,7 +1773,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
                 style={{ backgroundColor: t.colors.background, borderRadius:12,
                   paddingHorizontal:16, paddingVertical:10,
                   borderWidth:1, borderColor: t.colors.border }}
-                onPress={() => setWpm(w => Math.min(800, w + 25))}
+                onPress={() => setWpm(w => Math.min(500, w + 25))}
               >
                 <Text style={{ fontSize:16, fontWeight:'700', color: t.colors.text }}>+</Text>
               </TouchableOpacity>
@@ -1844,14 +1872,14 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     return (
       <>
         {readEl}
-        {/* Okuma biter bitmez quiz overlay olarak açılır */}
+        {/* Okuma biter bitmez quiz overlay — cevaplar gerçek comprehension hesabına gider */}
         <QuestionModal
           visible={showQuiz}
           questions={questions}
           textId={content?.libraryTextId ?? ''}
           chapterId={null}
-          onComplete={() => { setShowQuiz(false); setPhase('result') }}
-          onSkip={() => { setShowQuiz(false); setPhase('result') }}
+          onComplete={handleQuizComplete}
+          onSkip={handleQuizSkip}
         />
       </>
     )
