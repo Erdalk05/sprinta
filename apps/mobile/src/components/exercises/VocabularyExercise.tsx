@@ -13,6 +13,7 @@ import {
   SafeAreaView, Animated, ActivityIndicator,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { soundService } from '../../services/soundService'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { useAppTheme } from '../../theme/useAppTheme'
@@ -153,8 +154,10 @@ export const VocabularyExercise = React.memo(function VocabularyExercise({
     setAnswers(prev => [...prev, { word: currentWord.word, correct, timeMs }])
     if (correct) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      soundService.play('correct')
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      soundService.play('wrong')
     }
     // 1.2 sn sonra ileri git
     setTimeout(() => {

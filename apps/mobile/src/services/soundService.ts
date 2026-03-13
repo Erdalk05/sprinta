@@ -46,6 +46,20 @@ class SoundService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private soundCache: Partial<Record<SoundKey, any>> = {}
   private _isMuted = false
+  private _audioSessionReady = false
+
+  private async _ensureAudioSession(): Promise<void> {
+    if (!Audio || this._audioSessionReady) return
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      })
+      this._audioSessionReady = true
+    } catch { /* ignore */ }
+  }
 
   /**
    * Belirtilen sesi çalar. İlk çağrıda yükler, sonrakilerde önbellekten kullanır.
@@ -55,6 +69,7 @@ class SoundService {
     if (!Audio || this._isMuted) return
     const asset = SOUND_ASSETS[key]
     if (!asset) return
+    await this._ensureAudioSession()
     try {
       let sound = this.soundCache[key]
       if (!sound) {

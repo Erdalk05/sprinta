@@ -14,6 +14,7 @@ import {
   ScrollView, SafeAreaView, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { soundService } from '../../services/soundService'
 import { useAppTheme } from '../../theme/useAppTheme'
 import type { AppTheme } from '../../theme'
 import type { TextQuestion, QuestionAnswer } from '@sprinta/api'
@@ -91,8 +92,10 @@ export const QuestionModal = React.memo(function QuestionModal({
 
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      soundService.play('correct')
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      soundService.play('wrong')
     }
 
     // Geri bildirim animasyonu
