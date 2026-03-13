@@ -59,12 +59,13 @@ const FLASH_MS: Record<number, number> = {
 }
 
 // Her seviyenin hedef WPM değeri
+// Not: 5. seviye 700 WPM — araştırmalar 500-700 WPM'yi gerçekçi üst sınır olarak göstermektedir
 export const SPAN_WPM: Record<number, number> = {
   1: 280,
   2: 420,
   3: 580,
-  4: 720,
-  5: 900,
+  4: 650,
+  5: 700,
 }
 
 export const SPAN_LABELS: Record<number, string> = {

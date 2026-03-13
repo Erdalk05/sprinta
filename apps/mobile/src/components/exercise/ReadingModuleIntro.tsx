@@ -117,10 +117,10 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
   'sentence-step': {
     icon: '📝', label: 'Cümle Adım', accent: '#0F766E',
     subtitle: 'Cümle cümle ilerle — her adımda anlama odaklan',
-    tip: 'Yavaş ama güçlü: kavrama oranı %40 artar.',
+    tip: 'Aktif okuma: her cümleyi bilinçli işlemek anlama derinliğini artırır.',
     benefits: ['Derin anlama ve çıkarım becerisi gelişir', 'Cümle yapısını çözümlemeyi öğretir', 'Akademik metin okuma için ideal'],
-    steps:    ['Her adımda 1 cümle gösterilir', 'İleri butonuyla bir sonraki cümleye geç', 'Her 5 cümlede kısa özet sorusu'],
-    stats:    [{ label: 'Format', value: 'Cümle cümle' }, { label: 'Kavrama', value: '+40%' }, { label: 'Hedef', value: 'Akademik' }],
+    steps:    ['Her adımda 1 cümle gösterilir', 'İleri butonuyla bir sonraki cümleye geç', 'Egzersiz sonunda anlama soruları gelir'],
+    stats:    [{ label: 'Format', value: 'Cümle cümle' }, { label: 'Teknik', value: 'Aktif okuma' }, { label: 'Hedef', value: 'Akademik' }],
   },
   'academic-mode': {
     icon: '📚', label: 'Akademik Mod', accent: '#1D4ED8',
@@ -132,9 +132,9 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
   },
   'focus-filter': {
     icon: '🎯', label: 'Dikkat Filtresi', accent: '#B45309',
-    subtitle: 'Tek satır odak maskesi — dikkat dağınıklığını engeller',
-    tip: 'Çevresel gürültüye karşı göz odağını korur.',
-    benefits: ['Dikkat dağınıklığını tamamen engeller', 'Satır atlama hatasını sıfırlar', 'ADHD dostu okuma modu'],
+    subtitle: 'Tek satır odak maskesi — dikkat dağınıklığını azaltır',
+    tip: 'Çevresel gürültüye karşı göz odağını korur; satır atlama eğilimini düşürür.',
+    benefits: ['Dikkat dağınıklığını önemli ölçüde azaltır', 'Satır atlama hatasını minimize eder', 'Yüksek dikkat gerektiren metinler için ideal'],
     steps:    ['Sadece aktif satır görünür', 'Geri kalan karartılmış olur', 'Satır aşağı otomatik ilerler'],
     stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Görünen', value: '1 satır' }, { label: 'Mod', value: 'Odak maskesi' }],
   },
@@ -144,7 +144,7 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     tip: 'Spaced repetition prensibinin okuma versiyonu.',
     benefits: ['Uzun süreli bellek pekiştirir', 'Aktif hatırlama becerisini geliştirir', 'Sınav öncesi bilgi kalıcılığını artırır'],
     steps:    ['Metin 8 saniye gösterilir', 'Metin solar ve kaybolur', 'Hafızadan MCQ sorularını yanıtla'],
-    stats:    [{ label: 'Süre', value: '8 sn görünür' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Etki', value: '+60% kalıcılık' }],
+    stats:    [{ label: 'Süre', value: '8 sn görünür' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Teknik', value: 'Aktif hatırlama' }],
   },
   'vocabulary': {
     icon: '📖', label: 'Kelime Haznesi', accent: '#047857',
@@ -152,7 +152,7 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     tip: 'Kelime başına yanıt süresi ölçülür.',
     benefits: ['TYT/LGS kelime sorularını çözme becerisi', 'Bağlamdan anlam çıkarmayı öğretir', '10 kelime/seans ile düzenli büyüme'],
     steps:    ['Kelime cümle içinde gösterilir', '4 şıktan doğru anlamı seç', 'XP kazan ve kelimeleri işaretle'],
-    stats:    [{ label: 'Kelime/Seans', value: '10 adet' }, { label: 'Format', value: '4 şıklı MCQ' }, { label: 'Bank', value: '40+ kelime' }],
+    stats:    [{ label: 'Kelime/Seans', value: '10 adet' }, { label: 'Format', value: '4 şıklı MCQ' }, { label: 'Bank', value: '450+ kelime' }],
   },
   'prediction-reading': {
     icon: '🔮', label: 'Tahmin Okuma', accent: '#C2410C',
@@ -196,11 +196,11 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
   },
   'cloze-test': {
     icon: '📋', label: 'Cloze Testi', accent: '#7E22CE',
-    subtitle: 'Her 7. kelime boş — bağlamdan tahminde bulun',
-    tip: 'LGS okuma sorusu formatıyla özdeş strateji.',
-    benefits: ['LGS okuma soru tipini birebir simüle eder', 'Bağlamdan kelime tahmini becerisi gelişir', 'Sınav puanı doğrudan artar'],
-    steps:    ['Paragraf her 7. kelime boşlukla verilir', '4 şıktan doğru kelimeyi seç', 'Tüm boşluklar tamamlanınca skor'],
-    stats:    [{ label: 'Boşluk', value: 'Her 7. kelime' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Hedef', value: 'LGS format' }],
+    subtitle: 'Anahtar kelimeler boş — bağlamdan anlam çıkar',
+    tip: 'Bağlamdan kelime çıkarımı sınav okuma sorularının temel stratejisidir.',
+    benefits: ['LGS/TYT okuma soru tiplerini simüle eder', 'Bağlamdan kelime tahmini becerisi gelişir', 'Semantik çıkarım gücünü artırır'],
+    steps:    ['İçerik kelimeleri (isim, fiil, sıfat) boşluk olur', '4 şıktan doğru kelimeyi seç', 'Tüm boşluklar tamamlanınca skor'],
+    stats:    [{ label: 'Boşluk', value: 'İçerik kelimeleri' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Hedef', value: 'LGS/TYT format' }],
   },
   'dual-column': {
     icon: '📰', label: 'Çift Sütun', accent: '#0369A1',
@@ -208,7 +208,7 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     tip: 'Gazete okuma tekniği: sütun ortasına odaklan.',
     benefits: ['Periferik görüş genişliğini artırır', 'Sütun ortasına odaklanma disiplini kurar', 'Okunan alan iki katına çıkar'],
     steps:    ['Metin 2 kolona bölünür', 'Gözlerini orta çizgiye sabitle', 'Her iki kolonu tek bakışla tara'],
-    stats:    [{ label: 'Kolon', value: '2 sütun' }, { label: 'Teknik', value: 'Merkez odak' }, { label: 'Etki', value: '+80% alan' }],
+    stats:    [{ label: 'Kolon', value: '2 sütun' }, { label: 'Teknik', value: 'Merkez odak' }, { label: 'Hedef', value: 'Span genişleme' }],
   },
   'soru-treni': {
     icon: '🚂', label: 'Soru Treni', accent: '#B91C1C',
