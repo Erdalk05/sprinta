@@ -427,8 +427,9 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
     const router = useRouter()
     const setPending = useVisualMechanicsStore((st) => st.setPendingExerciseId)
 
-    const [isOpen, setIsOpen]     = useState(false)
-    const [eyePage, setEyePage]   = useState<0 | 1>(0)   // 0=Görsel Mekanik, 1=Göz Antrenmanı
+    const [isOpen, setIsOpen]       = useState(false)
+    const [eyePage, setEyePage]     = useState<0 | 1>(0)   // 0=Görsel Mekanik, 1=Göz Antrenmanı
+    const [okumaPage, setOkumaPage] = useState<0 | 1>(0)   // 0=Hız Okuma, 1=Anlama & Analiz
     const translateY = useSharedValue(Y_CLOSE)
 
     // ── Navigation helpers ────────────────────────────────────────
@@ -504,7 +505,7 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
                 : 'Akademi'
     const sub   = type === 'egzersiz'
                   ? (eyePage === 0 ? '👁️ Görsel Mekanik — 17 egzersiz' : '⚡ Göz Antrenmanı — 23 egzersiz')
-                : type === 'okuma'    ? '21 modül'
+                : type === 'okuma'    ? (okumaPage === 0 ? '🚀 Hız Okuma — 9 modül' : '🧠 Anlama & Analiz — 12 modül')
                 : '9 kategori'
 
     // Build 2-col pairs for all types
@@ -668,49 +669,58 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
               </View>
             ))}
 
+            {/* ── Tab Pager — sadece okuma sheet'inde ── */}
             {type === 'okuma' && (
-              <>
-                {/* ── Hız Okuma bölüm başlığı ── */}
-                <View style={s.sectionHeader}>
-                  <View style={[s.sectionBar, { backgroundColor: '#0891B2' }]} />
-                  <Text style={s.sectionTitle}>🚀 Hız Okuma</Text>
-                  <Text style={s.sectionCount}>9 modül</Text>
-                </View>
-                {hizPairs.map((pair, rowIdx) => (
-                  <View key={`hiz-${rowIdx}`} style={s.gridRow}>
-                    {pair.map((item, colIdx) => (
-                      <OkumaCard
-                        key={item.route}
-                        item={item}
-                        index={rowIdx * 2 + colIdx}
-                        onPress={() => navigate(item.route)}
-                      />
-                    ))}
-                    {pair.length === 1 && <View style={{ flex: 1 }} />}
-                  </View>
-                ))}
-
-                {/* ── Anlama & Analiz bölüm başlığı ── */}
-                <View style={[s.sectionHeader, { marginTop: 8 }]}>
-                  <View style={[s.sectionBar, { backgroundColor: '#7C3AED' }]} />
-                  <Text style={s.sectionTitle}>🧠 Anlama & Analiz</Text>
-                  <Text style={s.sectionCount}>12 modül</Text>
-                </View>
-                {anlamaPairs.map((pair, rowIdx) => (
-                  <View key={`anlama-${rowIdx}`} style={s.gridRow}>
-                    {pair.map((item, colIdx) => (
-                      <OkumaCard
-                        key={item.route}
-                        item={item}
-                        index={rowIdx * 2 + colIdx}
-                        onPress={() => navigate(item.route)}
-                      />
-                    ))}
-                    {pair.length === 1 && <View style={{ flex: 1 }} />}
-                  </View>
-                ))}
-              </>
+              <View style={s.tabPager}>
+                <TouchableOpacity
+                  style={[s.pageTab, okumaPage === 0 && s.pageTabActive]}
+                  onPress={() => setOkumaPage(0)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.pageTabTxt, okumaPage === 0 && s.pageTabTxtActive]}>🚀 Hız Okuma</Text>
+                  <Text style={[s.pageTabSub, okumaPage === 0 && s.pageTabSubActive]}>9 modül</Text>
+                </TouchableOpacity>
+                <View style={s.pageTabDivider} />
+                <TouchableOpacity
+                  style={[s.pageTab, okumaPage === 1 && s.pageTabActiveAnlama]}
+                  onPress={() => setOkumaPage(1)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.pageTabTxt, okumaPage === 1 && { color: '#6D28D9' }]}>🧠 Anlama & Analiz</Text>
+                  <Text style={[s.pageTabSub, okumaPage === 1 && { color: '#7C3AED' }]}>12 modül</Text>
+                </TouchableOpacity>
+              </View>
             )}
+
+            {/* ── Hız Okuma tab ── */}
+            {type === 'okuma' && okumaPage === 0 && hizPairs.map((pair, rowIdx) => (
+              <View key={`hiz-${rowIdx}`} style={s.gridRow}>
+                {pair.map((item, colIdx) => (
+                  <OkumaCard
+                    key={item.route}
+                    item={item}
+                    index={rowIdx * 2 + colIdx}
+                    onPress={() => navigate(item.route)}
+                  />
+                ))}
+                {pair.length === 1 && <View style={{ flex: 1 }} />}
+              </View>
+            ))}
+
+            {/* ── Anlama & Analiz tab ── */}
+            {type === 'okuma' && okumaPage === 1 && anlamaPairs.map((pair, rowIdx) => (
+              <View key={`anlama-${rowIdx}`} style={s.gridRow}>
+                {pair.map((item, colIdx) => (
+                  <OkumaCard
+                    key={item.route}
+                    item={item}
+                    index={rowIdx * 2 + colIdx}
+                    onPress={() => navigate(item.route)}
+                  />
+                ))}
+                {pair.length === 1 && <View style={{ flex: 1 }} />}
+              </View>
+            ))}
 
             {type === 'akademi' && akPairs.map((pair, rowIdx) => (
               <View key={rowIdx} style={s.gridRow}>
@@ -827,31 +837,6 @@ function ts(t: AppTheme) {
     },
     dailySub:   { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
     dailyArrow: { fontSize: 20, color: '#40C8F0', fontWeight: '900' },
-
-    // Section header (Hız Okuma / Anlama & Analiz)
-    sectionHeader: {
-      flexDirection:  'row',
-      alignItems:     'center',
-      gap:            8,
-      marginBottom:   10,
-      marginTop:      4,
-    },
-    sectionBar: {
-      width:        3,
-      height:       18,
-      borderRadius: 2,
-    },
-    sectionTitle: {
-      fontSize:   14,
-      fontWeight: '800',
-      color:      t.colors.text,
-      flex:       1,
-    },
-    sectionCount: {
-      fontSize:   11,
-      fontWeight: '600',
-      color:      t.colors.textHint,
-    },
 
     // 2-column grid row
     gridRow: {
@@ -970,6 +955,14 @@ function ts(t: AppTheme) {
     pageTabActiveEye: {
       backgroundColor: '#FFFFFF',
       shadowColor:     '#1877F2',
+      shadowOffset:    { width: 0, height: 2 },
+      shadowOpacity:   0.12,
+      shadowRadius:    6,
+      elevation:       3,
+    },
+    pageTabActiveAnlama: {
+      backgroundColor: '#FFFFFF',
+      shadowColor:     '#7C3AED',
       shadowOffset:    { width: 0, height: 2 },
       shadowOpacity:   0.12,
       shadowRadius:    6,
