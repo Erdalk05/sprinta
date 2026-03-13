@@ -42,16 +42,16 @@ const QUESTIONS: Item[] = [
     explanation: '"yarın" sözcüğü yanlış yazılmıştır.',
   },
   {
-    question: 'Hangi cümle özne-yüklem uyumsuzluğu içermektedir?',
-    opts: ['Çocuklar uyuyor.', 'Ayşe koşuyor.', 'Öğrenciler derse geliyor.', 'Kuşlar uçuyor.'],
-    correct: 0, error: -1,
-    explanation: 'Tüm cümleler doğrudur. (Zorluk sorusu)',
+    question: 'Hangi cümlede özne-yüklem uyumsuzluğu vardır?',
+    opts: ['Çocuklar parkta oynadı.', 'Öğrenciler derse geldiler.', 'Siz bu soruyu çözdüm.', 'Biz birlikte çalıştık.'],
+    correct: 0, error: 2,
+    explanation: '"Siz... çözdüm" uyumsuz. "Siz" 2. çoğul şahıs, yüklem "çözdünüz" olmalıdır.',
   },
   {
     question: 'Hangi cümlede bağlaç yanlış kullanılmıştır?',
-    opts: ['Ali hem akıllı hem de çalışkan.', 'O kitap okudu ya da film izledi.', 'Yağmur yağdı fakat şemsiye açmadı.', 'Hem yorgun hem de mutlu.'],
-    correct: 3, error: 1,
-    explanation: '"ya da" bağlacı seçenek bağlacıdır; burada "veya" da kullanılabilir ancak "ya da" doğru.',
+    opts: ['Ali hem akıllı hem de çalışkan.', 'Yağmur yağdı fakat şemsiye açmadı.', 'Çünkü yoruldu, uyudu.', 'Ne o ne bu doğru.'],
+    correct: 0, error: 2,
+    explanation: '"Çünkü" sebep bağlacıdır, cümleye başlanmaz. Doğrusu: "Yorulduğu için uyudu."',
   },
   {
     question: 'Aşağıdaki cümlelerden hangisi yanlış noktalama içermektedir?',
