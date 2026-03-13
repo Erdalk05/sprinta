@@ -24,21 +24,62 @@ interface FlashCard {
 }
 
 const SAMPLE_CARDS: FlashCard[] = [
-  { id: '1', front: 'Fotosentez nedir?', back: 'Bitkilerin güneş enerjisi kullanarak CO₂ ve H₂O\'dan organik madde ve O₂ üretmesi sürecidir.', subject: 'Fen', status: 'unseen' },
-  { id: '2', front: 'Türkiye\'nin başkenti hangi şehirdir?', back: 'Ankara (1923\'ten beri). İstanbul büyük şehirdir ama başkent değildir.', subject: 'Sosyal', status: 'unseen' },
-  { id: '3', front: 'Osmanlı devleti kaç yılında kurulmuştur?', back: '1299 yılında Söğüt\'te Osman Bey tarafından kurulmuştur.', subject: 'Tarih', status: 'unseen' },
-  { id: '4', front: 'DNA\'nın tam açılımı nedir?', back: 'Deoksiribonükleik Asit (Deoxyribonucleic Acid). Genetik bilgiyi taşıyan moleküldür.', subject: 'Fen', status: 'unseen' },
-  { id: '5', front: 'Türkiye kaç km² yüzölçümüne sahiptir?', back: 'Yaklaşık 783.562 km². Avrupa ve Asya kıtalarında yer alır.', subject: 'Coğrafya', status: 'unseen' },
-  { id: '6', front: 'Sakkad ne demektir?', back: 'Gözün bir noktadan diğerine hızlı atlama hareketi. Okuma hızının temel bileşenidir.', subject: 'Fen', status: 'unseen' },
-  { id: '7', front: 'Işığın en hızlı ilerlediği ortam hangisidir?', back: 'Işık en hızlı vakumda (boşlukta) ilerler: yaklaşık 300.000 km/s.', subject: 'Fizik', status: 'unseen' },
-  { id: '8', front: 'Cumhuriyet ne zaman ilan edildi?', back: '29 Ekim 1923\'te Mustafa Kemal Atatürk önderliğinde ilan edildi.', subject: 'Tarih', status: 'unseen' },
-  { id: '9', front: 'Ekosistem nedir?', back: 'Canlılar ile cansız çevrelerinin birlikte oluşturduğu sistemdir. Örnek: orman, göl, çöl.', subject: 'Fen', status: 'unseen' },
-  { id: '10', front: 'Karadeniz bölgesinin en belirgin iklim özelliği nedir?', back: 'Yüksek yağış ve ılıman iklim. Türkiye\'nin en fazla yağış alan bölgesidir.', subject: 'Coğrafya', status: 'unseen' },
-  { id: '11', front: 'Newton\'un 1. hareket yasası nedir?', back: 'Eylemsizlik yasası: Bir kuvvet uygulanmadıkça cisim duruyorsa durmaya, hareket ediyorsa hareket etmeye devam eder.', subject: 'Fizik', status: 'unseen' },
-  { id: '12', front: '"Mahkum" sözcüğünün anlamı nedir?', back: 'Suçlu bulunan ve ceza verilen kişi. Aynı zamanda "mahkum olmak" = mecbur kalmak anlamında kullanılır.', subject: 'Türkçe', status: 'unseen' },
+  // ── Fen Bilimleri ─────────────────────────────────────────────────────────
+  { id: '1',  front: 'Fotosentez nedir?', back: 'Bitkilerin güneş enerjisi kullanarak CO₂ ve H₂O\'dan organik madde ve O₂ üretmesi sürecidir.', subject: 'Fen', status: 'unseen' },
+  { id: '4',  front: 'DNA\'nın tam açılımı nedir?', back: 'Deoksiribonükleik Asit (Deoxyribonucleic Acid). Genetik bilgiyi taşıyan moleküldür.', subject: 'Fen', status: 'unseen' },
+  { id: '9',  front: 'Ekosistem nedir?', back: 'Canlılar ile cansız çevrelerinin birlikte oluşturduğu sistemdir. Örnek: orman, göl, çöl.', subject: 'Fen', status: 'unseen' },
   { id: '13', front: 'Klorofil hangi organelde bulunur?', back: 'Kloroplastta bulunur. Klorofil, ışığı soğuran ve fotosentezi sağlayan pigmenttir.', subject: 'Fen', status: 'unseen' },
+  { id: 'f1', front: 'Hücre zarının görevi nedir?', back: 'Hücreye girip çıkan maddeleri kontrol eder (yarı geçirgen). Hücreyi dış ortamdan ayırır.', subject: 'Fen', status: 'unseen' },
+  { id: 'f2', front: 'Solunum olayında enerji nereden açığa çıkar?', back: 'Besin (glikoz) moleküllerindeki kimyasal bağların kırılmasıyla ATP enerjisi açığa çıkar.', subject: 'Fen', status: 'unseen' },
+  { id: 'f3', front: 'Besin zincirinde üretici kim/ne dir?', back: 'Fotosentez yaparak kendi besinini üretebilen bitki ve algler. Zincirin ilk halkasıdır.', subject: 'Fen', status: 'unseen' },
+  { id: 'f4', front: 'Atom altı parçacıklar hangileridir?', back: 'Proton (+), nötron (yüksüz) ve elektron (-). Proton ve nötron çekirdekte, elektron yörüngede bulunur.', subject: 'Fen', status: 'unseen' },
+  { id: 'f5', front: 'pH değeri 7\'nin altı ne anlama gelir?', back: 'Asidik ortam. pH 7 nötr, pH 7\'nin üstü bazik (alkali) ortamdır.', subject: 'Fen', status: 'unseen' },
+  { id: 'f6', front: 'Maddenin hâl değişimlerini sırala.', back: 'Katı → Sıvı (erime) → Gaz (buharlaşma). Geri dönüşler: yoğuşma ve donma. Doğrudan: süblimleşme.', subject: 'Fen', status: 'unseen' },
+
+  // ── Fizik ─────────────────────────────────────────────────────────────────
+  { id: '7',  front: 'Işığın en hızlı ilerlediği ortam hangisidir?', back: 'Işık en hızlı vakumda (boşlukta) ilerler: yaklaşık 300.000 km/s.', subject: 'Fizik', status: 'unseen' },
+  { id: '11', front: 'Newton\'un 1. hareket yasası nedir?', back: 'Eylemsizlik yasası: Bir kuvvet uygulanmadıkça cisim duruyorsa durmaya, hareket ediyorsa hareket etmeye devam eder.', subject: 'Fizik', status: 'unseen' },
+  { id: 'p1', front: 'Elektrik direnci birimi nedir?', back: 'Ohm (Ω). Ohm Yasası: R = V/I. Direnç arttıkça akım azalır.', subject: 'Fizik', status: 'unseen' },
+  { id: 'p2', front: 'Kuvvet, kütle ve ivme arasındaki ilişki nedir?', back: 'Newton\'un 2. yasası: F = m × a. Kuvvet artarsa ivme artar; kütle artarsa ivme azalır.', subject: 'Fizik', status: 'unseen' },
+  { id: 'p3', front: 'Mıknatısın kutupları hakkında ne söylenebilir?', back: 'Zıt kutuplar çekerken (K-G), aynı kutuplar iter (K-K, G-G). Mıknatıs ikiye bölününce iki yeni mıknatıs oluşur.', subject: 'Fizik', status: 'unseen' },
+
+  // ── Tarih / Sosyal Bilgiler ───────────────────────────────────────────────
+  { id: '3',  front: 'Osmanlı devleti kaç yılında kurulmuştur?', back: '1299 yılında Söğüt\'te Osman Bey tarafından kurulmuştur.', subject: 'Tarih', status: 'unseen' },
+  { id: '8',  front: 'Cumhuriyet ne zaman ilan edildi?', back: '29 Ekim 1923\'te Mustafa Kemal Atatürk önderliğinde ilan edildi.', subject: 'Tarih', status: 'unseen' },
   { id: '14', front: 'İpek Yolu\'nun önemi nedir?', back: 'Çin\'den Avrupa\'ya uzanan ticaret yolu. İpek, baharat, fikirler ve kültürler bu yolda taşındı.', subject: 'Tarih', status: 'unseen' },
+  { id: 't1', front: 'Kurtuluş Savaşı ne zaman başlamıştır?', back: '19 Mayıs 1919\'da Mustafa Kemal\'in Samsun\'a çıkışıyla fiilen başlamış, Lozan Antlaşması (1923) ile sonuçlanmıştır.', subject: 'Tarih', status: 'unseen' },
+  { id: 't2', front: 'Fransız İhtilali\'nin temel ilkeleri nelerdir?', back: 'Özgürlük (liberté), Eşitlik (égalité), Kardeşlik (fraternité). Milliyetçilik akımını tüm dünyaya yaymasıyla önem kazandı.', subject: 'Tarih', status: 'unseen' },
+  { id: 't3', front: 'İnsan Hakları Evrensel Beyannamesi kaç yılında ilan edildi?', back: '10 Aralık 1948\'de BM tarafından ilan edildi. Temel hakları tüm insanlar için tanır.', subject: 'Sosyal', status: 'unseen' },
+  { id: 't4', front: 'Demokrasi kavramının anlamı nedir?', back: 'Halkın kendi kendini yönetmesi esasına dayanan yönetim biçimi. "Demos" (halk) + "kratos" (yönetim) sözcüklerinden gelir.', subject: 'Sosyal', status: 'unseen' },
+
+  // ── Coğrafya ─────────────────────────────────────────────────────────────
+  { id: '5',  front: 'Türkiye kaç km² yüzölçümüne sahiptir?', back: 'Yaklaşık 783.562 km². Avrupa ve Asya kıtalarında yer alır.', subject: 'Coğrafya', status: 'unseen' },
+  { id: '10', front: 'Karadeniz bölgesinin en belirgin iklim özelliği nedir?', back: 'Yüksek yağış ve ılıman iklim. Türkiye\'nin en fazla yağış alan bölgesidir.', subject: 'Coğrafya', status: 'unseen' },
+  { id: 'c1', front: 'Akdeniz ikliminin özellikleri nelerdir?', back: 'Yazlar sıcak ve kurak, kışlar ılık ve yağışlı. Zeytin, turunçgil gibi bitkiler yetişir.', subject: 'Coğrafya', status: 'unseen' },
+  { id: 'c2', front: 'Yer kabuğunu oluşturan kütleler nasıl adlandırılır?', back: 'Levhalar (tektonik plakalar). Levhalar birbirine çarpınca depremler ve dağlar oluşur.', subject: 'Coğrafya', status: 'unseen' },
+  { id: 'c3', front: 'Türkiye\'nin en uzun nehri hangisidir?', back: 'Kızılırmak (yaklaşık 1.355 km). Türkiye\'de doğup Türkiye\'de denize dökülen en uzun nehirdir.', subject: 'Coğrafya', status: 'unseen' },
+
+  // ── Türkçe / Dil Bilgisi ─────────────────────────────────────────────────
+  { id: '2',  front: 'Türkiye\'nin başkenti hangi şehirdir?', back: 'Ankara (1923\'ten beri). İstanbul büyük şehirdir ama başkent değildir.', subject: 'Sosyal', status: 'unseen' },
+  { id: '12', front: '"Mahkum" sözcüğünün anlamı nedir?', back: 'Suçlu bulunan ve ceza verilen kişi. Aynı zamanda "mahkum olmak" = mecbur kalmak anlamında kullanılır.', subject: 'Türkçe', status: 'unseen' },
   { id: '15', front: 'Türkçe\'de iyelik eki nedir?', back: 'İsmin kime/neye ait olduğunu gösteren ek. Örnek: kitabım, kitabın, kitabı, kitabımız...', subject: 'Türkçe', status: 'unseen' },
+  { id: 'tr1', front: 'Özne-yüklem uyumsuzluğuna örnek ver.', back: '"Ben gidiyoruz" → Hatalı. "Ben" tekil, "gidiyoruz" çoğul. Doğrusu: "Ben gidiyorum."', subject: 'Türkçe', status: 'unseen' },
+  { id: 'tr2', front: '"İmge" ile "hayal" arasındaki anlam farkı nedir?', back: 'İkisi de zihinde canlandırılan şeyleri ifade eder; ancak "imge" daha çok edebi/sanatsal bağlamda kullanılır.', subject: 'Türkçe', status: 'unseen' },
+  { id: 'tr3', front: 'Teşbih (benzetme) nedir? Unsurları nelerdir?', back: 'İki varlık arasında benzerlik kurmak. Unsurlar: benzeyen, kendine benzetilen, benzetme yönü, benzetme edatı.', subject: 'Türkçe', status: 'unseen' },
+  { id: 'tr4', front: '"Somutlaştırma" sanatı nedir?', back: 'Soyut bir kavramı somut nitelendirmelerle anlatmak. Örnek: "Sevinci yüreğimde bir kıvılcım gibi hissettim."', subject: 'Türkçe', status: 'unseen' },
+  { id: 'tr5', front: 'Cümlenin öğeleri hangileridir?', back: 'Temel öğeler: özne + yüklem. Yardımcı öğeler: nesne (belirtili/belirtisiz), yer tamlayıcısı, zarf tümleci.', subject: 'Türkçe', status: 'unseen' },
+
+  // ── Matematik ────────────────────────────────────────────────────────────
+  { id: 'm1', front: 'EBOB ne demektir?', back: 'En Büyük Ortak Bölen. İki sayının ortak bölenlerinin en büyüğüdür. Örnek: EBOB(12,18) = 6.', subject: 'Matematik', status: 'unseen' },
+  { id: 'm2', front: 'Üçgende açılar toplamı kaç derecedir?', back: '180°. Dik üçgende dik açı 90°, diğer iki açı toplamı 90° olur.', subject: 'Matematik', status: 'unseen' },
+  { id: 'm3', front: 'Yüzde hesabında formül nedir?', back: 'Oran × Taban = Yüzde değeri. Örnek: 40\'ın %25\'i = 0.25 × 40 = 10.', subject: 'Matematik', status: 'unseen' },
+  { id: 'm4', front: 'Olasılık formülü nedir?', back: 'P(A) = A\'nın olumlu sonuç sayısı / Toplam eşit olası sonuç sayısı. Değeri 0 ile 1 arasındadır.', subject: 'Matematik', status: 'unseen' },
+  { id: 'm5', front: 'Daire alanı ve çevre formülleri nelerdir?', back: 'Alan = π × r². Çevre = 2 × π × r. "r" yarıçap, "π ≈ 3.14" olarak alınır.', subject: 'Matematik', status: 'unseen' },
+
+  // ── İngilizce ────────────────────────────────────────────────────────────
+  { id: 'e1', front: 'Simple Past Tense ne zaman kullanılır?', back: 'Geçmişte tamamlanmış eylemler için. Örnek: "She studied yesterday." Düzenli fiillere -ed eklenir.', subject: 'İngilizce', status: 'unseen' },
+  { id: 'e2', front: '"Although" ile "However" farkı nedir?', back: '"Although" zıt anlamlı bir cümleyi birleştirir (bağlaç). "However" ayrı bir cümle başlatır (bağlantı zarfı).', subject: 'İngilizce', status: 'unseen' },
+  { id: 'e3', front: '"Ambiguous" kelimesinin anlamı nedir?', back: 'Belirsiz, iki anlama gelebilen. "The sentence is ambiguous." = Cümle muğlak/belirsiz.', subject: 'İngilizce', status: 'unseen' },
 ]
 
 type Phase = 'cards' | 'result'
