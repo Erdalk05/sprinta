@@ -81,6 +81,8 @@ interface Props {
   onBack:            () => void
   /** Kullanıcının kayıtlı sınav türü — Kütüphane o sınava otomatik açılır */
   initialExamKey?:   string
+  /** Hangi sekme açık başlasın */
+  initialTab?:       Tab
 }
 
 type Tab = 'library' | 'paste' | 'dosya' | 'recent'
@@ -107,8 +109,9 @@ export default function ContentLibraryScreen({
   onContentSelected,
   onBack,
   initialExamKey,
+  initialTab,
 }: Props) {
-  const [tab,             setTab]             = useState<Tab>('library')
+  const [tab,             setTab]             = useState<Tab>(initialTab ?? 'library')
   const [level,           setLevel]           = useState<LibraryLevel>('exams')
   const [selectedExam,    setSelectedExam]    = useState<ExamCategory | null>(null)
   const [selectedLesson,  setSelectedLesson]  = useState<LessonFolder | null>(null)

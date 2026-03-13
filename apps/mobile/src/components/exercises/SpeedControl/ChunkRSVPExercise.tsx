@@ -96,6 +96,10 @@ function lighten(hex: string): string {
 const FONT_SIZES = [12, 14, 16, 18, 20, 22, 24] as const
 type FontSizeVal = typeof FONT_SIZES[number]
 
+// ORP renk seçenekleri (bilimsel dikkat renkleri)
+const ORP_COLORS = ['#FF3B30', '#FF9500', '#34C759', '#007AFF', '#AF52DE'] as const
+type OrpColor = typeof ORP_COLORS[number]
+
 export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, initialSettings, onRepeat, accentColor = '#0891B2' }: Props) {
   const t            = useAppTheme()
   const readingTheme = useThemeStore((s) => s.readingTheme)
@@ -139,7 +143,8 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
   const [showQuiz,   setShowQuiz]   = useState(false)
   const [questions,  setQuestions]  = useState<TextQuestion[]>([])
 
-  const [fontSize, setFontSize] = useState<FontSizeVal>(14)
+  const [fontSize,  setFontSize]  = useState<FontSizeVal>(14)
+  const [orpColor,  setOrpColor]  = useState<OrpColor>('#FF3B30')
 
   const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -487,26 +492,22 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
           >
             <Text style={s.closeBtnTxt}>✕</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={togglePause}>
-            <Text style={s.readingBack}>Chunk RSVP</Text>
-          </TouchableOpacity>
-          <View style={s.modeRow}>
-            <TouchableOpacity
-              style={[s.modePill, settings.readingMode === 'sprint' && s.modePillActive]}
-              onPress={() => setSettings((p) => ({ ...p, readingMode: 'sprint' }))}
-            >
-              <Text style={[s.modePillTxt, settings.readingMode === 'sprint' && s.modePillTxtActive]}>Sprint</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.modePill, settings.readingMode === 'cruise' && s.modePillActive]}
-              onPress={() => setSettings((p) => ({ ...p, readingMode: 'cruise' }))}
-            >
-              <Text style={[s.modePillTxt, settings.readingMode === 'cruise' && s.modePillTxtActive]}>Cruise</Text>
-            </TouchableOpacity>
+          <View style={s.headerCenter}>
+            <Text style={s.readingBack}>Chunk Okuma</Text>
+            <View style={s.headerWPMBadge}>
+              <Text style={s.headerWPMTxt}>{currentWPM} WPM</Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={() => setShowSettings(true)}>
-            <Text style={s.settingsIcon}>⚙️</Text>
-          </TouchableOpacity>
+          <View style={s.orpColorRow}>
+            {ORP_COLORS.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[s.orpDot, { backgroundColor: c }, orpColor === c && s.orpDotActive]}
+                onPress={() => setOrpColor(c)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              />
+            ))}
+          </View>
         </View>
 
         {/* Progress Bar */}
@@ -521,6 +522,13 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
 
         {/* Chunk Display */}
         <View style={s.chunkStage}>
+          {/* ORP Odak Noktası — gözün sabitlenmesi gereken yer */}
+          <View style={s.orpFocalRow}>
+            <View style={[s.orpFocalLine, { backgroundColor: orpColor + '50' }]} />
+            <View style={[s.orpFocalDot, { backgroundColor: orpColor }]} />
+            <View style={[s.orpFocalLine, { backgroundColor: orpColor + '50' }]} />
+          </View>
+
           <Animated.View style={[s.chunkBox, chunkAnim]}>
             {currentChunk && settings.bionicReading ? (
               <View style={s.chunkWordsRow}>
@@ -541,6 +549,17 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
               </Text>
             )}
           </Animated.View>
+
+          {/* Kelime Artış Çizgisi */}
+          <View style={s.wordGrowthBar}>
+            <View style={[s.wordGrowthFill, {
+              width: `${progress * 100}%` as `${number}%`,
+              backgroundColor: orpColor,
+            }]} />
+          </View>
+          <Text style={[s.wordGrowthLabel, { color: orpColor }]}>
+            {wordsRead}/{totalWords} kelime
+          </Text>
         </View>
 
         {/* ── Yeni Alt Bölüm (Hız Kontrolü stili) ───────────────── */}
@@ -1081,15 +1100,32 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
       paddingHorizontal: 16, paddingVertical: 10,
       backgroundColor: navyBg,
     },
-    readingBack:  { fontSize: 14, color: 'rgba(255,255,255,0.85)' },
-    modeRow:      { flexDirection: 'row', gap: 4 },
-    modePill:     {
-      borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
-      backgroundColor: 'rgba(255,255,255,0.16)',
+    readingBack:  { fontSize: 14, fontWeight: '700', color: '#fff' },
+    // Header center: title + WPM badge
+    headerCenter:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerWPMBadge:  {
+      backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 999,
+      paddingHorizontal: 9, paddingVertical: 3,
     },
-    modePillActive: { backgroundColor: 'rgba(255,255,255,0.30)' },
-    modePillTxt:   { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)' },
-    modePillTxtActive: { color: '#fff', fontWeight: '800' },
+    headerWPMTxt:    { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '700' },
+    // ORP renk seçici
+    orpColorRow:  { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    orpDot:       { width: 15, height: 15, borderRadius: 8 },
+    orpDotActive: {
+      borderWidth: 2.5, borderColor: '#fff',
+      shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 4, elevation: 4,
+    },
+    // ORP odak noktası
+    orpFocalRow:  { flexDirection: 'row', alignItems: 'center', width: '55%', marginBottom: 14 },
+    orpFocalLine: { flex: 1, height: 1.5, borderRadius: 1 },
+    orpFocalDot:  { width: 10, height: 10, borderRadius: 5, marginHorizontal: 5 },
+    // Kelime artış çizgisi
+    wordGrowthBar:   {
+      width: '75%', height: 3, backgroundColor: 'rgba(0,0,0,0.08)',
+      borderRadius: 2, marginTop: 18, overflow: 'hidden',
+    },
+    wordGrowthFill:  { height: '100%', borderRadius: 2 },
+    wordGrowthLabel: { fontSize: 10, fontWeight: '600', marginTop: 5, opacity: 0.65 },
 
     progressPanel: {
       backgroundColor: lightBg,
