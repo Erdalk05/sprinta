@@ -15,18 +15,7 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native'
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withSequence,
-  withDelay,
-  Easing,
-} from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { type ImportedContent } from '../exercises/shared/ContentImportModal'
 import { supabase } from '../../lib/supabase'
@@ -37,7 +26,6 @@ import type { Badge } from '@sprinta/api'
 import type { SpeedTier, ComprehensionTier } from '../../types/reading'
 
 const badgeSvc = createBadgeService(supabase)
-const { width: SW } = Dimensions.get('window')
 
 // Hızlı Başlat için örnek içerik (egzersizler boş metni kendi varsayılanıyla doldurur)
 const QUICK_START_CONTENT: ImportedContent = {
@@ -222,44 +210,20 @@ function QuestionPhase({
 
 // ─── Tier Helpers ────────────────────────────────────────────────────
 
-function getSpeedTier(wpm: number): SpeedTier {
-  if (wpm < 150) return 'Yeni Başlayan'
-  if (wpm < 200) return 'Geliştiriyor'
-  if (wpm < 280) return 'Orta Seviye'
-  if (wpm < 350) return 'Hızlı Okuyucu'
-  return 'Uzman'
+function getSpeedTierInfo(wpm: number) {
+  if (wpm < 150) return { label: 'Yeni Başlayan' as SpeedTier,  icon: '🌱', color: '#6B7280', desc: '< 150 WPM — Temelleri öğreniyorsun' }
+  if (wpm < 200) return { label: 'Geliştiriyor'  as SpeedTier,  icon: '📈', color: '#3B82F6', desc: '150-200 WPM — İyi bir başlangıç' }
+  if (wpm < 280) return { label: 'Orta Seviye'   as SpeedTier,  icon: '⚡', color: '#10B981', desc: '200-280 WPM — Ortalamanın üzerinde' }
+  if (wpm < 350) return { label: 'Hızlı Okuyucu' as SpeedTier,  icon: '🚀', color: '#F59E0B', desc: '280-350 WPM — İleri seviye' }
+  return           { label: 'Uzman'            as SpeedTier,    icon: '🏆', color: '#8B5CF6', desc: '350+ WPM — Elit okuyucu' }
 }
 
-function getComprehensionTier(score: number): ComprehensionTier {
-  if (score < 40) return 'Geliştirilmeli'
-  if (score < 60) return 'Orta'
-  if (score < 75) return 'İyi'
-  if (score < 90) return 'Çok İyi'
-  return 'Mükemmel'
-}
-
-function getRecommendation(speed: SpeedTier, comprehension: ComprehensionTier): string {
-  if (speed === 'Uzman' && comprehension === 'Mükemmel') return 'Zirve performansı! Daha zorlu metinler denemeyi unutma.'
-  if (speed === 'Uzman' || speed === 'Hızlı Okuyucu') return 'Harika hız! Anlama oranını artırmaya odaklan.'
-  if (comprehension === 'Mükemmel' || comprehension === 'Çok İyi') return 'Mükemmel anlama! Şimdi okuma hızını artırmaya çalış.'
-  if (speed === 'Yeni Başlayan') return 'Her gün 10 dk pratik yap — hız kendiliğinden gelecek.'
-  return 'Dengeli gelişim için hem hız hem de anlama becerini çalış.'
-}
-
-const SPEED_TIER_COLOR: Record<SpeedTier, string> = {
-  'Yeni Başlayan':  '#6B7280',
-  'Geliştiriyor':   '#3B82F6',
-  'Orta Seviye':    '#10B981',
-  'Hızlı Okuyucu':  '#F59E0B',
-  'Uzman':          '#8B5CF6',
-}
-
-const COMPREHENSION_TIER_COLOR: Record<ComprehensionTier, string> = {
-  'Geliştirilmeli': '#EF4444',
-  'Orta':           '#F59E0B',
-  'İyi':            '#3B82F6',
-  'Çok İyi':        '#10B981',
-  'Mükemmel':       '#8B5CF6',
+function getComprehensionTierInfo(score: number) {
+  if (score < 40) return { label: 'Geliştirilmeli' as ComprehensionTier, icon: '📚', color: '#EF4444', desc: 'Anlama odakla çalış' }
+  if (score < 60) return { label: 'Orta'           as ComprehensionTier, icon: '📖', color: '#F59E0B', desc: 'Daha fazla pratik yap' }
+  if (score < 75) return { label: 'İyi'            as ComprehensionTier, icon: '💡', color: '#10B981', desc: 'Dengeli okuma profili' }
+  if (score < 90) return { label: 'Çok İyi'        as ComprehensionTier, icon: '🌟', color: '#3B82F6', desc: 'Yüksek anlama kapasitesi' }
+  return           { label: 'Mükemmel'          as ComprehensionTier,    icon: '💎', color: '#8B5CF6', desc: 'Elit kavrama seviyesi' }
 }
 
 // ─── ResultPhase ─────────────────────────────────────────────────────
@@ -275,6 +239,7 @@ interface ResultPhaseProps {
   badges:          Badge[]
   onRetry:         () => void
   onHome:          () => void
+  onExit:          () => void
 }
 
 function ResultPhase({
@@ -287,40 +252,19 @@ function ResultPhase({
   badges,
   onRetry,
   onHome,
+  onExit,
 }: ResultPhaseProps) {
   const comprehensionPct = totalQuestions > 0
     ? Math.round((correctAnswers / totalQuestions) * 100)
     : 0
-  const speedTier        = getSpeedTier(metrics.avgWPM)
-  const comprehensionTier= getComprehensionTier(comprehensionPct)
-  const recommendation   = getRecommendation(speedTier, comprehensionTier)
-  const speedColor       = SPEED_TIER_COLOR[speedTier]
-  const comprehColor     = COMPREHENSION_TIER_COLOR[comprehensionTier]
-  const arpShared = useSharedValue(0)
-  const cardScale = useSharedValue(0.85)
-  const headerOpacity = useSharedValue(0)
+  const speedTier = getSpeedTierInfo(metrics.avgWPM)
+  const compTier  = getComprehensionTierInfo(comprehensionPct)
 
-  useEffect(() => {
-    headerOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    cardScale.value = withDelay(200, withSpring(1, { damping: 14, stiffness: 120 }))
-    arpShared.value = withDelay(
-      400,
-      withTiming(metrics.arpScore, { duration: 1500, easing: Easing.out(Easing.cubic) })
-    )
-  }, [])
-
-  const headerStyle = useAnimatedStyle(() => ({
-    opacity: headerOpacity.value,
-    transform: [{ translateY: (1 - headerOpacity.value) * -20 }],
-  }))
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: cardScale.value }],
-  }))
-
-  const arpStyle = useAnimatedStyle(() => ({
-    // drives text update via state
-  }))
+  const { student } = useAuthStore()
+  const [weeklyBest, setWeeklyBest] = useState<number | null>(null)
+  const [rank,       setRank]       = useState<number | null>(null)
+  const [streak,     setStreak]     = useState<number>(0)
+  const isNewRecord = weeklyBest !== null && metrics.arpScore >= weeklyBest
 
   const [displayArp, setDisplayArp] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -328,11 +272,9 @@ function ResultPhase({
   useEffect(() => {
     let start = 0
     const target = metrics.arpScore
-    const duration = 1500
     const steps = 60
     const increment = target / steps
-    const stepTime = duration / steps
-
+    const stepTime = 1500 / steps
     intervalRef.current = setInterval(() => {
       start += increment
       if (start >= target) {
@@ -342,132 +284,83 @@ function ResultPhase({
         setDisplayArp(Math.round(start))
       }
     }, stepTime)
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [metrics.arpScore])
 
-  const motivationalMessage = () => {
-    if (metrics.arpScore >= 300) return 'Mükemmel performans! Okuma ustalığına yaklaşıyorsun.'
-    if (metrics.arpScore >= 200) return 'Harika iş! Hızın ve kavraman gelişiyor.'
-    if (metrics.arpScore >= 100) return 'İyi gidiyorsun! Her seans seni güçlendiriyor.'
-    return 'Devam et! Düzenli pratik seni zirveye taşır.'
-  }
+  useEffect(() => {
+    if (!student?.id) return
+    const sid = student.id
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    ;(supabase as any)
+      .from('reading_mode_sessions').select('arp_score')
+      .eq('student_id', sid).gte('created_at', weekAgo)
+      .order('arp_score', { ascending: false }).limit(1).single()
+      .then(({ data }: any) => { if (data?.arp_score) setWeeklyBest(data.arp_score as number) })
+    ;(supabase as any)
+      .from('daily_stats').select('streak_days')
+      .eq('student_id', sid).order('date', { ascending: false }).limit(1).single()
+      .then(({ data }: any) => { if (data?.streak_days) setStreak(data.streak_days as number) })
+    ;(supabase as any)
+      .rpc('get_reading_rank', { p_arp: metrics.arpScore })
+      .then(({ data }: any) => { if (typeof data === 'number') setRank(data) })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <SafeAreaView style={rs.root}>
-      <ScrollView
-        style={rs.scroll}
-        contentContainerStyle={rs.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header gradient */}
-        <Animated.View style={[rs.headerWrap, headerStyle]}>
-          <LinearGradient
-            colors={[accentColor + 'CC', accentColor + '44']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={rs.headerGradient}
-          >
-            <LinearGradient
-              colors={[accentColor, accentColor + 'BB']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={rs.iconCircle}
-            >
-              <Text style={rs.iconText}>{moduleIcon}</Text>
-            </LinearGradient>
-            <Text style={rs.completedTitle}>Tamamlandı! 🎉</Text>
-            <Text style={rs.moduleNameLabel}>{moduleLabel}</Text>
-            <Text style={rs.motivational}>{motivationalMessage()}</Text>
-          </LinearGradient>
-        </Animated.View>
+      {/* X Kapat */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, alignItems: 'flex-end' }}>
+        <TouchableOpacity
+          onPress={onExit}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={rs.closeBtn}
+        >
+          <Text style={rs.closeBtnTxt}>✕</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* ARP Score Card */}
-        <Animated.View style={[rs.arpCardWrap, cardStyle]}>
-          <View style={[rs.arpCard, { backgroundColor: accentColor }]}>
-            <Text style={rs.arpLabel}>ARP SKORU</Text>
-            <Text style={rs.arpNumber}>{displayArp}</Text>
-            <Text style={rs.arpSubLabel}>/400</Text>
-          </View>
-        </Animated.View>
+      <ScrollView style={rs.scroll} contentContainerStyle={rs.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={rs.resultEmoji}>{moduleIcon}</Text>
+        <Text style={rs.resultTitle}>Seans Tamamlandı!</Text>
+        <Text style={rs.resultSub}>{moduleLabel}</Text>
 
-        {/* Stats grid */}
-        <View style={rs.statsGrid}>
-          {/* Row 1 */}
-          <View style={rs.statsRow}>
-            <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-              <Text style={rs.statEmoji}>⚡</Text>
-              <Text style={[rs.statValue, { color: accentColor }]}>{Math.round(metrics.avgWPM)}</Text>
-              <Text style={rs.statLabel}>WPM</Text>
-            </View>
-            <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-              <Text style={rs.statEmoji}>📖</Text>
-              <Text style={[rs.statValue, { color: accentColor }]}>{metrics.totalWords}</Text>
-              <Text style={rs.statLabel}>Kelimeler</Text>
+        {/* ARP Kartı — speedTier inline */}
+        <View style={[rs.arpCard, { backgroundColor: accentColor }]}>
+          <View style={rs.arpHeaderRow}>
+            <Text style={rs.arpLabel}>ARP Skoru</Text>
+            <View style={rs.arpTierBadge}>
+              <Text style={rs.arpTierTxt}>{speedTier.icon} {speedTier.label}</Text>
             </View>
           </View>
-
-          {/* Row 2 */}
-          <View style={rs.statsRow}>
-            <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-              <Text style={rs.statEmoji}>⏱</Text>
-              <Text style={[rs.statValue, { color: accentColor }]}>{formatDuration(metrics.durationSeconds)}</Text>
-              <Text style={rs.statLabel}>Süre</Text>
+          <Text style={rs.arpNumber}>{displayArp}</Text>
+          {isNewRecord && (
+            <View style={rs.newRecordBadge}>
+              <Text style={rs.newRecordTxt}>🆕 Haftalık Rekor!</Text>
             </View>
-            <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-              <Text style={rs.statEmoji}>✅</Text>
-              <Text style={[rs.statValue, { color: accentColor }]}>%{Math.round(metrics.completionRatio * 100)}</Text>
-              <Text style={rs.statLabel}>Tamamlama</Text>
-            </View>
-          </View>
-
-          {/* Row 3 */}
-          <View style={rs.statsRow}>
-            {totalQuestions > 0 ? (
-              <>
-                <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-                  <Text style={rs.statEmoji}>🧠</Text>
-                  <Text style={[rs.statValue, { color: accentColor }]}>{correctAnswers}/{totalQuestions}</Text>
-                  <Text style={rs.statLabel}>Soru</Text>
-                </View>
-                <View style={[rs.statCard, { borderColor: accentColor + '30' }]}>
-                  <Text style={rs.statEmoji}>⭐</Text>
-                  <Text style={[rs.statValue, { color: accentColor }]}>+{metrics.xpEarned}</Text>
-                  <Text style={rs.statLabel}>XP</Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={[rs.statCard, rs.statCardWide, { borderColor: accentColor + '30' }]}>
-                  <Text style={rs.statEmoji}>⭐</Text>
-                  <Text style={[rs.statValue, { color: accentColor }]}>+{metrics.xpEarned}</Text>
-                  <Text style={rs.statLabel}>XP Kazandın</Text>
-                </View>
-                <View style={rs.statCardEmpty} />
-              </>
-            )}
-          </View>
+          )}
         </View>
 
-        {/* Badges */}
+        {/* 4 Metrik */}
+        <View style={rs.metricsGrid}>
+          {[
+            { label: 'Ort. WPM',  value: String(Math.round(metrics.avgWPM)) },
+            { label: 'Kelimeler', value: metrics.totalWords.toLocaleString('tr') },
+            { label: 'Süre',      value: formatDuration(metrics.durationSeconds) },
+            { label: 'Tamamlama', value: `%${Math.round(metrics.completionRatio * 100)}` },
+          ].map((m) => (
+            <View key={m.label} style={rs.metricCard}>
+              <Text style={rs.metricValue}>{m.value}</Text>
+              <Text style={rs.metricLabel}>{m.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Kazanılan Rozetler */}
         {badges.length > 0 && (
           <View style={rs.badgesSection}>
             <Text style={rs.badgesTitle}>🏆 Bu Seans Kazanılan Rozetler</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={rs.badgesScroll}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={rs.badgesScroll}>
               {badges.map((badge) => (
-                <View
-                  key={badge.id}
-                  style={[
-                    rs.badgeCard,
-                    { borderColor: accentColor, backgroundColor: accentColor + '1A' },
-                  ]}
-                >
+                <View key={badge.id} style={[rs.badgeCard, { borderColor: accentColor, backgroundColor: accentColor + '1A' }]}>
                   <Text style={rs.badgeIcon}>{badge.iconName}</Text>
                   <Text style={[rs.badgeName, { color: accentColor }]}>{badge.name}</Text>
                 </View>
@@ -476,53 +369,83 @@ function ResultPhase({
           </View>
         )}
 
-        {/* Tier Kartları */}
-        <View style={rs.tierSection}>
+        {/* BAŞARILAR */}
+        <View style={rs.achieveSection}>
+          <Text style={rs.achieveTitle}>BAŞARILAR</Text>
+
           {/* SpeedTier */}
-          <View style={[rs.tierCard, { borderColor: speedColor + '40', backgroundColor: speedColor + '0C' }]}>
-            <View style={rs.tierRow}>
-              <View style={[rs.tierBadge, { backgroundColor: speedColor }]}>
-                <Text style={rs.tierBadgeText}>⚡ HIZ</Text>
-              </View>
-              <Text style={[rs.tierLabel, { color: speedColor }]}>{speedTier}</Text>
+          <View style={[rs.achieveRow, { borderLeftColor: speedTier.color }]}>
+            <View style={[rs.achieveIconWrap, { backgroundColor: speedTier.color + '18' }]}>
+              <Text style={rs.achieveIcon}>{speedTier.icon}</Text>
             </View>
-            <Text style={rs.tierWpm}>{Math.round(metrics.avgWPM)} WPM</Text>
+            <View style={rs.achieveInfo}>
+              <Text style={[rs.achieveLabel, { color: speedTier.color }]}>{speedTier.label}</Text>
+              <Text style={rs.achieveDesc}>{speedTier.desc}</Text>
+            </View>
+            <View style={[rs.achievePill, { backgroundColor: speedTier.color }]}>
+              <Text style={rs.achievePillTxt}>{Math.round(metrics.avgWPM)} WPM</Text>
+            </View>
           </View>
 
-          {/* ComprehensionTier — sadece sorular varsa anlamlı */}
+          {/* ComprehensionTier (sadece sorular varsa) */}
           {totalQuestions > 0 && (
-            <View style={[rs.tierCard, { borderColor: comprehColor + '40', backgroundColor: comprehColor + '0C' }]}>
-              <View style={rs.tierRow}>
-                <View style={[rs.tierBadge, { backgroundColor: comprehColor }]}>
-                  <Text style={rs.tierBadgeText}>🧠 KAVRAMA</Text>
-                </View>
-                <Text style={[rs.tierLabel, { color: comprehColor }]}>{comprehensionTier}</Text>
+            <View style={[rs.achieveRow, { borderLeftColor: compTier.color }]}>
+              <View style={[rs.achieveIconWrap, { backgroundColor: compTier.color + '18' }]}>
+                <Text style={rs.achieveIcon}>{compTier.icon}</Text>
               </View>
-              <Text style={rs.tierWpm}>%{comprehensionPct}</Text>
+              <View style={rs.achieveInfo}>
+                <Text style={[rs.achieveLabel, { color: compTier.color }]}>{compTier.label}</Text>
+                <Text style={rs.achieveDesc}>{compTier.desc}</Text>
+              </View>
+              <View style={[rs.achievePill, { backgroundColor: compTier.color }]}>
+                <Text style={rs.achievePillTxt}>%{comprehensionPct}</Text>
+              </View>
             </View>
           )}
 
-          {/* Öneri */}
-          <View style={[rs.recommendCard, { borderColor: accentColor + '30', backgroundColor: accentColor + '08' }]}>
-            <Text style={[rs.recommendText, { color: accentColor }]}>💡 {recommendation}</Text>
+          {/* Streak */}
+          {streak > 0 && (
+            <View style={[rs.achieveRow, { borderLeftColor: '#F59E0B' }]}>
+              <View style={[rs.achieveIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={rs.achieveIcon}>🔥</Text>
+              </View>
+              <View style={rs.achieveInfo}>
+                <Text style={[rs.achieveLabel, { color: '#D97706' }]}>{streak} Günlük Seri</Text>
+                <Text style={rs.achieveDesc}>Her gün çalışmaya devam et!</Text>
+              </View>
+              <View style={[rs.achievePill, { backgroundColor: '#F59E0B' }]}>
+                <Text style={rs.achievePillTxt}>{streak} gün</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Kişisel Kıyaslama */}
+        <View style={rs.socialRow}>
+          <View style={rs.socialBox}>
+            <Text style={rs.socialIcon}>📊</Text>
+            <Text style={rs.socialValue}>{weeklyBest ? (isNewRecord ? 'Rekor!' : String(weeklyBest)) : '—'}</Text>
+            <Text style={rs.socialLabel}>Haftalık en iyi</Text>
+          </View>
+          <View style={[rs.socialBox, rs.socialBoxBorder]}>
+            <Text style={rs.socialIcon}>🏅</Text>
+            <Text style={rs.socialValue}>{rank ? `#${rank}` : '—'}</Text>
+            <Text style={rs.socialLabel}>Genel sıralama</Text>
+          </View>
+          <View style={[rs.socialBox, rs.socialBoxBorder]}>
+            <Text style={rs.socialIcon}>⭐</Text>
+            <Text style={rs.socialValue}>+{metrics.xpEarned}</Text>
+            <Text style={rs.socialLabel}>XP kazanıldı</Text>
           </View>
         </View>
 
-        {/* Action buttons */}
+        {/* Butonlar */}
         <View style={rs.buttonsRow}>
-          <TouchableOpacity
-            style={[rs.retryBtn, { borderColor: accentColor }]}
-            onPress={onRetry}
-            activeOpacity={0.8}
-          >
-            <Text style={[rs.retryBtnText, { color: accentColor }]}>↺ Tekrar Dene</Text>
+          <TouchableOpacity style={[rs.retryBtn, { borderColor: accentColor }]} onPress={onRetry} activeOpacity={0.8}>
+            <Text style={[rs.retryBtnText, { color: accentColor }]}>Tekrar Yap</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[rs.homeBtn, { backgroundColor: accentColor }]}
-            onPress={onHome}
-            activeOpacity={0.8}
-          >
-            <Text style={rs.homeBtnText}>🏠 Ana Sayfa</Text>
+          <TouchableOpacity style={[rs.homeBtn, { backgroundColor: accentColor }]} onPress={onHome} activeOpacity={0.8}>
+            <Text style={rs.homeBtnText}>Ana Sayfa</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -719,6 +642,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
         badges={savedBadges}
         onRetry={handleRetry}
         onHome={onBack}
+        onExit={onBack}
       />
     )
   }
@@ -900,258 +824,84 @@ const qs = StyleSheet.create({
 // ─── Result StyleSheet ───────────────────────────────────────────────
 
 const rs = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  root:        { flex: 1, backgroundColor: '#FFFFFF' },
+  scroll:      { flex: 1 },
+  scrollContent: { paddingBottom: 48 },
+
+  closeBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB',
+    alignItems: 'center', justifyContent: 'center',
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 48,
-  },
-  headerWrap: {
-    marginBottom: 0,
-  },
-  headerGradient: {
-    paddingTop: 40,
-    paddingBottom: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  iconText: {
-    fontSize: 38,
-  },
-  completedTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.4,
-  },
-  moduleNameLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.85)',
-    letterSpacing: 0.3,
-  },
-  motivational: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.90)',
-    textAlign: 'center',
-    lineHeight: 21,
-    fontWeight: '500',
-    maxWidth: SW - 64,
-  },
-  arpCardWrap: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 4,
-  },
+  closeBtnTxt: { fontSize: 18, color: '#6B7280', fontWeight: '700' },
+
+  resultEmoji: { fontSize: 40, textAlign: 'center', marginTop: 12 },
+  resultTitle: { fontSize: 22, fontWeight: '900', color: '#111827', textAlign: 'center', marginTop: 6, letterSpacing: -0.4 },
+  resultSub:   { fontSize: 13, color: '#6B7280', textAlign: 'center', marginTop: 2, fontWeight: '500' },
+
   arpCard: {
-    borderRadius: 20,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    borderRadius: 20, paddingVertical: 20, paddingHorizontal: 20,
+    alignItems: 'center', marginHorizontal: 16, marginTop: 16,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 6, gap: 6,
   },
-  arpLabel: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: 'rgba(255,255,255,0.80)',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 6,
+  arpHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  arpLabel:     { fontSize: 11, fontWeight: '900', color: 'rgba(255,255,255,0.80)', letterSpacing: 1.5, textTransform: 'uppercase' },
+  arpTierBadge: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 2 },
+  arpTierTxt:   { fontSize: 11, color: '#fff', fontWeight: '800' },
+  arpNumber:    { fontSize: 64, fontWeight: '900', color: '#FFFFFF', letterSpacing: -2, lineHeight: 72 },
+  newRecordBadge: { backgroundColor: '#F59E0B', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 3 },
+  newRecordTxt:   { fontSize: 11, color: '#fff', fontWeight: '900' },
+
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, marginTop: 12 },
+  metricCard:  { width: '47%', backgroundColor: '#F9FAFB', borderRadius: 14, padding: 14, alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#E5E7EB' },
+  metricValue: { fontSize: 20, fontWeight: '900', color: '#111827', letterSpacing: -0.4 },
+  metricLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280', textAlign: 'center' },
+
+  badgesSection: { marginTop: 20, paddingHorizontal: 16, gap: 10 },
+  badgesTitle:   { fontSize: 14, fontWeight: '800', color: '#111827' },
+  badgesScroll:  { paddingRight: 16, gap: 10 },
+  badgeCard:     { borderRadius: 12, borderWidth: 1.5, padding: 12, alignItems: 'center', gap: 6, minWidth: 80 },
+  badgeIcon:     { fontSize: 28 },
+  badgeName:     { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+
+  achieveSection: { paddingHorizontal: 16, marginTop: 20, gap: 8 },
+  achieveTitle:   { fontSize: 11, fontWeight: '800', color: '#9CA3AF', letterSpacing: 1.5 },
+  achieveRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#FAFAFA', borderRadius: 14, padding: 12,
+    borderLeftWidth: 4, borderWidth: 1, borderColor: '#F3F4F6',
   },
-  arpNumber: {
-    fontSize: 64,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -2,
-    lineHeight: 72,
+  achieveIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  achieveIcon:     { fontSize: 18 },
+  achieveInfo:     { flex: 1, gap: 2 },
+  achieveLabel:    { fontSize: 14, fontWeight: '800' },
+  achieveDesc:     { fontSize: 11, color: '#6B7280', fontWeight: '500' },
+  achievePill:     { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  achievePillTxt:  { fontSize: 11, color: '#fff', fontWeight: '800' },
+
+  socialRow: {
+    flexDirection: 'row', backgroundColor: '#FAFAFA',
+    marginHorizontal: 16, marginTop: 16,
+    borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden',
   },
-  arpSubLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.70)',
-    marginTop: 2,
-  },
-  statsGrid: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  statCardWide: {
-    flex: 2,
-  },
-  statCardEmpty: {
-    flex: 1,
-  },
-  statEmoji: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  badgesSection: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  badgesTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  badgesScroll: {
-    paddingRight: 16,
-    gap: 10,
-  },
-  badgeCard: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: 12,
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 80,
-  },
-  badgeIcon: {
-    fontSize: 28,
-  },
-  badgeName: {
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  tierSection: {
-    paddingHorizontal: 16,
-    marginTop:         20,
-    gap:               8,
-  },
-  tierCard: {
-    borderRadius:  14,
-    borderWidth:   1,
-    padding:       14,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           12,
-  },
-  tierRow: {
-    flex:          1,
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           8,
-  },
-  tierBadge: {
-    borderRadius:      8,
-    paddingHorizontal: 8,
-    paddingVertical:   4,
-  },
-  tierBadgeText: {
-    fontSize:   9,
-    fontWeight: '900',
-    color:      '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  tierLabel: {
-    fontSize:   15,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  tierWpm: {
-    fontSize:   18,
-    fontWeight: '900',
-    color:      '#111827',
-    letterSpacing: -0.4,
-  },
-  recommendCard: {
-    borderRadius: 14,
-    borderWidth:  1,
-    padding:      14,
-  },
-  recommendText: {
-    fontSize:   13,
-    lineHeight: 20,
-    fontWeight: '600',
-  },
-  buttonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    marginTop: 20,
-  },
+  socialBox:       { flex: 1, alignItems: 'center', paddingVertical: 14, gap: 4 },
+  socialBoxBorder: { borderLeftWidth: 1, borderLeftColor: '#E5E7EB' },
+  socialIcon:      { fontSize: 18 },
+  socialValue:     { fontSize: 15, fontWeight: '900', color: '#111827' },
+  socialLabel:     { fontSize: 10, color: '#6B7280', fontWeight: '600', textAlign: 'center' },
+
+  buttonsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 20, marginBottom: 8 },
   retryBtn: {
-    flex: 1,
-    borderWidth: 2,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    flex: 1, borderWidth: 2, borderRadius: 16, paddingVertical: 16,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
   },
-  retryBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  retryBtnText: { fontSize: 15, fontWeight: '700' },
   homeBtn: {
-    flex: 1.5,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    flex: 1.5, borderRadius: 16, paddingVertical: 16,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 4,
   },
-  homeBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  homeBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 })

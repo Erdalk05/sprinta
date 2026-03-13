@@ -1,23 +1,64 @@
 import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
+import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
+import { useAuthStore } from '../../src/stores/authStore'
+import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
+import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
+import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
 import ReadingModuleFlow from '../../src/components/reading/ReadingModuleFlow'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
 
+const ACCENT     = '#0284C7'
+const MODULE_KEY = 'bionic-reading'
+
+type Phase = 'setup' | 'picking' | 'reading'
+
 export default function BionicReadingScreen() {
-  const router = useRouter()
+  const router      = useRouter()
+  const { student } = useAuthStore()
+  const [phase,        setPhase]        = useState<Phase>('setup')
+  const [content,      setContent]      = useState<ImportedContent | null>(null)
+  const [pickFiltered, setPickFiltered] = useState(false)
+
+  const onBack = () => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }
+
+  if (phase === 'setup') {
+    return (
+      <ModuleSetupScreen
+        moduleKey={MODULE_KEY}
+        onSelectText={() => { setPickFiltered(false); setPhase('picking') }}
+        onQuickStart={() => { setPickFiltered(true);  setPhase('picking') }}
+        onBack={onBack}
+      />
+    )
+  }
+
+  if (phase === 'picking') {
+    return (
+      <ContentLibraryScreen
+        accentColor={ACCENT}
+        moduleKey={MODULE_KEY}
+        onContentSelected={(c) => { setContent(c); setPhase('reading') }}
+        onBack={() => setPhase('setup')}
+        initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
+      />
+    )
+  }
+
   return (
     <ReadingModuleFlow
-      moduleKey="bionic-reading"
-      onBack={() => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }}
-      renderExercise={(content, onComplete, onExit, accentColor) => (
+      moduleKey={MODULE_KEY}
+      initialContent={content}
+      onBack={onBack}
+      renderExercise={(c, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="bionic"
-          initialContent={content ?? undefined}
+          initialContent={c ?? undefined}
           onComplete={(m: ReadingModesMetrics) => onComplete({
             avgWPM: m.avgWPM, totalWords: m.totalWords,
             durationSeconds: m.durationSeconds, completionRatio: m.completionRatio,
             arpScore: m.arpScore, xpEarned: m.xpEarned,
-            libraryTextId: content?.libraryTextId,
+            libraryTextId: c?.libraryTextId,
           })}
           onExit={onExit}
           accentColor={accentColor}

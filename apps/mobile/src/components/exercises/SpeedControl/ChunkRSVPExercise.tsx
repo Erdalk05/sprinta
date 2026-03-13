@@ -100,6 +100,22 @@ type FontSizeVal = typeof FONT_SIZES[number]
 const ORP_COLORS = ['#FF3B30', '#FF9500', '#34C759', '#007AFF', '#AF52DE'] as const
 type OrpColor = typeof ORP_COLORS[number]
 
+/**
+ * ORP Algoritması — kelime uzunluğuna göre sabitlenecek harf konumu
+ * 1-2  harf → 1. harf (index 0)
+ * 3-5  harf → 2. harf (index 1)
+ * 6-9  harf → 3. harf (index 2)
+ * 10-13 harf → 4. harf (index 3)
+ * 14+  harf → 5. harf (index 4)
+ */
+function getOrpPosition(wordLength: number): number {
+  if (wordLength <= 2)  return 0
+  if (wordLength <= 5)  return 1
+  if (wordLength <= 9)  return 2
+  if (wordLength <= 13) return 3
+  return 4
+}
+
 export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, initialSettings, onRepeat, accentColor = '#0891B2' }: Props) {
   const t            = useAppTheme()
   const readingTheme = useThemeStore((s) => s.readingTheme)
@@ -143,8 +159,9 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
   const [showQuiz,   setShowQuiz]   = useState(false)
   const [questions,  setQuestions]  = useState<TextQuestion[]>([])
 
-  const [fontSize,  setFontSize]  = useState<FontSizeVal>(14)
-  const [orpColor,  setOrpColor]  = useState<OrpColor>('#FF3B30')
+  const [fontSize,    setFontSize]    = useState<FontSizeVal>(14)
+  const [orpColor,    setOrpColor]    = useState<OrpColor>('#FF3B30')
+  const [orpEnabled,  setOrpEnabled]  = useState(true)
 
   const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -247,6 +264,25 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
       scheduleNext(chunkIdxRef.current)
     }
   }, [settings.smartSlowing, stopTimer, scheduleNext])
+
+  const changeChunkSize = useCallback((newSize: 1 | 2 | 3 | 4) => {
+    if (!content) return
+    setSettings((prev) => ({ ...prev, chunkSize: newSize }))
+    const wordTarget = chunksRef.current.slice(0, chunkIdxRef.current).reduce((s, c) => s + c.words.length, 0)
+    const raw = tokenizeToChunks(content.text, newSize)
+    const withDurations = applyDurations(raw, currentWPM, settings.smartSlowing)
+    let newIdx = 0
+    let counted = 0
+    for (let i = 0; i < withDurations.length; i++) {
+      if (counted >= wordTarget) { newIdx = i; break }
+      counted += withDurations[i].words.length
+    }
+    chunksRef.current = withDurations
+    setChunks(withDurations)
+    setChunkIdx(newIdx)
+    Haptics.selectionAsync()
+    if (isPlayingRef.current) { stopTimer(); scheduleNext(newIdx) }
+  }, [content, currentWPM, settings.smartSlowing, stopTimer, scheduleNext])
 
   const togglePause = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -498,15 +534,24 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
               <Text style={s.headerWPMTxt}>{currentWPM} WPM</Text>
             </View>
           </View>
-          <View style={s.orpColorRow}>
-            {ORP_COLORS.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[s.orpDot, { backgroundColor: c }, orpColor === c && s.orpDotActive]}
-                onPress={() => setOrpColor(c)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              />
-            ))}
+          <View style={s.orpRightGroup}>
+            <TouchableOpacity
+              style={[s.orpToggle, orpEnabled && { backgroundColor: orpColor + 'CC' }]}
+              onPress={() => setOrpEnabled(!orpEnabled)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={s.orpToggleTxt}>{orpEnabled ? '✓' : '○'} ORP</Text>
+            </TouchableOpacity>
+            <View style={s.orpColorRow}>
+              {ORP_COLORS.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  style={[s.orpDot, { backgroundColor: c }, orpColor === c && s.orpDotActive]}
+                  onPress={() => setOrpColor(c)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                />
+              ))}
+            </View>
           </View>
         </View>
 
@@ -530,24 +575,45 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
           </View>
 
           <Animated.View style={[s.chunkBox, chunkAnim]}>
-            {currentChunk && settings.bionicReading ? (
+            {currentChunk ? (
               <View style={s.chunkWordsRow}>
                 {currentChunk.words.map((w, i) => {
-                  const b = applyBionicReading(w)
+                  const space = i < currentChunk.words.length - 1 ? ' ' : ''
+                  // Bionic okuma
+                  if (settings.bionicReading) {
+                    const b = applyBionicReading(w)
+                    return (
+                      <Text key={i} style={[s.chunkWord, { fontSize }]}>
+                        <Text style={s.bionicBold}>{b.bold}</Text>
+                        <Text style={s.bionicLight}>{b.light}</Text>
+                        {space}
+                      </Text>
+                    )
+                  }
+                  // ORP vurgulu okuma
+                  if (orpEnabled && w.length > 0) {
+                    const pos = getOrpPosition(w.length)
+                    const before = w.slice(0, pos)
+                    const letter = w[pos] ?? ''
+                    const after  = w.slice(pos + 1)
+                    return (
+                      <Text key={i} style={[s.chunkWord, { fontSize }]}>
+                        <Text style={[s.orpBefore, { fontSize }]}>{before}</Text>
+                        <Text style={[s.orpLetter, { fontSize: fontSize * 1.05, color: orpColor }]}>{letter}</Text>
+                        <Text style={[s.orpAfter, { fontSize }]}>{after}</Text>
+                        {space}
+                      </Text>
+                    )
+                  }
+                  // Normal
                   return (
                     <Text key={i} style={[s.chunkWord, { fontSize }]}>
-                      <Text style={s.bionicBold}>{b.bold}</Text>
-                      <Text style={s.bionicLight}>{b.light}</Text>
-                      {i < currentChunk.words.length - 1 ? ' ' : ''}
+                      {w}{space}
                     </Text>
                   )
                 })}
               </View>
-            ) : (
-              <Text style={[s.chunkText, { fontSize, lineHeight: fontSize * 1.4 }]}>
-                {currentChunk?.rawText ?? ''}
-              </Text>
-            )}
+            ) : null}
           </Animated.View>
 
           {/* Kelime Artış Çizgisi */}
@@ -606,6 +672,22 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
           >
             <View style={[s.sliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
             <View style={[s.sliderThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
+          </View>
+
+          {/* GRUP BOYUTU */}
+          <View style={[s.sliderLabelRow, { marginTop: 10 }]}>
+            <Text style={s.sliderLabel}>📦 GRUP BOYUTU</Text>
+            <View style={s.chunkBtnsRow}>
+              {([1, 2, 3, 4] as const).map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  style={[s.chunkBtn, settings.chunkSize === n && s.chunkBtnActive]}
+                  onPress={() => changeChunkSize(n)}
+                >
+                  <Text style={[s.chunkBtnTxt, settings.chunkSize === n && s.chunkBtnTxtActive]}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* YAZI BOYUTU */}
@@ -1108,13 +1190,35 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
       paddingHorizontal: 9, paddingVertical: 3,
     },
     headerWPMTxt:    { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '700' },
+    // ORP sağ grup
+    orpRightGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    // ORP toggle
+    orpToggle:    {
+      borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.45)',
+    },
+    orpToggleTxt: { fontSize: 10, fontWeight: '800', color: '#fff' },
     // ORP renk seçici
-    orpColorRow:  { flexDirection: 'row', gap: 6, alignItems: 'center' },
-    orpDot:       { width: 15, height: 15, borderRadius: 8 },
+    orpColorRow:  { flexDirection: 'row', gap: 5, alignItems: 'center' },
+    orpDot:       { width: 14, height: 14, borderRadius: 7 },
     orpDotActive: {
       borderWidth: 2.5, borderColor: '#fff',
       shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 4, elevation: 4,
     },
+    // ORP kelime render
+    orpBefore:  { fontWeight: '700', color: navyBg },
+    orpLetter:  { fontWeight: '900', color: accent },
+    orpAfter:   { fontWeight: '700', color: navyBg },
+    // Chunk boyutu butonları
+    chunkBtnsRow:   { flexDirection: 'row', gap: 5 },
+    chunkBtn:       {
+      width: 30, height: 30, borderRadius: 8,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    chunkBtnActive: { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: '#fff' },
+    chunkBtnTxt:    { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.65)' },
+    chunkBtnTxtActive: { color: '#fff', fontWeight: '900' },
     // ORP odak noktası
     orpFocalRow:  { flexDirection: 'row', alignItems: 'center', width: '55%', marginBottom: 14 },
     orpFocalLine: { flex: 1, height: 1.5, borderRadius: 1 },

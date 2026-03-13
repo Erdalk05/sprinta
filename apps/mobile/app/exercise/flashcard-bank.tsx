@@ -2,11 +2,27 @@ import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import FlashcardBankScreen from '../../src/screens/reading/FlashcardBankScreen'
-import ReadingModuleIntro from '../../src/components/exercise/ReadingModuleIntro'
+import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
 
-export default function uflashcardubankRoute() {
+const MODULE_KEY = 'flashcard-bank'
+type Phase = 'setup' | 'exercise'
+
+export default function FlashcardBankRoute() {
   const router = useRouter()
-  const [started, setStarted] = useState(false)
-  if (!started) return <ReadingModuleIntro moduleKey="flashcard-bank" onStart={() => setStarted(true)} onBack={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )} />
-  return <FlashcardBankScreen onExit={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )} />
+  const [phase, setPhase] = useState<Phase>('setup')
+
+  const onBack = () => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }
+
+  if (phase === 'setup') {
+    return (
+      <ModuleSetupScreen
+        moduleKey={MODULE_KEY}
+        onSelectText={() => setPhase('exercise')}
+        onQuickStart={() => setPhase('exercise')}
+        onBack={onBack}
+      />
+    )
+  }
+
+  return <FlashcardBankScreen onExit={onBack} />
 }
