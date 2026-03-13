@@ -147,7 +147,8 @@ export default function AnagramCozucu({
           <TouchableOpacity
             key={idx}
             style={[s.letterBtn, selected.includes(idx) && s.letterSelected]}
-            onPress={() => handleLetterTap(idx)}
+            onPressIn={() => handleLetterTap(idx)}
+            hitSlop={8}
             activeOpacity={0.7}
           >
             <Text style={[s.letterTxt, selected.includes(idx) && s.letterTxtSelected]}>

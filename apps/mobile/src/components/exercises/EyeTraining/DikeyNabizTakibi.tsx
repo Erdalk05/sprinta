@@ -128,7 +128,8 @@ export default function DikeyNabizTakibi({
         <Animated.View style={[styles.dotWrap, dotStyle]}>
           <TouchableOpacity
             style={styles.dot}
-            onPress={handleDotPress}
+            onPressIn={handleDotPress}
+            hitSlop={16}
             activeOpacity={0.7}
           />
         </Animated.View>

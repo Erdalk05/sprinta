@@ -316,7 +316,7 @@ export default function KartalMeydanOkumasi({
                     isHit  && { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: '#22C55E' },
                     isNext && { backgroundColor: 'rgba(24,119,242,0.25)', borderColor: '#1877F2' },
                   ]}
-                  onPress={() => {
+                  onPressIn={() => {
                     if (val !== schulteNext) { schulteMisses.current++; return }
                     const rt = performance.now() - schulteTargetAt.current
                     schulteRTs.current.push(rt)
@@ -328,6 +328,7 @@ export default function KartalMeydanOkumasi({
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                     playHit()
                   }}
+                  hitSlop={6}
                   activeOpacity={0.7}
                 >
                   <Text style={[
@@ -354,7 +355,7 @@ export default function KartalMeydanOkumasi({
             ]}>
               <TouchableOpacity
                 style={[styles.stormDot, { backgroundColor: '#00B890' }]}
-                onPress={() => {
+                onPressIn={() => {
                   if (!stormDot) return
                   const rt = performance.now() - stormShownAt.current
                   stormRTs.current.push(rt)
@@ -365,6 +366,7 @@ export default function KartalMeydanOkumasi({
                   playHit()
                   spawnStorm()
                 }}
+                hitSlop={14}
                 activeOpacity={0.7}
               />
             </Animated.View>
@@ -399,7 +401,7 @@ export default function KartalMeydanOkumasi({
                 <TouchableOpacity
                   key={i}
                   style={[styles.flashCell, isActive && styles.flashCellActive]}
-                  onPress={() => {
+                  onPressIn={() => {
                     if (i !== flashActive) { flashMisses.current++; return }
                     flashRTs.current.push(performance.now() - flashShownAt.current)
                     flashHits.current++

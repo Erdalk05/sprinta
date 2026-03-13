@@ -167,7 +167,8 @@ export default function CaprazLazerKosusu({
                   shadowOpacity:   isActive ? 0.7 : 0,
                 },
               ]}
-              onPress={() => handleDotPress(i)}
+              onPressIn={() => handleDotPress(i)}
+              hitSlop={12}
               activeOpacity={0.7}
             >
               {isActive && <Text style={styles.dotLabel}>{i + 1}</Text>}

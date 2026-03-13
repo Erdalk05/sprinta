@@ -140,7 +140,8 @@ export default function KelimeSniper({
               showFeedback && word === q.answer && s.gridCorrect,
               showFeedback && word === selected && word !== q.answer && s.gridWrong,
             ]}
-            onPress={() => handleTap(word)}
+            onPressIn={() => handleTap(word)}
+            hitSlop={8}
             activeOpacity={0.75}
           >
             <Text style={[

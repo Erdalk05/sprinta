@@ -156,7 +156,7 @@ export default function KalpRitim({
       {/* EKG ekranı */}
       <TouchableOpacity
         style={s.ekgScreen}
-        onPress={handleTap}
+        onPressIn={handleTap}
         activeOpacity={0.95}
       >
         {/* Yatay çizgiler (dekoratif EKG arka plan) */}

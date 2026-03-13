@@ -190,7 +190,8 @@ export default function YildizAgiTarama({
                   opacity: tapped ? 0.5 : 1,
                 },
               ]}
-              onPress={() => handleDotPress(dot)}
+              onPressIn={() => handleDotPress(dot)}
+              hitSlop={10}
               activeOpacity={0.7}
             >
               <Text style={[

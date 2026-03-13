@@ -192,7 +192,7 @@ export default function PeriferiFlashAvcisi({
               <TouchableOpacity
                 key={n}
                 style={styles.choiceBtn}
-                onPress={() => handleChoice(n)}
+                onPressIn={() => handleChoice(n)}
                 activeOpacity={0.75}
               >
                 <Text style={styles.choiceBtnText}>{n}</Text>

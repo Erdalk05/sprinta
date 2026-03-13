@@ -202,7 +202,9 @@ export default function CupOyunu({
                   s.cup,
                   phase === 'result' && cupIdx === ballIdx && s.cupReveal,
                 ]}
-                onPress={() => handleGuess(cupIdx)}
+                onPressIn={() => handleGuess(cupIdx)}
+                disabled={phase !== 'guess'}
+                hitSlop={12}
                 activeOpacity={phase === 'guess' ? 0.7 : 1}
               >
                 <Text style={s.cupEmoji}>

@@ -139,7 +139,8 @@ export default function KelimeEslestirme({
               card.flipped && !card.matched && s.cellFlipped,
               card.matched && s.cellMatched,
             ]}
-            onPress={() => handlePress(card.id)}
+            onPressIn={() => handlePress(card.id)}
+            hitSlop={6}
             activeOpacity={0.8}
             disabled={card.matched || card.flipped}
           >

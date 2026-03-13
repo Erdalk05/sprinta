@@ -156,7 +156,8 @@ export default function HizNoktaFirtinasi({
           >
             <TouchableOpacity
               style={styles.dotInner}
-              onPress={() => handleDotPress(dot.id)}
+              onPressIn={() => handleDotPress(dot.id)}
+              hitSlop={14}
               activeOpacity={0.7}
             />
           </Animated.View>

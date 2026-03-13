@@ -201,7 +201,8 @@ export default function SoruKosusu({
                   showFeedback && i === round.ans && s.optCorrect,
                   showFeedback && i === selected && i !== round.ans && s.optWrong,
                 ]}
-                onPress={() => handleAnswer(i)}
+                onPressIn={() => handleAnswer(i)}
+                hitSlop={6}
                 activeOpacity={0.8}
               >
                 <Text style={[s.optTxt, showFeedback && i === round.ans && s.optTxtCorrect]}>

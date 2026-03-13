@@ -174,7 +174,8 @@ export default function PinballGoz({
               { left: z.x - ZONE_R, top: z.y - ZONE_R },
               activeZone === z.id && s.zoneActive,
             ]}
-            onPress={() => handleZoneTap(z.id)}
+            onPressIn={() => handleZoneTap(z.id)}
+            hitSlop={12}
             activeOpacity={0.7}
           >
             <Text style={s.zoneTxt}>{activeZone === z.id ? '●' : '○'}</Text>

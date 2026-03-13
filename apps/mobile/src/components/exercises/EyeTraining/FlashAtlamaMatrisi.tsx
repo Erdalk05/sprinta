@@ -165,7 +165,8 @@ export default function FlashAtlamaMatrisi({
                   { width: CELL_SIZE, height: CELL_SIZE, borderRadius: CELL_SIZE * 0.18 },
                   isActive && styles.cellActive,
                 ]}
-                onPress={() => handleCellPress(idx)}
+                onPressIn={() => handleCellPress(idx)}
+                hitSlop={6}
                 activeOpacity={0.6}
               >
                 {isActive && (

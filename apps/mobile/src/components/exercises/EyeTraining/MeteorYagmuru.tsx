@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Animated,
+  View, Text, StyleSheet, Pressable, TouchableOpacity, SafeAreaView, Dimensions, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'
@@ -160,13 +160,13 @@ export default function MeteorYagmuru({
                 { left: cx, transform: [{ translateY: ty }] },
               ]}
             >
-              <TouchableOpacity
+              <Pressable
                 style={[s.meteor, m.isGold ? s.meteorGold : s.meteorRed]}
-                onPress={() => handleTap(m.id, m.isGold)}
-                activeOpacity={0.7}
+                onPressIn={() => handleTap(m.id, m.isGold)}
+                hitSlop={10}
               >
                 <Text style={s.meteorTxt}>{m.isGold ? '⭐' : '💀'}</Text>
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
           )
         })}

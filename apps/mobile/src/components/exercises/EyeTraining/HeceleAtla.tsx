@@ -192,7 +192,8 @@ export default function HeceleAtla({
               flashIdx === idx && s.heceFlash,
               wrongFlash === idx && s.heceWrong,
             ]}
-            onPress={() => handleHeceTap(idx)}
+            onPressIn={() => handleHeceTap(idx)}
+            hitSlop={8}
             activeOpacity={0.7}
           >
             <Text style={[

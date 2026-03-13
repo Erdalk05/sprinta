@@ -147,7 +147,8 @@ export default function SchulteTablo({
                 isHit  && styles.cellHit,
                 isNext && styles.cellNext,
               ]}
-              onPress={() => handleCellPress(value)}
+              onPressIn={() => handleCellPress(value)}
+              hitSlop={6}
               activeOpacity={0.7}
             >
               <Text style={[

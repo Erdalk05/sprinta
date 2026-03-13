@@ -181,7 +181,7 @@ export default function GenisleyenHalkaOdagi({
                   { borderColor: COLOR_MAP[c] },
                   phase === 'feedback' && c === correctColor && styles.choiceBtnCorrect,
                 ]}
-                onPress={() => handleChoice(c)}
+                onPressIn={() => handleChoice(c)}
                 activeOpacity={0.75}
               >
                 <View style={[styles.colorCircle, { backgroundColor: COLOR_MAP[c] }]} />

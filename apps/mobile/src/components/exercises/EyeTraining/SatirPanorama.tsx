@@ -180,7 +180,7 @@ export default function SatirPanorama({
                   phase === 'feedback' && sentence.answer === true && styles.answerBtnCorrect,
                   phase === 'feedback' && sentence.answer === false && styles.answerBtnWrong,
                 ]}
-                onPress={() => handleAnswer(true)}
+                onPressIn={() => handleAnswer(true)}
                 activeOpacity={0.75}
               >
                 <Text style={styles.answerText}>✓ Doğru</Text>
@@ -192,7 +192,7 @@ export default function SatirPanorama({
                   phase === 'feedback' && sentence.answer === false && styles.answerBtnCorrect,
                   phase === 'feedback' && sentence.answer === true && styles.answerBtnWrong,
                 ]}
-                onPress={() => handleAnswer(false)}
+                onPressIn={() => handleAnswer(false)}
                 activeOpacity={0.75}
               >
                 <Text style={styles.answerText}>✗ Yanlış</Text>

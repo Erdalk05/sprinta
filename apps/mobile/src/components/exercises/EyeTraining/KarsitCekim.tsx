@@ -172,7 +172,8 @@ export default function KarsitCekim({
           <Animated.View style={[styles.dotWrap, dot1Style]}>
             <TouchableOpacity
               style={[styles.dot, { backgroundColor: dot1Red ? RED_COLOR : BLUE_COLOR }]}
-              onPress={() => handleDotPress('dot1')}
+              onPressIn={() => handleDotPress('dot1')}
+              hitSlop={16}
               activeOpacity={0.7}
             />
           </Animated.View>
@@ -190,7 +191,8 @@ export default function KarsitCekim({
           <Animated.View style={[styles.dotWrap, dot2Style]}>
             <TouchableOpacity
               style={[styles.dot, { backgroundColor: dot2Red ? RED_COLOR : ACCENT }]}
-              onPress={() => handleDotPress('dot2')}
+              onPressIn={() => handleDotPress('dot2')}
+              hitSlop={16}
               activeOpacity={0.7}
             />
           </Animated.View>

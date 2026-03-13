@@ -173,7 +173,8 @@ export default function ZigZagAtlas({
                   isTarget && s.circleTarget,
                   isFlash  && s.circleFlash,
                 ]}
-                onPress={() => handleTap(idx)}
+                onPressIn={() => handleTap(idx)}
+                hitSlop={10}
                 activeOpacity={0.7}
               >
                 <Text style={[s.circleNum, isTarget && s.circleNumTarget]}>

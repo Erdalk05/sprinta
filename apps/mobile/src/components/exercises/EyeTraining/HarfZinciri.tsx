@@ -22,21 +22,48 @@ interface Chain {
 }
 
 const CHAINS: Chain[] = [
-  { word: 'Elma', opts: ['Armut', 'Ayı', 'Aslan'], ans: 1 },
-  { word: 'Aslan', opts: ['Nalın', 'Nane', 'Nar'], ans: 0 },
-  { word: 'Nalın', opts: ['Nisan', 'Nar', 'Nane'], ans: 1 },
-  { word: 'Nar', opts: ['Rüzgar', 'Rüya', 'Robot'], ans: 0 },
-  { word: 'Rüzgar', opts: ['Resim', 'Raket', 'Renk'], ans: 0 },
-  { word: 'Renk', opts: ['Karpuz', 'Kalem', 'Kitap'], ans: 0 },
-  { word: 'Karpuz', opts: ['Zeytin', 'Zıpzıp', 'Zirve'], ans: 0 },
-  { word: 'Zeytin', opts: ['Nükleer', 'Nesil', 'Nal'], ans: 1 },
-  { word: 'Nesil', opts: ['Lale', 'Limon', 'Lavanta'], ans: 0 },
-  { word: 'Lale', opts: ['Eğlence', 'Erik', 'Erdem'], ans: 0 },
-  { word: 'Erik', opts: ['Kelebek', 'Kuyu', 'Kelime'], ans: 0 },
-  { word: 'Kelime', opts: ['Erdem', 'Eski', 'Eser'], ans: 2 },
-  { word: 'Eser', opts: ['Resmi', 'Rüzgar', 'Renk'], ans: 0 },
-  { word: 'Resmi', opts: ['İçli', 'İnce', 'İnan'], ans: 0 },
-  { word: 'İçli', opts: ['İpek', 'İnce', 'Irak'], ans: 2 },
+  // word → last letter → correct option starts with that letter
+  // wrong options start with DIFFERENT letters
+  { word: 'Elma',     opts: ['Arı',      'Balon',   'Güneş'],     ans: 0 }, // a→A
+  { word: 'Aslan',    opts: ['Kalem',    'Nar',      'Taş'],       ans: 1 }, // n→N
+  { word: 'Nar',      opts: ['Balon',    'Güneş',    'Renk'],      ans: 2 }, // r→R
+  { word: 'Renk',     opts: ['Balon',    'Kalem',    'Güneş'],     ans: 1 }, // k→K
+  { word: 'Kalem',    opts: ['Taş',      'Güneş',    'Masa'],      ans: 2 }, // m→M
+  { word: 'Masa',     opts: ['Kalem',    'Güneş',    'Ayı'],       ans: 2 }, // a→A
+  { word: 'Ayı',      opts: ['Irak',     'Balon',    'Güneş'],     ans: 0 }, // ı→I
+  { word: 'Irak',     opts: ['Taş',      'Kedi',     'Güneş'],     ans: 1 }, // k→K
+  { word: 'Kedi',     opts: ['Masa',     'Güneş',    'İpek'],      ans: 2 }, // i→İ
+  { word: 'İpek',     opts: ['Taş',      'Kitap',    'Güneş'],     ans: 1 }, // k→K
+  { word: 'Kitap',    opts: ['Balon',    'Güneş',    'Portakal'],  ans: 2 }, // p→P
+  { word: 'Portakal', opts: ['Kalem',    'Lale',     'Güneş'],     ans: 1 }, // l→L
+  { word: 'Lale',     opts: ['Taş',      'Masa',     'Erik'],      ans: 2 }, // e→E
+  { word: 'Erik',     opts: ['Kale',     'Güneş',    'Taş'],       ans: 0 }, // k→K
+  { word: 'Kale',     opts: ['Taş',      'Güneş',    'Elmas'],     ans: 2 }, // e→E
+  { word: 'Elmas',    opts: ['Kalem',    'Saat',     'Güneş'],     ans: 1 }, // s→S
+  { word: 'Saat',     opts: ['Taş',      'Balon',    'Yıldız'],    ans: 0 }, // t→T
+  { word: 'Taş',      opts: ['Şeker',    'Balon',    'Kalem'],     ans: 0 }, // ş→Ş
+  { word: 'Şeker',    opts: ['Kalem',    'Deniz',    'Rakam'],     ans: 2 }, // r→R
+  { word: 'Rakam',    opts: ['Taş',      'Mermer',   'Balon'],     ans: 1 }, // m→M
+  { word: 'Mermer',   opts: ['Kalem',    'Balon',    'Rüya'],      ans: 2 }, // r→R
+  { word: 'Rüya',     opts: ['Araba',    'Balon',    'Güneş'],     ans: 0 }, // a→A
+  { word: 'Araba',    opts: ['Kalem',    'Deniz',    'Ayna'],      ans: 2 }, // a→A
+  { word: 'Ayna',     opts: ['Taş',      'Armut',    'Bulut'],     ans: 1 }, // a→A
+  { word: 'Armut',    opts: ['Kalem',    'Güneş',    'Tren'],      ans: 2 }, // t→T
+  { word: 'Tren',     opts: ['Taş',      'Masa',     'Nohut'],     ans: 2 }, // n→N
+  { word: 'Nohut',    opts: ['Kalem',    'Toprak',   'Güneş'],     ans: 1 }, // t→T
+  { word: 'Toprak',   opts: ['Balon',    'Yıldız',   'Karpuz'],    ans: 2 }, // k→K
+  { word: 'Karpuz',   opts: ['Zeytin',   'Kalem',    'Deniz'],     ans: 0 }, // z→Z
+  { word: 'Zeytin',   opts: ['Kalem',    'Nefes',    'Güneş'],     ans: 1 }, // n→N
+  { word: 'Nefes',    opts: ['Kalem',    'Güneş',    'Sepet'],     ans: 2 }, // s→S
+  { word: 'Sepet',    opts: ['Kalem',    'Balon',    'Tilki'],     ans: 2 }, // t→T
+  { word: 'Tilki',    opts: ['Kalem',    'İnce',     'Güneş'],     ans: 1 }, // i→İ
+  { word: 'İnce',     opts: ['Kalem',    'Güneş',    'Ev'],        ans: 2 }, // e→E
+  { word: 'Ev',       opts: ['Vadi',     'Kalem',    'Deniz'],     ans: 0 }, // v→V
+  { word: 'Vadi',     opts: ['Kalem',    'Güneş',    'İlkbahar'],  ans: 2 }, // i→İ
+  { word: 'İlkbahar', opts: ['Taş',      'Rüzgar',   'Kalem'],     ans: 1 }, // r→R
+  { word: 'Rüzgar',   opts: ['Kalem',    'Balon',    'Resim'],     ans: 2 }, // r→R
+  { word: 'Resim',    opts: ['Meyve',    'Güneş',    'Deniz'],     ans: 0 }, // m→M
+  { word: 'Meyve',    opts: ['Kalem',    'Bulut',    'Ekmek'],     ans: 2 }, // e→E
 ]
 
 function calcMetrics(hits: number, total: number, startMs: number): EyeMetrics {
@@ -134,7 +161,7 @@ export default function HarfZinciri({
               showFeedback && oi === q.ans && s.optCorrect,
               showFeedback && oi === selected && oi !== q.ans && s.optWrong,
             ]}
-            onPress={() => handleSelect(oi)}
+            onPressIn={() => handleSelect(oi)}
             activeOpacity={0.8}
           >
             <Text style={[s.optTxt, showFeedback && oi === q.ans && s.optTxtCorrect]}>
@@ -144,7 +171,7 @@ export default function HarfZinciri({
         ))}
       </View>
 
-      <Text style={s.progress}>{idx + 1}/{CHAINS.length}</Text>
+      <Text style={s.progress}>{(idx % CHAINS.length) + 1}/{CHAINS.length}</Text>
     </SafeAreaView>
   )
 }

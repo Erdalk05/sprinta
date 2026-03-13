@@ -173,7 +173,8 @@ export default function RakamSprint({
       <View style={styles.btnRow}>
         <TouchableOpacity
           style={[styles.choiceBtn, styles.oddBtn, phase !== 'choose' && styles.btnDisabled]}
-          onPress={() => handleChoice('tek')}
+          onPressIn={() => handleChoice('tek')}
+          disabled={phase !== 'choose'}
           activeOpacity={0.7}
         >
           <Text style={styles.choiceBtnText}>TEK</Text>
@@ -182,7 +183,8 @@ export default function RakamSprint({
 
         <TouchableOpacity
           style={[styles.choiceBtn, styles.evenBtn, phase !== 'choose' && styles.btnDisabled]}
-          onPress={() => handleChoice('cift')}
+          onPressIn={() => handleChoice('cift')}
+          disabled={phase !== 'choose'}
           activeOpacity={0.7}
         >
           <Text style={styles.choiceBtnText}>ÇİFT</Text>

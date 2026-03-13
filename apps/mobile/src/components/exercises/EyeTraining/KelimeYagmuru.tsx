@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Animated,
+  View, Text, StyleSheet, Pressable, TouchableOpacity, SafeAreaView, Dimensions, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'
@@ -179,15 +179,15 @@ export default function KelimeYagmuru({
           const isTarget = w.pair.word === currentTarget.word
           return (
             <Animated.View key={w.id} style={[s.wordWrap, { left: cx, transform: [{ translateY: ty }] }]}>
-              <TouchableOpacity
+              <Pressable
                 style={[s.wordBtn, isTarget ? s.wordTarget : s.wordNormal]}
-                onPress={() => handleTap(w.id, w.pair)}
-                activeOpacity={0.7}
+                onPressIn={() => handleTap(w.id, w.pair)}
+                hitSlop={8}
               >
                 <Text style={[s.wordTxt, isTarget ? s.wordTxtTarget : s.wordTxtNormal]}>
                   {w.pair.word}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
           )
         })}

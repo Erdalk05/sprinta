@@ -199,7 +199,8 @@ export default function BesgenArena({
           >
             <TouchableOpacity
               style={s.ball}
-              onPress={() => handleTap(idx)}
+              onPressIn={() => handleTap(idx)}
+              hitSlop={10}
               activeOpacity={0.7}
             >
               <Text style={s.ballTxt}>{idx + 1}</Text>

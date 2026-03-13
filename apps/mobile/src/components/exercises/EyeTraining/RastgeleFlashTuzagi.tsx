@@ -148,7 +148,8 @@ export default function RastgeleFlashTuzagi({
                   styles.cell,
                   isActive && styles.cellActive,
                 ]}
-                onPress={() => handleCellPress(i)}
+                onPressIn={() => handleCellPress(i)}
+                hitSlop={8}
                 activeOpacity={0.6}
               >
                 {isActive && (
