@@ -11,12 +11,12 @@ export default function TimedReadingScreen() {
       renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="timed"
-          initialContent={content}
+          initialContent={content ?? undefined}
           onComplete={(m: ReadingModesMetrics) => onComplete({
             avgWPM: m.avgWPM, totalWords: m.totalWords,
             durationSeconds: m.durationSeconds, completionRatio: m.completionRatio,
             arpScore: m.arpScore, xpEarned: m.xpEarned,
-            libraryTextId: content.libraryTextId,
+            libraryTextId: content?.libraryTextId,
           })}
           onExit={onExit}
           accentColor={accentColor}

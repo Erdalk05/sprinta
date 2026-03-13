@@ -12,10 +12,9 @@ import { usePendingReadingStore } from '../../stores/pendingReadingStore'
 // Metin seçici gerektiren modüller
 const CONTENT_MODULES = new Set([
   'chunk-rsvp', 'timed-reading', 'flow-reading', 'speed-ladder', 'bionic-reading',
-  'keyword-scan', 'fixation-trainer', 'auto-scroll', 'sentence-step',
+  'fixation-trainer', 'auto-scroll',
   'academic-mode', 'focus-filter', 'memory-anchor', 'prediction-reading',
-  'subvocal-free', 'speed-camp', 'vanishing-reading',
-  'cloze-test', 'dual-column',
+  'speed-camp', 'vanishing-reading', 'dual-column',
 ])
 
 function getPalette(hex: string) {
@@ -81,14 +80,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Her kelimenin ilk hecesi kalın görünür', 'Beyin geri kalanını tahmin eder', 'Hız arttıkça oran değişir'],
     stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Vurgu', value: 'İlk %40 hece' }, { label: 'Teknik', value: 'Bionic' }],
   },
-  'keyword-scan': {
-    icon: '🔍', label: 'Anahtar Kelime', accent: '#DC2626',
-    subtitle: 'Kritik kavramları tarar — pasaj soru stratejisi',
-    tip: 'Paragrafta ana fikri taşıyan anahtar kelimeleri yakala.',
-    benefits: ['Pasajda hızlı bilgi bulmayı öğretir', 'LGS okuma soru stratejisini geliştirir', 'Odak kelime hafızasını güçlendirir'],
-    steps:    ['Metni vurgulu anahtar kelimelerle oku', 'Her paragrafın kilit kavramını işaretle', 'Anlama soruları için bu kavramları kullan'],
-    stats:    [{ label: 'Süre', value: '4 dk' }, { label: 'Kelime', value: 'Vurgulu tarama' }, { label: 'Hedef', value: 'LGS/TYT' }],
-  },
   'fixation-trainer': {
     icon: '👁️', label: 'Göz Genişliği', accent: '#9333EA',
     subtitle: 'Flash gruplar — tek fiksasyonda daha fazla kelime gör',
@@ -104,14 +95,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     benefits: ['Okuma ritmini otomatik kurar', 'Bilinçsiz duraksama ve geri dönüşü engeller', 'Sürekli ilerlemeyi zorunlu kılar'],
     steps:    ['Metin otomatik aşağı kayar', 'Ritmi bozmadan takip et', 'Hızı dilediğin zaman ayarla'],
     stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Hız', value: 'Ayarlanabilir' }, { label: 'Kaydırma', value: 'Sürekli' }],
-  },
-  'sentence-step': {
-    icon: '📝', label: 'Cümle Adım', accent: '#0F766E',
-    subtitle: 'Cümle cümle ilerle — her adımda anlama odaklan',
-    tip: 'Aktif okuma: her cümleyi bilinçli işlemek anlama derinliğini artırır.',
-    benefits: ['Derin anlama ve çıkarım becerisi gelişir', 'Cümle yapısını çözümlemeyi öğretir', 'Akademik metin okuma için ideal'],
-    steps:    ['Her adımda 1 cümle gösterilir', 'İleri butonuyla bir sonraki cümleye geç', 'Egzersiz sonunda anlama soruları gelir'],
-    stats:    [{ label: 'Format', value: 'Cümle cümle' }, { label: 'Teknik', value: 'Aktif okuma' }, { label: 'Hedef', value: 'Akademik' }],
   },
   'academic-mode': {
     icon: '📚', label: 'Akademik Mod', accent: '#1D4ED8',
@@ -153,14 +136,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Cümle son kelimeleri gizlenerek gösterilir', 'Devamını zihinsel olarak tahmin et', 'Dokunarak gizli kısmı aç ve kontrol et'],
     stats:    [{ label: 'Tur', value: '10 cümle' }, { label: 'Teknik', value: 'Tahmin + keşfet' }, { label: 'Bonus', value: '+XP tamamlama' }],
   },
-  'subvocal-free': {
-    icon: '🤫', label: 'Sessiz Okuma', accent: '#1E40AF',
-    subtitle: 'İç sesi azalt — okuma hızını ve akıcılığını artır',
-    tip: 'Subvokalizasyonu azaltmak okuma hızını artırabilir; tamamen ortadan kaldırmaya çalışmak yerine bilinçli olarak azaltmak hedeflenir.',
-    benefits: ['İç ses farkındalığı gelişir', 'Okuma akıcılığı artar', 'Zihinsel ses-görsel denge kurulur'],
-    steps:    ['Metni okurken zihinsel sese dikkat et', 'Sesi bastırmak yerine hafifletmeyi hedefle', 'Anlama kalitesini koruyarak hızı artır'],
-    stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Hedef', value: 'Akıcılık' }, { label: 'Teknik', value: 'Farkındalık' }],
-  },
   'speed-camp': {
     icon: '🏕️', label: 'Hızlı Okuma Kampı', accent: '#15803D',
     subtitle: 'Günlük antrenman programı — WPM gelişimini takip et',
@@ -176,14 +151,6 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     benefits: ['Kısa süreli görsel belleği güçlendirir', 'Anlama derinliğini artırır', 'Sınav metnini parça parça okuma stratejisi'],
     steps:    ['Metin 8 saniye tam görünür', 'Ardından yavaşça solar ve kaybolur', '3 MCQ anlama sorusunu yanıtla'],
     stats:    [{ label: 'Görünürlük', value: '8 saniye' }, { label: 'Soru', value: '3 MCQ' }, { label: 'Zorluk', value: 'Orta-İleri' }],
-  },
-  'cloze-test': {
-    icon: '📋', label: 'Cloze Testi', accent: '#7E22CE',
-    subtitle: 'Anahtar kelimeler boş — bağlamdan anlam çıkar',
-    tip: 'Bağlamdan kelime çıkarımı sınav okuma sorularının temel stratejisidir.',
-    benefits: ['LGS/TYT okuma soru tiplerini simüle eder', 'Bağlamdan kelime tahmini becerisi gelişir', 'Semantik çıkarım gücünü artırır'],
-    steps:    ['İçerik kelimeleri (isim, fiil, sıfat) boşluk olur', '4 şıktan doğru kelimeyi seç', 'Tüm boşluklar tamamlanınca skor'],
-    stats:    [{ label: 'Boşluk', value: 'İçerik kelimeleri' }, { label: 'Şık', value: '4 seçenek' }, { label: 'Hedef', value: 'LGS/TYT format' }],
   },
   'dual-column': {
     icon: '📰', label: 'Çift Sütun', accent: '#0369A1',

@@ -17,7 +17,7 @@ export default function FlowReadingScreen() {
       onBack={() => router.back()}
       renderExercise={(content, onComplete, onExit, accentColor) => (
         <FlowReadingExercise
-          initialContent={content}
+          initialContent={content ?? undefined}
           accentColor={accentColor}
           onComplete={(m: FlowReadingMetrics) => {
             if (student?.id) flowSvc.saveSession(m, student.id).catch(() => {})
@@ -28,7 +28,7 @@ export default function FlowReadingScreen() {
               completionRatio: 1,
               arpScore:        m.arpScore,
               xpEarned:        0,
-              libraryTextId:   content.libraryTextId,
+              libraryTextId:   content?.libraryTextId,
             })
           }}
           onExit={onExit}

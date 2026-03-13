@@ -34,8 +34,6 @@ import { useAuthStore } from '../../stores/authStore'
 import { createBadgeService } from '@sprinta/api'
 import { MODULE_INTRO } from '../exercise/ReadingModuleIntro'
 import type { Badge } from '@sprinta/api'
-import ModuleSetupScreen from '../../screens/reading/ModuleSetupScreen'
-import ContentLibraryScreen from '../../screens/reading/ContentLibraryScreen'
 import type { SpeedTier, ComprehensionTier } from '../../types/reading'
 
 const badgeSvc = createBadgeService(supabase)
@@ -81,7 +79,7 @@ interface Props {
   onBack:        () => void
   initialPhase?: Phase
   renderExercise: (
-    content:     ImportedContent,
+    content:     ImportedContent | null,
     onComplete:  (m: BaseReadingMetrics) => void,
     onExit:      () => void,
     accentColor: string,
@@ -539,7 +537,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ren
   const info   = MODULE_INTRO[moduleKey]
   const accent = info?.accent ?? '#0891B2'
 
-  const [phase,        setPhase]        = useState<Phase>(initialPhase ?? 'setup')
+  const [phase,        setPhase]        = useState<Phase>(initialPhase ?? 'exercising')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [metrics,      setMetrics]      = useState<BaseReadingMetrics | null>(null)
   const [questions,    setQuestions]    = useState<QuestionRow[]>([])
@@ -549,25 +547,6 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ren
   const [showFeedback, setShowFeedback] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [savedBadges,  setSavedBadges]  = useState<Badge[]>([])
-  // Hızlı Başlat → sınav türüne filtreli aç; Metin Seç → tüm sınavları göster
-  const [pickFiltered, setPickFiltered] = useState(false)
-
-  // ── Setup phase handlers ──────────────────────────────────────────
-  const handleSelectText = useCallback(() => {
-    setPickFiltered(false)   // Tüm sınavları göster
-    setPhase('picking')
-  }, [])
-
-  const handleQuickStart = useCallback(() => {
-    setPickFiltered(true)    // Sınav türüne filtreli aç
-    setPhase('picking')
-  }, [])
-
-  // ── Content selected (from ContentLibraryScreen) ──────────────────
-  const handleContentSelected = useCallback((c: ImportedContent) => {
-    setContent(c)
-    setPhase('exercising')
-  }, [])
 
   // ── Exercise complete ─────────────────────────────────────────────
   const handleExerciseComplete = useCallback(async (m: BaseReadingMetrics) => {
@@ -701,33 +680,10 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ren
     )
   }
 
-  if (phase === 'setup') {
-    return (
-      <ModuleSetupScreen
-        moduleKey={moduleKey}
-        onSelectText={handleSelectText}
-        onQuickStart={handleQuickStart}
-        onBack={onBack}
-      />
-    )
-  }
-
-  if (phase === 'picking') {
-    return (
-      <ContentLibraryScreen
-        accentColor={accent}
-        moduleKey={moduleKey}
-        onContentSelected={handleContentSelected}
-        onBack={() => setPhase('setup')}
-        initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
-      />
-    )
-  }
-
   if (phase === 'exercising') {
     return (
       <>
-        {renderExercise(content!, handleExerciseComplete, onBack, accent)}
+        {renderExercise(content ?? null, handleExerciseComplete, onBack, accent)}
       </>
     )
   }

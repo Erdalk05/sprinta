@@ -11,12 +11,12 @@ export default function FocusFilterScreen() {
       renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="focus_filter"
-          initialContent={content}
+          initialContent={content ?? undefined}
           onComplete={(m: ReadingModesMetrics) => onComplete({
             avgWPM: m.avgWPM, totalWords: m.totalWords,
             durationSeconds: m.durationSeconds, completionRatio: m.completionRatio,
             arpScore: m.arpScore, xpEarned: m.xpEarned,
-            libraryTextId: content.libraryTextId,
+            libraryTextId: content?.libraryTextId,
           })}
           onExit={onExit}
           accentColor={accentColor}

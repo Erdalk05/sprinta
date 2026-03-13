@@ -172,19 +172,15 @@ const OKUMA_ACCENTS: Record<string, string> = {
   '/exercise/flow-reading':        '#059669',
   '/exercise/speed-ladder':        '#D97706',
   '/exercise/bionic-reading':      '#0284C7',
-  '/exercise/keyword-scan':        '#DC2626',
   '/exercise/fixation-trainer':    '#9333EA',
   '/exercise/auto-scroll':         '#E11D48',
-  '/exercise/sentence-step':       '#0F766E',
   '/exercise/academic-mode':       '#1D4ED8',
   '/exercise/focus-filter':        '#B45309',
   '/exercise/memory-anchor':       '#6D28D9',
   '/exercise/vocabulary':          '#047857',
   '/exercise/prediction-reading':  '#C2410C',
-  '/exercise/subvocal-free':       '#1E40AF',
   '/exercise/speed-camp':          '#15803D',
   '/exercise/vanishing-reading':   '#4338CA',
-  '/exercise/cloze-test':          '#7E22CE',
   '/exercise/dual-column':         '#0369A1',
   '/exercise/soru-treni':          '#B91C1C',
   '/exercise/hatali-cumle':        '#92400E',
@@ -195,32 +191,29 @@ const OKUMA_ACCENTS: Record<string, string> = {
 
 // ─── Okuma module data (25 modül) ────────────────────────────────
 const OKUMA_MODULES = [
+  // ── Hız Okuma ──────────────────────────────────────────────
   { icon: '⚡', label: 'Chunk Okuma',        subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
   { icon: '⏱️', label: 'Zamanlı Okuma',      subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
   { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır pacing · anlama + hız dengesi',             route: '/exercise/flow-reading'      },
   { icon: '🪜', label: 'Hız Merdiveni',      subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',        route: '/exercise/speed-ladder'      },
   { icon: '🧬', label: 'Biyonik Okuma',      subtitle: 'İlk heceler kalın · beyin tamamlar',              route: '/exercise/bionic-reading'    },
-  { icon: '🔍', label: 'Anahtar Kelime',     subtitle: 'Kritik bilgiyi tara · pasaj tekniği',             route: '/exercise/keyword-scan'      },
   { icon: '👁️', label: 'Göz Genişliği',      subtitle: 'Flash gruplar · daha az göz hareketi',            route: '/exercise/fixation-trainer'  },
   { icon: '📜', label: 'Oto Kaydırma',       subtitle: 'Metin kendi hızında akar · ritim kur',            route: '/exercise/auto-scroll'       },
-  { icon: '📝', label: 'Cümle Adım',         subtitle: 'Cümle cümle ilerle · anlama odaklı',              route: '/exercise/sentence-step'     },
+  { icon: '🏕️', label: 'Hızlı Okuma Kampı', subtitle: 'Günlük antrenman · WPM gelişimini izle',          route: '/exercise/speed-camp'        },
+  { icon: '📅', label: 'Günlük Antrenman',   subtitle: 'Her gün bir metin · hızını ölç · anlama soruları', route: '/exercise/daily-training'   },
+  // ── Anlama & Analiz ─────────────────────────────────────
   { icon: '📚', label: 'Akademik Mod',        subtitle: 'Derin anlama · ağır paragraf çözme',              route: '/exercise/academic-mode'     },
   { icon: '🎯', label: 'Dikkat Filtresi',    subtitle: 'Tek satırı gör · odaklanmayı güçlendir',          route: '/exercise/focus-filter'      },
   { icon: '🧠', label: 'Hafıza Sabitleme',   subtitle: 'Oku-gizle-hatırla · bilgiyi kalıcı yap',          route: '/exercise/memory-anchor'     },
   { icon: '📖', label: 'Kelime Haznesi',     subtitle: 'Kelime öğren · bağlamsal anlam · LGS',            route: '/exercise/vocabulary'        },
   { icon: '🔮', label: 'Tahmin Okuma',       subtitle: 'Cümle sonunu tahmin et · anlam bağlantısı',       route: '/exercise/prediction-reading'},
-  { icon: '🤫', label: 'Sessiz Okuma',       subtitle: 'İç sesi bastır · subvokalizasyonu kır',           route: '/exercise/subvocal-free'     },
-  { icon: '🏕️', label: 'Hızlı Okuma Kampı', subtitle: 'Günlük antrenman · WPM gelişimini izle',          route: '/exercise/speed-camp'        },
   { icon: '🌫️', label: 'Kaybolma Okuma',     subtitle: 'Metin solar · anlama soruları',                  route: '/exercise/vanishing-reading' },
-  { icon: '📋', label: 'Cloze Testi',        subtitle: 'İçerik kelimeleri boşluk · LGS formatı',          route: '/exercise/cloze-test'        },
   { icon: '📰', label: 'Çift Sütun',         subtitle: 'İki kolon · periferik span egzersizi',            route: '/exercise/dual-column'       },
   { icon: '🚂', label: 'Soru Treni',         subtitle: '40 LGS sorusu · 45dk timer',                      route: '/exercise/soru-treni'        },
   { icon: '🔎', label: 'Hatalı Cümle',       subtitle: 'Dil bilgisi hatasını bul · 20 tur',               route: '/exercise/hatali-cumle'      },
   { icon: '🃏', label: 'Flash Kart Bankası',  subtitle: 'Soruları kart formatında · işaretle/tekrar',     route: '/exercise/flashcard-bank'    },
-  // ── AYT Özel Modüller ─────────────────────────────────────
   { icon: '🖊️', label: 'Şiir Analizi',       subtitle: '7 şiir · edebi sanat + anlama · AYT Edebiyat',    route: '/exercise/poetry-analysis'   },
   { icon: '📊', label: 'Grafik Okuma',       subtitle: '6 grafik · veri yorumlama · AYT/LGS',              route: '/exercise/graph-reading'     },
-  { icon: '📅', label: 'Günlük Antrenman',   subtitle: 'Her gün bir metin · hızını ölç · anlama soruları', route: '/exercise/daily-training'    },
 ] as const
 
 // ─── İş Bankası Kart — Mavi → tıklayınca Beyaz ───────────────────
@@ -511,7 +504,7 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
                 : 'Akademi'
     const sub   = type === 'egzersiz'
                   ? (eyePage === 0 ? '👁️ Görsel Mekanik — 17 egzersiz' : '⚡ Göz Antrenmanı — 23 egzersiz')
-                : type === 'okuma'    ? '25 modül'
+                : type === 'okuma'    ? '21 modül'
                 : '9 kategori'
 
     // Build 2-col pairs for all types
@@ -529,10 +522,17 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
         eyePairs.push(EYE_EXERCISE_CONFIGS.slice(i, i + 2))
       }
     }
-    const okPairs: (typeof OKUMA_MODULES[number])[][] = []
+    // Hız Okuma: ilk 9 modül, Anlama & Analiz: kalan 12 modül
+    const HIZLI_MODULES = [...OKUMA_MODULES].slice(0, 9)
+    const ANLAMA_MODULES = [...OKUMA_MODULES].slice(9)
+    const hizPairs: (typeof OKUMA_MODULES[number])[][] = []
+    const anlamaPairs: (typeof OKUMA_MODULES[number])[][] = []
     if (type === 'okuma') {
-      for (let i = 0; i < OKUMA_MODULES.length; i += 2) {
-        okPairs.push([...OKUMA_MODULES].slice(i, i + 2))
+      for (let i = 0; i < HIZLI_MODULES.length; i += 2) {
+        hizPairs.push(HIZLI_MODULES.slice(i, i + 2))
+      }
+      for (let i = 0; i < ANLAMA_MODULES.length; i += 2) {
+        anlamaPairs.push(ANLAMA_MODULES.slice(i, i + 2))
       }
     }
     const akPairs: (typeof AKADEMI_CATEGORIES[number])[][] = []
@@ -668,19 +668,49 @@ const TrainingBottomSheet = forwardRef<TrainingSheetRef, Props>(
               </View>
             ))}
 
-            {type === 'okuma' && okPairs.map((pair, rowIdx) => (
-              <View key={rowIdx} style={s.gridRow}>
-                {pair.map((item, colIdx) => (
-                  <OkumaCard
-                    key={item.route}
-                    item={item}
-                    index={rowIdx * 2 + colIdx}
-                    onPress={() => navigate(item.route)}
-                  />
+            {type === 'okuma' && (
+              <>
+                {/* ── Hız Okuma bölüm başlığı ── */}
+                <View style={s.sectionHeader}>
+                  <View style={[s.sectionBar, { backgroundColor: '#0891B2' }]} />
+                  <Text style={s.sectionTitle}>🚀 Hız Okuma</Text>
+                  <Text style={s.sectionCount}>9 modül</Text>
+                </View>
+                {hizPairs.map((pair, rowIdx) => (
+                  <View key={`hiz-${rowIdx}`} style={s.gridRow}>
+                    {pair.map((item, colIdx) => (
+                      <OkumaCard
+                        key={item.route}
+                        item={item}
+                        index={rowIdx * 2 + colIdx}
+                        onPress={() => navigate(item.route)}
+                      />
+                    ))}
+                    {pair.length === 1 && <View style={{ flex: 1 }} />}
+                  </View>
                 ))}
-                {pair.length === 1 && <View style={{ flex: 1 }} />}
-              </View>
-            ))}
+
+                {/* ── Anlama & Analiz bölüm başlığı ── */}
+                <View style={[s.sectionHeader, { marginTop: 8 }]}>
+                  <View style={[s.sectionBar, { backgroundColor: '#7C3AED' }]} />
+                  <Text style={s.sectionTitle}>🧠 Anlama & Analiz</Text>
+                  <Text style={s.sectionCount}>12 modül</Text>
+                </View>
+                {anlamaPairs.map((pair, rowIdx) => (
+                  <View key={`anlama-${rowIdx}`} style={s.gridRow}>
+                    {pair.map((item, colIdx) => (
+                      <OkumaCard
+                        key={item.route}
+                        item={item}
+                        index={rowIdx * 2 + colIdx}
+                        onPress={() => navigate(item.route)}
+                      />
+                    ))}
+                    {pair.length === 1 && <View style={{ flex: 1 }} />}
+                  </View>
+                ))}
+              </>
+            )}
 
             {type === 'akademi' && akPairs.map((pair, rowIdx) => (
               <View key={rowIdx} style={s.gridRow}>
@@ -797,6 +827,31 @@ function ts(t: AppTheme) {
     },
     dailySub:   { fontSize: 11, color: 'rgba(255,255,255,0.65)' },
     dailyArrow: { fontSize: 20, color: '#40C8F0', fontWeight: '900' },
+
+    // Section header (Hız Okuma / Anlama & Analiz)
+    sectionHeader: {
+      flexDirection:  'row',
+      alignItems:     'center',
+      gap:            8,
+      marginBottom:   10,
+      marginTop:      4,
+    },
+    sectionBar: {
+      width:        3,
+      height:       18,
+      borderRadius: 2,
+    },
+    sectionTitle: {
+      fontSize:   14,
+      fontWeight: '800',
+      color:      t.colors.text,
+      flex:       1,
+    },
+    sectionCount: {
+      fontSize:   11,
+      fontWeight: '600',
+      color:      t.colors.textHint,
+    },
 
     // 2-column grid row
     gridRow: {
