@@ -155,7 +155,7 @@ export default function GameHomeScreen() {
 
   const handleStart = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    router.push('/exercise/speed_control' as any)
+    router.push('/exercise/daily-training' as any)
   }
 
   return (

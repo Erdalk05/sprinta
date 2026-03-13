@@ -395,13 +395,17 @@ export default function ContentLibraryScreen({
                   {EXAM_STRUCTURE.map((exam) => (
                     <TouchableOpacity
                       key={exam.key}
-                      style={[s.examCard, { borderColor: exam.color + '30', backgroundColor: exam.color + '10' }]}
+                      style={s.examCard}
                       onPress={() => handleExamSelect(exam)}
                       activeOpacity={0.8}
                     >
-                      <Text style={s.examIcon}>{exam.icon}</Text>
-                      <Text style={[s.examLabel, { color: exam.color }]}>{exam.label}</Text>
-                      <Text style={s.examSub}>{exam.lessons.length} ders</Text>
+                      <View style={[s.examColorStrip, { backgroundColor: exam.color }]}>
+                        <Text style={s.examIcon}>{exam.icon}</Text>
+                      </View>
+                      <View style={s.examCardBody}>
+                        <Text style={[s.examLabel, { color: exam.color }]}>{exam.label}</Text>
+                        <Text style={s.examSub}>{exam.lessons.length} ders</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -786,17 +790,27 @@ const s = StyleSheet.create({
   examCard: {
     width:          '47%',
     borderRadius:   16,
-    borderWidth:    1.5,
-    padding:        16,
-    alignItems:     'center',
-    gap:            6,
+    overflow:       'hidden',
+    backgroundColor:'#FFFFFF',
     shadowColor:    '#000',
-    shadowOpacity:  0.06,
-    shadowRadius:   8,
-    shadowOffset:   { width: 0, height: 2 },
-    elevation:      2,
+    shadowOpacity:  0.12,
+    shadowRadius:   10,
+    shadowOffset:   { width: 0, height: 3 },
+    elevation:      4,
   },
-  examIcon:  { fontSize: 32 },
+  examColorStrip: {
+    width:          '100%',
+    paddingVertical: 18,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+  examCardBody: {
+    paddingVertical:  10,
+    paddingHorizontal: 8,
+    alignItems:     'center',
+    gap:            3,
+  },
+  examIcon:  { fontSize: 34 },
   examLabel: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   examSub:   { fontSize: 11, color: '#6B7280', fontWeight: '500' },
 

@@ -77,8 +77,9 @@ type Phase = 'setup' | 'picking' | 'exercising' | 'questioning' | 'results'
 // ─── Props ──────────────────────────────────────────────────────────
 
 interface Props {
-  moduleKey: string
-  onBack:    () => void
+  moduleKey:     string
+  onBack:        () => void
+  initialPhase?: Phase
   renderExercise: (
     content:     ImportedContent,
     onComplete:  (m: BaseReadingMetrics) => void,
@@ -532,13 +533,13 @@ function ResultPhase({
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export default function ReadingModuleFlow({ moduleKey, onBack, renderExercise }: Props) {
+export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, renderExercise }: Props) {
   const student = useAuthStore((s) => s.student)
 
   const info   = MODULE_INTRO[moduleKey]
   const accent = info?.accent ?? '#0891B2'
 
-  const [phase,        setPhase]        = useState<Phase>('setup')
+  const [phase,        setPhase]        = useState<Phase>(initialPhase ?? 'setup')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [metrics,      setMetrics]      = useState<BaseReadingMetrics | null>(null)
   const [questions,    setQuestions]    = useState<QuestionRow[]>([])

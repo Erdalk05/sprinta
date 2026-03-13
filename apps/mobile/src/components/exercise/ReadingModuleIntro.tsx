@@ -250,6 +250,14 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     steps:    ['Şiir dörtlükleriyle gösterilir', 'Edebi sanat ve anlam soruları gelir', '5 şiir tamamlandığında analiz raporu'],
     stats:    [{ label: 'Şiir', value: '5 adet' }, { label: 'Soru', value: 'Edebi sanat' }, { label: 'Hedef', value: 'AYT Ede.' }],
   },
+  'daily-training': {
+    icon: '🚀', label: 'Günlük Antrenman', accent: '#FF6B35',
+    subtitle: 'Her gün bir metin seç · hızını ölç · anlama soruları',
+    tip: 'Günlük düzenli pratik, WPM artışını 3×e katlar.',
+    benefits: ['Sınava özel içerikle her gün pratik yaparsın', 'WPM ve anlama oranını takip edersin', 'Streak bonusuyla motivasyonun canlı kalır'],
+    steps:    ['Sınavını seç (LGS, TYT, AYT...)', 'Ders ve metin seç', 'Oku · Soruları yanıtla · Puanı gör'],
+    stats:    [{ label: 'Süre', value: '5-10 dk' }, { label: 'Format', value: 'Sınava özel' }, { label: 'Hedef', value: '+WPM her gün' }],
+  },
   'graph-reading': {
     icon: '📊', label: 'Grafik Okuma', accent: '#164E63',
     subtitle: 'Veri grafiklerini yorumla · çıkarım soruları · AYT/LGS',
