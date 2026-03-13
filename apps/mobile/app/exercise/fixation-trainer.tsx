@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 // Göz Genişliği Antrenmanı route wrapper
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
@@ -46,14 +47,14 @@ export default function FixationTrainerScreen() {
     } catch {
       // sessiz hata
     }
-    router.back()
+    ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )
   }, [userId, router])
 
   return (
     <FixationTrainerExercise
       spanLevel={spanLevel}
       onComplete={handleComplete}
-      onExit={() => router.back()}
+      onExit={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )}
     />
   )
 }

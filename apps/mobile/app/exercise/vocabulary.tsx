@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 /**
  * Kelime Dağarcığı — vocabulary mod
  * MCQ flashcard tabanlı kelime öğrenme egzersizi.
@@ -14,9 +15,9 @@ export default function VocabularyScreen() {
   const { student } = useAuthStore()
   const [started, setStarted] = useState(false)
 
-  const handleComplete = useCallback(async () => { router.back() }, [router])
+  const handleComplete = useCallback(async () => { ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() ) }, [router])
 
-  if (!started) return <ReadingModuleIntro moduleKey="vocabulary" onStart={() => setStarted(true)} onBack={() => router.back()} />
+  if (!started) return <ReadingModuleIntro moduleKey="vocabulary" onStart={() => setStarted(true)} onBack={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )} />
 
   return (
     <VocabularyExercise
@@ -25,7 +26,7 @@ export default function VocabularyScreen() {
       }
       wordCount={10}
       onComplete={handleComplete}
-      onExit={() => router.back()}
+      onExit={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )}
     />
   )
 }

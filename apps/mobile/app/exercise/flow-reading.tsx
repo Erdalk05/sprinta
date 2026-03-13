@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/stores/authStore'
 import { supabase } from '../../src/lib/supabase'
@@ -14,7 +15,7 @@ export default function FlowReadingScreen() {
   return (
     <ReadingModuleFlow
       moduleKey="flow-reading"
-      onBack={() => router.back()}
+      onBack={() => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }}
       renderExercise={(content, onComplete, onExit, accentColor) => (
         <FlowReadingExercise
           initialContent={content ?? undefined}

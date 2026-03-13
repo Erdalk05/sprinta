@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../stores/pendingSheetStore'
 // =====================================================================
 // SpeedCampScreen.tsx — Sprint 11
 // Hızlı Okuma Kampı — Kişiselleştirilmiş Antrenman Merkezi
@@ -234,7 +235,7 @@ export default function SpeedCampScreen() {
                 <Text style={s.streakNum}>{streak}</Text>
               </View>
             )}
-            <TouchableOpacity onPress={() => router.back()}
+            <TouchableOpacity onPress={() => (usePendingSheetStore.getState().setPendingSheet('okuma'), router.back())}
               hitSlop={{ top:10, bottom:10, left:10, right:10 }}
               style={{ width:36, height:36, borderRadius:18,
                 backgroundColor: t.colors.surface, borderWidth:1, borderColor: t.colors.border,

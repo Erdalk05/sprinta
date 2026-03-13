@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
@@ -15,10 +16,10 @@ export default function VanishingReadingRoute() {
         moduleKey="vanishing-reading"
         onSelectText={() => setPhase('exercise')}
         onQuickStart={() => setPhase('exercise')}
-        onBack={() => router.back()}
+        onBack={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )}
       />
     )
   }
 
-  return <VanishingReadingScreen onExit={() => router.back()} />
+  return <VanishingReadingScreen onExit={() => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )} />
 }

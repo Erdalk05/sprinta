@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 import { useRouter } from 'expo-router'
 import ReadingModuleFlow from '../../src/components/reading/ReadingModuleFlow'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
@@ -8,7 +9,7 @@ export default function DailyTrainingScreen() {
     <ReadingModuleFlow
       moduleKey="daily-training"
       initialPhase="picking"
-      onBack={() => router.back()}
+      onBack={() => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }}
       renderExercise={(content, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
           mode="timed"

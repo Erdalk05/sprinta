@@ -9,6 +9,7 @@ import { RadialFab } from '../../src/features/navigation/components/RadialFab'
 import TrainingBottomSheet from '../../src/components/training/TrainingBottomSheet'
 import type { TrainingSheetRef } from '../../src/components/training/TrainingBottomSheet'
 import { notificationService } from '../../src/services/notificationService'
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 
 // ─── Tema renkleri ────────────────────────────────────────────────
 const NAVY = '#0D1B3E'
@@ -152,6 +153,28 @@ export default function TabsLayout() {
   const [egzersizActive, setEgzersizActive] = useState(false)
   const [okumaActive,    setOkumaActive]    = useState(false)
   const [akademiActive,  setAkademiActive]  = useState(false)
+
+  const pendingSheet    = usePendingSheetStore((s) => s.pendingSheet)
+  const setPendingSheet = usePendingSheetStore((s) => s.setPendingSheet)
+
+  useEffect(() => {
+    if (!pendingSheet) return
+    setPendingSheet(null)
+    const openFn = () => {
+      if (pendingSheet === 'okuma') {
+        setEgzersizActive(false); setAkademiActive(false); setOkumaActive(true)
+        okumaRef.current?.open()
+      } else if (pendingSheet === 'egzersiz') {
+        setOkumaActive(false); setAkademiActive(false); setEgzersizActive(true)
+        egzersizRef.current?.open()
+      } else if (pendingSheet === 'akademi') {
+        setEgzersizActive(false); setOkumaActive(false); setAkademiActive(true)
+        akademiRef.current?.open()
+      }
+    }
+    // Navigasyon animasyonu bitmeden bekle
+    setTimeout(openFn, 250)
+  }, [pendingSheet])
 
   return (
     <View style={rootStyle}>

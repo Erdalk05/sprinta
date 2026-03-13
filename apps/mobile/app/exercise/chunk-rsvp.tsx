@@ -1,3 +1,4 @@
+import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
 /**
  * chunk-rsvp.tsx — Chunk RSVP 5-adımlı sihirbaz
  *
@@ -31,7 +32,7 @@ export default function ChunkRSVPScreen() {
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [pickFiltered, setPickFiltered] = useState(false)
 
-  const onExit = () => router.back()
+  const onExit = () => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )
 
   // ── Adım 1: Modül Tanıtımı ───────────────────────────────────────
   if (phase === 'setup') {
