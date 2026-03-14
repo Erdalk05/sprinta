@@ -11,6 +11,15 @@ import { notificationService } from '../src/services/notificationService'
 // Reanimated strict mode uyarılarını kapat
 configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false })
 
+// Metro terminalinde [expo-av] deprecation uyarısını filtrele
+if (__DEV__) {
+  const _warn = console.warn
+  console.warn = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && args[0].startsWith('[expo-av]')) return
+    _warn(...args)
+  }
+}
+
 // Geliştirme ortamı uyarı banner'ını kapat
 LogBox.ignoreLogs([
   'Sending `onAnimatedValueUpdate`',
