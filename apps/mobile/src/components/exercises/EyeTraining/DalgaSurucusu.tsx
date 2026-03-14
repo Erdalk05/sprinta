@@ -5,9 +5,10 @@
  * PanResponder ile parmağı noktaya yakın tut.
  * Tracking error ölçülür.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
   PanResponder,
 } from 'react-native'
 import type { EyeExerciseProps, EyeMetrics } from '@sprinta/shared'

@@ -2,9 +2,10 @@
  * KelimeYagmuru — Kelime Yağmuru (Çevresel Görüş / Periferik)
  * Ekrandan kelimeler düşer, doğru anlamlıya dokun.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, TouchableOpacity, SafeAreaView, Dimensions, Animated,
+  View, Text, StyleSheet, Pressable, TouchableOpacity,  Dimensions, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'

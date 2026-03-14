@@ -3,10 +3,11 @@
  * Beyaz / açık tema. Kategori rengiyle accent.
  * Seviye seçimi (1-4), ARP katkısı, bilgi kartları.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, Dimensions,
-  SafeAreaView, ScrollView, Platform,
+   ScrollView, Platform,
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, Easing,

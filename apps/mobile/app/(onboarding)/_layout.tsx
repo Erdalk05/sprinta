@@ -4,7 +4,7 @@ export default function OnboardingLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
       <Stack.Screen name="welcome" />
-      <Stack.Screen name="basic-info" />
+      <Stack.Screen name="consent" />
       <Stack.Screen name="daily-goal" />
       <Stack.Screen name="diagnostic-invite" />
     </Stack>

@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet,  Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { DIAGNOSTIC_CONTENT } from '../../src/data/diagnosticContent'

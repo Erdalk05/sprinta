@@ -2,9 +2,10 @@
  * MeteorYagmuru — Meteor Yağmuru (Çevresel Görüş / Periferik)
  * Düşen altın meteorları yakala, kırmızılardan kaç.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, Pressable, TouchableOpacity, SafeAreaView, Dimensions, Animated,
+  View, Text, StyleSheet, Pressable, TouchableOpacity,  Dimensions, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'

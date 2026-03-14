@@ -3,9 +3,10 @@
  * 5 köşeli beşgen üzerinde zıplayan topu yakala.
  * performance.now() tabanlı reaksiyon ölçümü.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity,  Dimensions,
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence, withSpring,

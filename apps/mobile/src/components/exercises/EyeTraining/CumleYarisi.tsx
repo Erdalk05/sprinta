@@ -2,9 +2,10 @@
  * CumleYarisi — Cümle Yarışı (Periferik)
  * Cümle gösterilir → "Okudum!" tap → WPM hesaplanır → 5 tur
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, TouchableOpacity, 
 } from 'react-native'
 import Animated, {
   useSharedValue, withTiming, useAnimatedStyle,

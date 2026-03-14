@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { useEffect, useState } from 'react'

@@ -4,9 +4,10 @@
  * 2 zıt yönde hareket eden nokta.
  * Kırmızı renge döndüğünde dokun.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing,

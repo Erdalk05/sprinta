@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'

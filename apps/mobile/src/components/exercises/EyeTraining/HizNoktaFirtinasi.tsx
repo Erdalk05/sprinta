@@ -4,9 +4,10 @@
  * Random pozisyonlarda beliren noktalara hızla dokun.
  * withTiming opacity animasyonu, kısa görünme süresi.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,

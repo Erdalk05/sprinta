@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useMemo, useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert, Linking } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet,  Alert, Linking } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { supabase } from '../../src/lib/supabase'

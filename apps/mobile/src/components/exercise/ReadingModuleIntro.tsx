@@ -4,7 +4,8 @@
  * Metin gerektiren modüllerde Kütüphane/Yapıştır seçici gösterilir.
  */
 import React, { useState, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import ContentImportModal, { type ImportedContent } from '../exercises/shared/ContentImportModal'
 import { usePendingReadingStore } from '../../stores/pendingReadingStore'

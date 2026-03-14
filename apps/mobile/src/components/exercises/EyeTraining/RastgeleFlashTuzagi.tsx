@@ -4,9 +4,10 @@
  * 3×3 bölge flash. 150ms withTiming ile bölge parlar.
  * Doğru bölgeye dokun.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,

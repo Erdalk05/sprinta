@@ -2,9 +2,10 @@
  * HarfZinciri — Harf Zinciri (Sakkadik)
  * Kelime göster → son harfle başlayan yeni kelimeyi 3 şıktan seç
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, TouchableOpacity, 
 } from 'react-native'
 import Animated, {
   useSharedValue, withSequence, withTiming, useAnimatedStyle,

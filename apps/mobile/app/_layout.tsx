@@ -10,13 +10,17 @@ import { notificationService } from '../src/services/notificationService'
 
 // Reanimated strict mode uyarılarını kapat
 configureReanimatedLogger({ level: ReanimatedLogLevel.warn, strict: false })
+
 // Geliştirme ortamı uyarı banner'ını kapat
 LogBox.ignoreLogs([
   'Sending `onAnimatedValueUpdate`',
   'Non-serializable values were found',
   'VirtualizedLists should never be nested',
   '[Reanimated]',
-  'Warning: Each child',
+  '[expo-av]',
+  'GoTrueClient',
+  'Possible Unhandled Promise',
+  'new NativeEventEmitter',
 ])
 
 export default function RootLayout() {

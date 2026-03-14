@@ -4,9 +4,10 @@
  * Bir "beat marker" sağdan sola hareket eder.
  * Merkez çizgisini geçtiğinde tap et.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions, Animated,
+  View, Text, StyleSheet, TouchableOpacity,  Dimensions, Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'

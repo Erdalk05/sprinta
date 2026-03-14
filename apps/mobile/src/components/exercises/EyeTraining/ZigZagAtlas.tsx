@@ -2,9 +2,10 @@
  * ZigZagAtlas — ZigZag Atlama Parkuru (Göz Atlaması / Sakkadik)
  * Sıra numaralı hedeflere zigzag düzeninde hızla dokun.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity,  Dimensions,
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence,

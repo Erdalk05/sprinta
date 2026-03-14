@@ -5,9 +5,10 @@
  * Sol/Sağ kenardan bir hedef belirir (kaçınma veya sayma).
  * Kaç hedef gördüğünü say → Sayı gir.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,

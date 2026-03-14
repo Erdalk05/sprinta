@@ -2,9 +2,10 @@
  * SoruKosusu — Soru Koşusu (Göz Takibi)
  * Kısa pasaj 8sn → anlama sorusu → 5 tur
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, TouchableOpacity, 
 } from 'react-native'
 import Animated, {
   useSharedValue, withTiming, useAnimatedStyle,

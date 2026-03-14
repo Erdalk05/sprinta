@@ -51,7 +51,7 @@ export const notificationService = {
           body: 'Günlük antrenmanın seni bekliyor! ARP skorunu geliştir. 🚀',
           sound: true,
         },
-        trigger: { hour: 19, minute: 0, repeats: true } as never,
+        trigger: { type: 'calendar', hour: 19, minute: 0, repeats: true } as never,
       })
     } catch (e) {
       console.warn('[NotificationService] scheduleDailyReminder:', e)

@@ -3,10 +3,11 @@
  * Dark Navy Hero · ARP + Sparkline · Stats · CTA
  * AI Coach · XP · Mission · BrainMap · Leaderboard · Weekly
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useEffect, useRef, useMemo, useState } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView, FlatList,
-  SafeAreaView, Animated, StyleSheet,
+  Animated, StyleSheet,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'

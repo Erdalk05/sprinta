@@ -2,9 +2,10 @@
  * KelimeEslestirme — Kelime Eşleştirme (Sakkadik)
  * 4×4 grid, türkçe↔anlam kart çiftlerini bul (flip animasyon)
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity,  Dimensions,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useEyeSoundFeedback } from './useEyeSoundFeedback'

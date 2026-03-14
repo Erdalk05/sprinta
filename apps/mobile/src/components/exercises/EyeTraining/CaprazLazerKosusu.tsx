@@ -4,9 +4,10 @@
  * 4 köşe rotasyonu → 8 köşe → 12 köşe
  * Her köşede aktif nokta belirir, kullanıcı sırayla dokunur.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet, Dimensions, 
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming,
