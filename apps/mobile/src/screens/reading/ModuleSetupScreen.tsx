@@ -3,13 +3,13 @@
  * Modüle dokunulduğunda gösterilen zengin tanıtım ekranı.
  * Hero blok, stat chip'leri, faydalar, adımlar ve iki aksiyon butonu içerir.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'

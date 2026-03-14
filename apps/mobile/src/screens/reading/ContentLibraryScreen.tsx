@@ -3,13 +3,13 @@
  * 3 sekme: library (3-seviyeli kütüphane) | paste (metin yapıştır) | recent (son kullanılanlar)
  * Sınav → Ders → Metin hiyerarşisi, arama çubuğu, lazy body fetch.
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TextInput,
   ActivityIndicator,

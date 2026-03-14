@@ -6,13 +6,13 @@
  *   3. Anlama Soruları (3-5 MCQ from text_library)
  *   4. Sonuç Ekranı (rich result)
  */
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
 } from 'react-native'
@@ -22,6 +22,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { createBadgeService } from '@sprinta/api'
 import { MODULE_INTRO } from '../exercise/ReadingModuleIntro'
+import ModuleSetupScreen from '../../screens/reading/ModuleSetupScreen'
+import ContentLibraryScreen from '../../screens/reading/ContentLibraryScreen'
 import type { Badge } from '@sprinta/api'
 import type { SpeedTier, ComprehensionTier } from '../../types/reading'
 
@@ -593,7 +595,33 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     setSavedBadges([])
   }, [])
 
+  // ── Setup / Picking handlers ───────────────────────────────────────
+  const handleSelectText  = useCallback(() => setPhase('picking'),     [])
+  const handleQuickStart  = useCallback(() => setPhase('exercising'),  [])
+
   // ─── Render ────────────────────────────────────────────────────────
+
+  if (phase === 'setup') {
+    return (
+      <ModuleSetupScreen
+        moduleKey={moduleKey}
+        onSelectText={handleSelectText}
+        onQuickStart={handleQuickStart}
+        onBack={onBack}
+      />
+    )
+  }
+
+  if (phase === 'picking') {
+    return (
+      <ContentLibraryScreen
+        accentColor={accent}
+        moduleKey={moduleKey}
+        onContentSelected={(c) => { setContent(c); setPhase('exercising') }}
+        onBack={() => setPhase('setup')}
+      />
+    )
+  }
 
   if (loading) {
     return (
