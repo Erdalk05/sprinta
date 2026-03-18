@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, TextInput, Platform,
+  ScrollView, TextInput, Platform, Animated as RNAnimated,
 } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing,
@@ -174,8 +174,9 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
   const trackWidthRef  = useRef(0)
 
   // Animasyon
-  const opacity   = useSharedValue(1)
-  const chunkAnim = useAnimatedStyle(() => ({ opacity: opacity.value }))
+  const opacity      = useSharedValue(1)
+  const chunkAnim    = useAnimatedStyle(() => ({ opacity: opacity.value }))
+  const progressAnim = useRef(new RNAnimated.Value(0)).current
 
   // ── İçerik seçimi ─────────────────────────────────────────────
 
@@ -360,7 +361,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
     try {
       const { data } = await (supabase as any)
         .from('text_questions')
-        .select('*')
+        .select('id, text_id, chapter_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index')
         .eq('text_id', textId)
         .order('order_index')
         .limit(5)
@@ -377,6 +378,12 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
+
+  useEffect(() => {
+    const val = chunks.length > 0 ? chunkIdx / chunks.length : 0
+    RNAnimated.timing(progressAnim, { toValue: val, duration: 300, useNativeDriver: false }).start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chunkIdx, chunks.length])
 
   // ── Ref sync (her render'da güncellenir, erken return'lerden önce) ──
   chunksRef.current    = chunks
@@ -558,7 +565,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
         {/* Progress Bar */}
         <View style={s.progressPanel}>
           <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${progress * 100}%` as `${number}%` }]} />
+            <RNAnimated.View style={[s.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
           </View>
           <Text style={s.progressInfo}>
             {wordsRead}/{totalWords} kelime  ·  {formatTime(remainingSec)} kaldı
@@ -567,13 +574,6 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
 
         {/* Chunk Display */}
         <View style={s.chunkStage}>
-          {/* ORP Odak Noktası — gözün sabitlenmesi gereken yer */}
-          <View style={s.orpFocalRow}>
-            <View style={[s.orpFocalLine, { backgroundColor: orpColor + '50' }]} />
-            <View style={[s.orpFocalDot, { backgroundColor: orpColor }]} />
-            <View style={[s.orpFocalLine, { backgroundColor: orpColor + '50' }]} />
-          </View>
-
           <Animated.View style={[s.chunkBox, chunkAnim]}>
             {currentChunk ? (
               <View style={s.chunkWordsRow}>
@@ -616,13 +616,6 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
             ) : null}
           </Animated.View>
 
-          {/* Kelime Artış Çizgisi */}
-          <View style={s.wordGrowthBar}>
-            <View style={[s.wordGrowthFill, {
-              width: `${progress * 100}%` as `${number}%`,
-              backgroundColor: orpColor,
-            }]} />
-          </View>
           <Text style={[s.wordGrowthLabel, { color: orpColor }]}>
             {wordsRead}/{totalWords} kelime
           </Text>

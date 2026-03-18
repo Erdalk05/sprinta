@@ -20,6 +20,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
     }
 
+    // Admin rol kontrolü
+    const { data: student } = await supabase
+      .from('students')
+      .select('role')
+      .eq('auth_user_id', user.id)
+      .single();
+    if (!student || student.role !== 'admin') {
+      return NextResponse.json({ error: 'Yasak' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { title, content, category, examTypes, wordCount, fleschScore, difficulty } = body;
 

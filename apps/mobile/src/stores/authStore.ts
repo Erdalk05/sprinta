@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { mmkvStorage } from './mmkvStorage'
 import { createAuthService } from '@sprinta/api'
 import { supabase } from '../lib/supabase'
 
@@ -134,7 +134,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => mmkvStorage),
       partialize: (state) => ({
         student: state.student,
         isAuthenticated: state.isAuthenticated,

@@ -1,6 +1,6 @@
 // MMKV Zustand persist adapter — AsyncStorage'dan ~10x hızlı
 // Paket kurulu değilse AsyncStorage'a fallback yapar.
-// themeStore ve authStore AsyncStorage'da kalır.
+// Supabase client + tüm store'lar bu adapter'ı kullanır.
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
 

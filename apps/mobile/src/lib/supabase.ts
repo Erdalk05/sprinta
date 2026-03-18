@@ -1,20 +1,19 @@
 // =====================================================
 // Paylaşımlı Supabase istemcisi — TEK ÖRNEK
 //
-// AsyncStorage ile session kalıcılığı sayesinde tüm
-// bileşenler aynı oturumu paylaşır. Login → session
-// AsyncStorage'a yazılır → diğer istemciler okur.
+// MMKV ile session kalıcılığı — AsyncStorage'dan ~10x hızlı.
+// Login → session MMKV'ye yazılır → diğer istemciler okur.
 // =====================================================
 
 import { createClient } from '@supabase/supabase-js'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { mmkvStorage } from '../stores/mmkvStorage'
 
 export const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
   {
     auth: {
-      storage:          AsyncStorage,
+      storage:          mmkvStorage,
       autoRefreshToken: true,
       persistSession:   true,
       detectSessionInUrl: false,

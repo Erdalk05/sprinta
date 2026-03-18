@@ -104,6 +104,15 @@ export function initRewardEngine(): void {
   EventBus.on('LEVEL_UP',        handleLevelUp)
 }
 
+export function cleanupRewardEngine(): void {
+  if (!_initialized) return
+  EventBus.off('QUIZ_COMPLETED',  handleQuizCompleted)
+  EventBus.off('STREAK_UPDATED',  handleStreakUpdated)
+  EventBus.off('XP_UPDATED',      handleXPUpdated)
+  EventBus.off('LEVEL_UP',        handleLevelUp)
+  _initialized = false
+}
+
 export function checkBadges(stats: { streakDays: number; totalXp: number; level: number }): Badge[] {
   const newly: Badge[] = []
 

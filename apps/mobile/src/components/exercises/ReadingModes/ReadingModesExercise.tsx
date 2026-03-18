@@ -14,8 +14,9 @@ import React, {
 } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, Platform,
+  ScrollView, Platform, Animated as RNAnimated,
 } from 'react-native'
+import Svg, { Circle } from 'react-native-svg'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
   withSequence, Easing,
@@ -67,13 +68,15 @@ interface FinishResult {
 }
 
 interface ReadingViewProps {
-  content:  ImportedContent
-  config:   ModeConfig
-  wpm:      number
-  onFinish: (r: FinishResult) => void
-  onExit:   () => void
-  t:        AppTheme
-  color:    string
+  content:          ImportedContent
+  config:           ModeConfig
+  wpm:              number
+  fontSize:         number
+  onFontSizeChange: (s: number) => void
+  onFinish:         (r: FinishResult) => void
+  onExit:           () => void
+  t:                AppTheme
+  color:            string
 }
 
 // ─── Yardımcı: üst bar ────────────────────────────────────────────
@@ -99,10 +102,97 @@ function TopBar({
 }
 
 function ProgressBar({ value, color }: { value: number; color: string }) {
+  const anim = useRef(new RNAnimated.Value(0)).current
+  useEffect(() => {
+    RNAnimated.timing(anim, { toValue: Math.min(1, value), duration: 300, useNativeDriver: false }).start()
+  }, [value])
+  const animWidth = anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
   return (
-    <View style={{ height:3, backgroundColor:'rgba(128,128,128,0.22)', marginHorizontal:16 }}>
-      <View style={{ height:3, backgroundColor:color, borderRadius:2,
-        width:`${Math.min(100, Math.round(value * 100))}%` as `${number}%` }} />
+    <View style={{ height:3, backgroundColor:'rgba(128,128,128,0.22)', marginHorizontal:16, overflow:'hidden', borderRadius:2 }}>
+      <RNAnimated.View style={{ height:3, backgroundColor:color, borderRadius:2, width: animWidth }} />
+    </View>
+  )
+}
+
+// ── Okuma Kontrol Çubuğu: geçen süre + yazı boyutu ───────────────
+function ReadingControlBar({ fontSize, onChange, color, t }: {
+  fontSize: number
+  onChange: (n: number) => void
+  color:    string
+  t:        AppTheme
+}) {
+  const mountRef = useRef(Date.now())
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.round((Date.now() - mountRef.current) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const mm = Math.floor(elapsed / 60).toString().padStart(2, '0')
+  const ss = (elapsed % 60).toString().padStart(2, '0')
+  return (
+    <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between',
+      paddingHorizontal:16, paddingVertical:7,
+      backgroundColor: t.colors.panel,
+      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.colors.border }}>
+      <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}>
+        <Text style={{ fontSize:13, color }}>⏱</Text>
+        <Text style={{ fontSize:15, fontWeight:'800', color: t.colors.text }}>
+          {mm}:{ss}
+        </Text>
+      </View>
+      <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+        <TouchableOpacity
+          onPress={() => onChange(Math.max(12, fontSize - 2))}
+          hitSlop={{ top:8, bottom:8, left:8, right:8 }}
+          style={{ width:32, height:32, borderRadius:8, backgroundColor: t.colors.surface,
+            alignItems:'center', justifyContent:'center', borderWidth:1, borderColor: t.colors.border }}>
+          <Text style={{ fontSize:14, fontWeight:'800', color: t.colors.textHint }}>A-</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize:12, fontWeight:'700', color: t.colors.textHint, minWidth:34, textAlign:'center' }}>
+          {fontSize}pt
+        </Text>
+        <TouchableOpacity
+          onPress={() => onChange(Math.min(28, fontSize + 2))}
+          hitSlop={{ top:8, bottom:8, left:8, right:8 }}
+          style={{ width:32, height:32, borderRadius:8, backgroundColor: t.colors.surface,
+            alignItems:'center', justifyContent:'center', borderWidth:1, borderColor: t.colors.border }}>
+          <Text style={{ fontSize:14, fontWeight:'800', color: t.colors.text }}>A+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
+// ── Zamanlı Okuma: yuvarlak timer bileşeni ────────────────────────
+const RING_R   = 22
+const RING_C   = 2 * Math.PI * RING_R  // ~138.2
+
+function CircleTimer({
+  timeLeft, totalSec, color,
+}: { timeLeft: number; totalSec: number; color: string }) {
+  const pct        = timeLeft / Math.max(1, totalSec)
+  const ringColor  = timeLeft <= 30 ? '#EF4444' : timeLeft <= 60 ? '#F59E0B' : color
+  const dashOffset = RING_C * (1 - pct)
+  const mm = Math.floor(timeLeft / 60)
+  const ss = (timeLeft % 60).toString().padStart(2, '0')
+  return (
+    <View style={{ width:54, height:54, alignItems:'center', justifyContent:'center' }}>
+      <Svg width={54} height={54} viewBox="0 0 54 54">
+        <Circle cx={27} cy={27} r={RING_R} fill="none"
+          stroke="rgba(255,255,255,0.18)" strokeWidth={4} />
+        <Circle cx={27} cy={27} r={RING_R} fill="none"
+          stroke={ringColor} strokeWidth={4}
+          strokeDasharray={`${RING_C} ${RING_C}`}
+          strokeDashoffset={`${dashOffset}`}
+          strokeLinecap="round"
+          transform="rotate(-90 27 27)"
+        />
+      </Svg>
+      <View style={{ position:'absolute', alignItems:'center', justifyContent:'center' }}>
+        <Text style={{ fontSize:10, fontWeight:'900', color:ringColor, letterSpacing:-0.5 }}>
+          {mm}:{ss}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -111,20 +201,40 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
 // MOD 1 — ⏱️ ZAMANLI OKUMA
 // ═══════════════════════════════════════════════════════════════════
 
-function TimedView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
-  const timerSeconds = config.timerSeconds ?? 180
-  const [timeLeft, setTimeLeft] = useState(timerSeconds)
+function TimedView({ content, config, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
+  const totalSec   = config.timerSeconds ?? 180
+  const targetWpm  = Math.round(content.wordCount / (totalSec / 60))
+
+  const [timeLeft,    setTimeLeft]    = useState(totalSec)
   const [scrollRatio, setScrollRatio] = useState(0)
-  const [started, setStarted] = useState(false)
-  const startRef = useRef<number>(0)
-  const contentH = useRef(0)
-  const viewH    = useRef(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const urgency  = useSharedValue(0)
+  const [liveWpm,     setLiveWpm]     = useState(0)
+  const [started,     setStarted]     = useState(false)
+
+  const startRef       = useRef<number>(0)
+  const scrollRatioRef = useRef(0)
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const urgency        = useSharedValue(0)
+  const borderGlow     = useSharedValue(0)
 
   const urgentStyle = useAnimatedStyle(() => ({
-    opacity: 1 - urgency.value * 0.4,
+    opacity: 1 - urgency.value * 0.35,
   }))
+  const glowStyle = useAnimatedStyle(() => ({
+    borderWidth: borderGlow.value * 3,
+    borderColor: `rgba(239,68,68,${borderGlow.value * 0.6})`,
+  }))
+
+  const finish = useCallback((success: boolean) => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    const elapsed = Date.now() - startRef.current
+    onFinish({
+      avgWPM:        calcWPM(content.wordCount, elapsed),
+      durationSec:   Math.round(elapsed / 1000),
+      completion:    scrollRatioRef.current,
+      comprehension: success ? 75 : 50,
+      specific:      { timedSuccess: success, completionRatio: scrollRatioRef.current },
+    })
+  }, [content, onFinish])
 
   const start = useCallback(() => {
     setStarted(true)
@@ -136,105 +246,165 @@ function TimedView({ content, config, wpm, onFinish, onExit, t, color }: Reading
           finish(false)
           return 0
         }
-        if (prev === 30) {
+        if (prev === 31) {
           urgency.value = withRepeat(
-            withSequence(withTiming(1, { duration:300 }), withTiming(0, { duration:300 })),
+            withSequence(withTiming(1, { duration:350 }), withTiming(0, { duration:350 })),
+            -1,
+          )
+          borderGlow.value = withRepeat(
+            withSequence(withTiming(1, { duration:400 }), withTiming(0.3, { duration:400 })),
             -1,
           )
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
         }
         return prev - 1
       })
+      // Canlı WPM güncelle
+      const elapsed = (Date.now() - startRef.current) / 60000
+      if (elapsed > 0.05) {
+        const wordsRead = Math.round(content.wordCount * scrollRatioRef.current)
+        setLiveWpm(wordsRead > 0 ? Math.round(wordsRead / elapsed) : 0)
+      }
     }, 1000)
-  }, []) // eslint-disable-line
-
-  const finish = useCallback((success: boolean) => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    const elapsed = Date.now() - startRef.current
-    onFinish({
-      avgWPM:        calcWPM(content.wordCount, elapsed),
-      durationSec:   Math.round(elapsed / 1000),
-      completion:    scrollRatio,
-      comprehension: success ? 75 : 50,
-      specific:      { timedSuccess: success, completionRatio: scrollRatio },
-    })
-  }, [scrollRatio, content]) // eslint-disable-line
+  }, [finish, content.wordCount, urgency, borderGlow])
 
   useEffect(() => {
-    if (scrollRatio > 0.92 && started) {
-      if (timerRef.current) clearInterval(timerRef.current)
+    if (scrollRatioRef.current > 0.92 && started) {
       finish(true)
     }
-  }, [scrollRatio, started, finish])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollRatio])
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
 
-  const timerColor = timeLeft <= 30 ? '#EF4444' : timeLeft <= 60 ? '#F59E0B' : '#fff'
-  const totalSec   = config.timerSeconds ?? 180
-  const timerProg  = timeLeft / totalSec
+  const pct = Math.round(scrollRatio * 100)
 
+  // ── Başlangıç ekranı ─────────────────────────────────────────────
   if (!started) {
+    const dkNeeded  = totalSec / 60
+    const difficulty = targetWpm > 280 ? '🔴 Zorlu' : targetWpm > 200 ? '🟡 Orta' : '🟢 Kolay'
     return (
       <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
         <TopBar title={config.label} onExit={onExit} color={color} />
-        <View style={{ flex:1, alignItems:'center', justifyContent:'center', padding:32, gap:24 }}>
-          <Text style={{ fontSize:64 }}>{config.icon}</Text>
-          <Text style={{ fontSize:22, fontWeight:'900', color: t.colors.text, textAlign:'center' }}>
-            {config.label}
-          </Text>
-          <Text style={{ fontSize:14, color: t.colors.textHint, textAlign:'center', lineHeight:22 }}>
-            {config.description}
-          </Text>
-          <View style={{ backgroundColor: t.colors.surface, borderRadius:16,
-            padding:20, width:'100%', alignItems:'center' }}>
-            <Text style={{ fontSize:13, color: t.colors.textHint }}>Süre</Text>
-            <Text style={{ fontSize:40, fontWeight:'900', color }}>
-              {Math.floor(totalSec / 60)} dk
+        <ScrollView contentContainerStyle={{ padding:24, gap:20, paddingBottom:40 }}>
+          {/* Hero */}
+          <View style={{ backgroundColor: t.colors.panel, borderRadius:20, padding:24,
+            alignItems:'center', gap:10 }}>
+            <Text style={{ fontSize:56 }}>{config.icon}</Text>
+            <Text style={{ fontSize:21, fontWeight:'900', color:'#fff', textAlign:'center' }}>
+              {config.label}
             </Text>
-            <Text style={{ fontSize:13, color: t.colors.textHint }}>
-              {content.wordCount} kelime · {content.title}
+            <Text style={{ fontSize:13, color:'rgba(255,255,255,0.75)', textAlign:'center', lineHeight:20 }}>
+              {config.description}
             </Text>
           </View>
+
+          {/* İstatistik chips */}
+          <View style={{ flexDirection:'row', gap:10 }}>
+            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
+              padding:14, alignItems:'center', gap:4 }}>
+              <Text style={{ fontSize:24, fontWeight:'900', color }}>
+                {Math.floor(dkNeeded)}<Text style={{ fontSize:14 }}> dk</Text>
+              </Text>
+              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Süre Limiti</Text>
+            </View>
+            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
+              padding:14, alignItems:'center', gap:4 }}>
+              <Text style={{ fontSize:24, fontWeight:'900', color }}>
+                {content.wordCount}
+              </Text>
+              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Kelime</Text>
+            </View>
+            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
+              padding:14, alignItems:'center', gap:4 }}>
+              <Text style={{ fontSize:24, fontWeight:'900', color }}>
+                {targetWpm}
+              </Text>
+              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Hedef WPM</Text>
+            </View>
+          </View>
+
+          {/* Zorluk + ipucu */}
+          <View style={{ backgroundColor: t.colors.surface, borderRadius:14, padding:16, gap:8 }}>
+            <Text style={{ fontSize:13, fontWeight:'800', color:'rgba(255,255,255,0.8)' }}>
+              {difficulty} Seviye
+            </Text>
+            <Text style={{ fontSize:13, color: t.colors.textHint, lineHeight:20 }}>
+              Bu metni {dkNeeded} dakikada bitirmek için dakikada {targetWpm} kelime okumalısın.
+              Metni kaydırarak ilerle — %92'ye ulaşınca egzersiz otomatik tamamlanır.
+            </Text>
+          </View>
+
+          {/* Başlat */}
           <TouchableOpacity
-            style={{ backgroundColor:color, borderRadius:16, paddingVertical:18,
-              paddingHorizontal:40, width:'100%', alignItems:'center' }}
+            style={{ backgroundColor:color, borderRadius:18, paddingVertical:20,
+              alignItems:'center', shadowColor:'#000', shadowOpacity:0.25,
+              shadowRadius:10, shadowOffset:{ width:0, height:4 }, elevation:6 }}
             onPress={start}
+            activeOpacity={0.85}
           >
-            <Text style={{ fontSize:18, fontWeight:'800', color:'#fff' }}>▶ Süreyi Başlat</Text>
+            <Text style={{ fontSize:18, fontWeight:'900', color:'#fff', letterSpacing:0.3 }}>
+              ▶  Süreyi Başlat
+            </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     )
   }
 
+  // ── Okuma ekranı ─────────────────────────────────────────────────
   return (
-    <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
-      <TopBar title={`${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`}
-        onExit={() => finish(false)} color={color}
-        right={
-          <Animated.View style={urgentStyle}>
-            <Text style={{ fontSize:16, fontWeight:'800', color: timerColor }}>
-              {timeLeft}s
+    <Animated.View style={[{ flex:1 }, glowStyle]}>
+      <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
+        <TopBar title={config.label} onExit={() => finish(false)} color={color}
+          right={
+            <Animated.View style={urgentStyle}>
+              <CircleTimer timeLeft={timeLeft} totalSec={totalSec} color={color} />
+            </Animated.View>
+          }
+        />
+
+        {/* Gelişmiş ilerleme çubuğu */}
+        <View style={{ backgroundColor: t.colors.surface, paddingHorizontal:16,
+          paddingVertical:8, gap:6 }}>
+          <View style={{ height:8, backgroundColor:'rgba(128,128,128,0.18)',
+            borderRadius:4, overflow:'hidden' }}>
+            <View style={{ height:8, backgroundColor:color, borderRadius:4,
+              width:`${pct}%` as `${number}%` }} />
+          </View>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+            <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>
+              {pct}% okundu
             </Text>
-          </Animated.View>
-        }
-      />
-      <ProgressBar value={scrollRatio} color={color} />
-      <ScrollView
-        contentContainerStyle={{ padding:20, paddingBottom:60 }}
-        onLayout={e => { viewH.current = e.nativeEvent.layout.height }}
-        onContentSizeChange={(_, h) => { contentH.current = h }}
-        onScroll={e => {
-          const { contentOffset: { y }, contentSize: { height }, layoutMeasurement: { height: lh } } = e.nativeEvent
-          setScrollRatio(Math.min(1, y / Math.max(1, height - lh)))
-        }}
-        scrollEventThrottle={100}
-      >
-        <Text style={{ fontSize:16, color: t.colors.text, lineHeight:28, letterSpacing:0.2 }}>
-          {content.text}
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+            {liveWpm > 0 && (
+              <Text style={{ fontSize:11, color, fontWeight:'800' }}>
+                ⚡ {liveWpm} WPM
+              </Text>
+            )}
+            <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>
+              Hedef: {targetWpm} WPM
+            </Text>
+          </View>
+        </View>
+
+        <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
+
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:80 }}
+          onScroll={e => {
+            const { contentOffset:{ y }, contentSize:{ height }, layoutMeasurement:{ height:lh } } = e.nativeEvent
+            const ratio = Math.min(1, y / Math.max(1, height - lh))
+            scrollRatioRef.current = ratio
+            setScrollRatio(ratio)
+          }}
+          scrollEventThrottle={100}
+        >
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize, color: t.colors.text, lineHeight: Math.round(fontSize * 1.75), letterSpacing:0.2 }}>
+            {content.text}
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    </Animated.View>
   )
 }
 
@@ -242,7 +412,7 @@ function TimedView({ content, config, wpm, onFinish, onExit, t, color }: Reading
 // MOD 2 — 📚 AKADEMİK MOD
 // ═══════════════════════════════════════════════════════════════════
 
-function AcademicView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function AcademicView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const lines   = useMemo(() => buildAcademicLines(content.text, config.wordsPerLine ?? 8), [content])
   const [lineIdx, setLineIdx]   = useState(0)
   const [paused, setPaused]     = useState(false)
@@ -284,18 +454,19 @@ function AcademicView({ content, config, wpm, onFinish, onExit, t, color }: Read
           durationSec: Math.round(elapsed / 1000), completion: progress, comprehension: 80 })
       }} color={color} />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
-      <ScrollView contentContainerStyle={{ padding:20, paddingBottom:80 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:80 }}>
         {lines.map((line, i) => (
           <Text
             key={i}
             style={{
-              fontSize:    i === lineIdx ? 20 : 16,
+              fontSize:    i === lineIdx ? Math.min(28, fontSize + 2) : fontSize,
               fontWeight:  i === lineIdx ? '700' : '400',
               color:       i === lineIdx ? t.colors.text
                          : i < lineIdx  ? t.colors.textHint
                          : (t.colors.textHint + '55'),
-              lineHeight:  i === lineIdx ? 34 : 26,
+              lineHeight:  i === lineIdx ? Math.min(42, (fontSize + 2) * 1.7) : fontSize * 1.65,
               marginBottom: 8,
               letterSpacing: 0.3,
               backgroundColor: i === lineIdx ? (color + '18') : 'transparent',
@@ -334,7 +505,7 @@ function AcademicView({ content, config, wpm, onFinish, onExit, t, color }: Read
 // MOD 3 — 🔍 ANAHTAR KELİME
 // ═══════════════════════════════════════════════════════════════════
 
-function KeywordView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function KeywordView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const keywords = useMemo(() => new Set(extractKeywords(content.text, 24)), [content])
   const [found, setFound]   = useState<Set<string>>(new Set())
   const startRef = useRef(Date.now())
@@ -405,8 +576,9 @@ function KeywordView({ content, config, wpm, onFinish, onExit, t, color }: Readi
             height:6, backgroundColor:color, borderRadius:3 }} />
         </View>
       </View>
-      <ScrollView contentContainerStyle={{ padding:20, paddingBottom:80 }}>
-        <Text style={{ fontSize:16, lineHeight:30, flexWrap:'wrap' }}>
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:80 }}>
+        <Text style={{ fontSize, lineHeight: Math.round(fontSize * 1.9), flexWrap:'wrap' }}>
           {renderText()}
         </Text>
       </ScrollView>
@@ -431,7 +603,7 @@ function KeywordView({ content, config, wpm, onFinish, onExit, t, color }: Readi
 
 type MemPhase = 'reading' | 'recall' | 'reveal'
 
-function MemoryView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function MemoryView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const blocks = useMemo(() => buildMemoryBlocks(content.text, config.wordsPerBlock ?? 40), [content])
   const [blockIdx,  setBlockIdx]  = useState(0)
   const [phase,     setPhase]     = useState<MemPhase>('reading')
@@ -511,6 +683,7 @@ function MemoryView({ content, config, wpm, onFinish, onExit, t, color }: Readin
         }} color={color}
       />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       <View style={{ flex:1, padding:24, gap:20 }}>
         {/* Durum başlığı */}
@@ -536,7 +709,7 @@ function MemoryView({ content, config, wpm, onFinish, onExit, t, color }: Readin
             </View>
           ) : (
             <ScrollView>
-              <Text style={{ fontSize:17, color: t.colors.text, lineHeight:30, letterSpacing:0.2 }}>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize, color: t.colors.text, lineHeight: Math.round(fontSize * 1.75), letterSpacing:0.2 }}>
                 {block?.text ?? ''}
               </Text>
             </ScrollView>
@@ -592,7 +765,7 @@ function MemoryView({ content, config, wpm, onFinish, onExit, t, color }: Readin
 // MOD 5 — 🔮 TAHMİN OKUMA
 // ═══════════════════════════════════════════════════════════════════
 
-function PredictionView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function PredictionView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const items   = useMemo(() => buildPredictionItems(content.text), [content])
   const [idx,      setIdx]      = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -648,6 +821,7 @@ function PredictionView({ content, config, wpm, onFinish, onExit, t, color }: Re
         }} color={color}
       />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       <View style={{ flex:1, padding:28, justifyContent:'center', gap:28 }}>
         <Text style={{ fontSize:12, fontWeight:'700', color, textAlign:'center', letterSpacing:1 }}>
@@ -658,7 +832,7 @@ function PredictionView({ content, config, wpm, onFinish, onExit, t, color }: Re
         <View style={{ backgroundColor: t.colors.surface, borderRadius:24,
           padding:28, borderWidth:1, borderColor: t.colors.border, minHeight:160,
           justifyContent:'center' }}>
-          <Text style={{ fontSize:20, color: t.colors.text, lineHeight:34, fontWeight:'500' }}>
+          <Text style={{ fontSize: fontSize + 2, color: t.colors.text, lineHeight: Math.round((fontSize + 2) * 1.7), fontWeight:'500' }}>
             {item.visible}{' '}
           </Text>
 
@@ -712,7 +886,7 @@ function PredictionView({ content, config, wpm, onFinish, onExit, t, color }: Re
 // MOD 6 — 🎯 DİKKAT FİLTRESİ
 // ═══════════════════════════════════════════════════════════════════
 
-function FocusFilterView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function FocusFilterView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const paragraphs = useMemo(() => splitIntoParagraphs(content.text), [content])
   const [paraIdx, setParaIdx] = useState(0)
   const startRef  = useRef(Date.now())
@@ -751,8 +925,9 @@ function FocusFilterView({ content, config, wpm, onFinish, onExit, t, color }: R
         }} color={color}
       />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
-      <ScrollView contentContainerStyle={{ padding:20, paddingBottom:100, gap:12 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:100, gap:12 }}>
         {paragraphs.map((para, i) => (
           <View
             key={i}
@@ -766,10 +941,10 @@ function FocusFilterView({ content, config, wpm, onFinish, onExit, t, color }: R
             }}
           >
             <Text style={{
-              fontSize:   i === paraIdx ? 17 : 14,
+              fontSize:   i === paraIdx ? Math.min(28, fontSize + 1) : Math.max(12, fontSize - 1),
               fontWeight: i === paraIdx ? '500' : '400',
               color:      t.colors.text,
-              lineHeight: i === paraIdx ? 30 : 22,
+              lineHeight: i === paraIdx ? Math.round((fontSize + 1) * 1.75) : Math.round((fontSize - 1) * 1.6),
             }}>
               {para}
             </Text>
@@ -798,7 +973,7 @@ function FocusFilterView({ content, config, wpm, onFinish, onExit, t, color }: R
 // MOD 7 — 🤫 SESSİZ OKUMA (Subvocal Suppression)
 // ═══════════════════════════════════════════════════════════════════
 
-function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function SubvocalView({ content, config, wpm: initWpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const [wpm, setWpm]         = useState(Math.max(300, initWpm))
   const [chunks]              = useState(() => buildRsvpChunks(content.text, 1))
   const [chunkIdx, setChunkIdx] = useState(0)
@@ -877,6 +1052,7 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
         <View style={{ height:3, backgroundColor:color, borderRadius:2,
           width:`${Math.round(progress * 100)}%` as `${number}%` }} />
       </View>
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       {/* Metronom Göstergesi */}
       <View style={{ flexDirection:'row', justifyContent:'center', gap:14,
@@ -898,7 +1074,7 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
 
       {/* Kelime gösterimi */}
       <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:40 }}>
-        <Text style={{ fontSize:36, fontWeight:'800', color: t.colors.text,
+        <Text style={{ fontSize: Math.max(28, fontSize + 10), fontWeight:'800', color: t.colors.text,
           textAlign:'center', letterSpacing:1 }}>
           {chunks[chunkIdx] ?? ''}
         </Text>
@@ -946,7 +1122,7 @@ function SubvocalView({ content, config, wpm: initWpm, onFinish, onExit, t, colo
 // MOD 8 — 🧬 BİYONİK OKUMA (SuperReader tarzı)
 // ═══════════════════════════════════════════════════════════════════
 
-function BionicView({ content, config, onFinish, onExit, t, color }: ReadingViewProps) {
+function BionicView({ content, config, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const [scrollRatio, setScrollRatio] = useState(0)
   const startRef = useRef(Date.now())
 
@@ -968,9 +1144,10 @@ function BionicView({ content, config, onFinish, onExit, t, color }: ReadingView
     <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
       <TopBar title={config.label} onExit={finish} color={color} />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       <ScrollView
-        contentContainerStyle={{ padding:20, paddingBottom:100 }}
+        contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:100 }}
         onScroll={e => {
           const { contentOffset:{ y }, contentSize:{ height }, layoutMeasurement:{ height:lh } } = e.nativeEvent
           setScrollRatio(Math.min(1, y / Math.max(1, height - lh)))
@@ -978,7 +1155,7 @@ function BionicView({ content, config, onFinish, onExit, t, color }: ReadingView
         scrollEventThrottle={120}
       >
         {paragraphs.map((para, pi) => (
-          <Text key={pi} style={{ fontSize:16, lineHeight:30, marginBottom:18 }}>
+          <Text key={pi} style={{ fontSize, lineHeight: Math.round(fontSize * 1.9), marginBottom:18 }}>
             {para.split(/(\s+)/).map((chunk, wi) => {
               if (/^\s+$/.test(chunk)) return <Text key={wi}>{chunk}</Text>
               const half = Math.ceil(chunk.length / 2)
@@ -1011,7 +1188,7 @@ function BionicView({ content, config, onFinish, onExit, t, color }: ReadingView
 // MOD 9 — 📜 OTOMATİK KAYDIRMA (SuperReader / tüm hızlı okuma)
 // ═══════════════════════════════════════════════════════════════════
 
-function AutoScrollView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function AutoScrollView({ content, config, wpm: initWpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const [wpm, setWpm] = useState(initWpm)
   const [isScrolling, setScrolling] = useState(false)
   const [scrollRatio, setScrollRatio]  = useState(0)
@@ -1072,16 +1249,17 @@ function AutoScrollView({ content, config, wpm: initWpm, onFinish, onExit, t, co
         right={<Text style={{ fontSize:13, color:'rgba(255,255,255,0.85)', fontWeight:'700' }}>{wpm} WPM</Text>}
       />
       <ProgressBar value={scrollRatio} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ padding:20, paddingBottom:60 }}
+        contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:60 }}
         onLayout={e => { viewHRef.current = e.nativeEvent.layout.height }}
         onContentSizeChange={(_, h) => { contentHRef.current = h }}
         scrollEnabled={!isScrolling}
         scrollEventThrottle={100}
       >
-        <Text style={{ fontSize:16, color: t.colors.text, lineHeight:28, letterSpacing:0.2 }}>
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize, color: t.colors.text, lineHeight: Math.round(fontSize * 1.75), letterSpacing:0.2 }}>
           {content.text}
         </Text>
       </ScrollView>
@@ -1122,7 +1300,7 @@ function AutoScrollView({ content, config, wpm: initWpm, onFinish, onExit, t, co
 // MOD 10 — 🪜 HIZ MERDİVENİ (Spreeder / SuperReader antrenmanı)
 // ═══════════════════════════════════════════════════════════════════
 
-function SpeedLadderView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function SpeedLadderView({ content, config, wpm: initWpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const [chunks]     = useState(() => buildRsvpChunks(content.text, 1))
   const [chunkIdx,   setChunkIdx]   = useState(0)
   const [currentWpm, setCurrentWpm] = useState(initWpm)
@@ -1181,6 +1359,7 @@ function SpeedLadderView({ content, config, wpm: initWpm, onFinish, onExit, t, c
         onFinish({ avgWPM: currentWpm, durationSec: Math.round(elapsed / 1000), completion: progress, comprehension: 68 })
       }} color={color} />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       {/* Level & next-step info */}
       <View style={{ flexDirection:'row', justifyContent:'center', gap:10,
@@ -1207,7 +1386,7 @@ function SpeedLadderView({ content, config, wpm: initWpm, onFinish, onExit, t, c
 
       {/* Current word */}
       <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:40 }}>
-        <Text style={{ fontSize:44, fontWeight:'900', color: t.colors.text,
+        <Text style={{ fontSize: Math.max(32, fontSize + 16), fontWeight:'900', color: t.colors.text,
           textAlign:'center', letterSpacing:1 }}>
           {chunks[chunkIdx] ?? ''}
         </Text>
@@ -1232,7 +1411,7 @@ function SpeedLadderView({ content, config, wpm: initWpm, onFinish, onExit, t, c
 // MOD 11 — 💫 ÇOK KELİME RSVP (Spreeder / EyeQ multi-word)
 // ═══════════════════════════════════════════════════════════════════
 
-function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: ReadingViewProps) {
+function WordBurstView({ content, config, wpm, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const [groupSize, setGroupSize] = useState(2)
   const chunks    = useMemo(() => buildRsvpChunks(content.text, groupSize), [content, groupSize])
   const [chunkIdx, setChunkIdx]   = useState(0)
@@ -1282,6 +1461,7 @@ function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: Rea
           durationSec: Math.round(elapsed / 1000), completion: progress, comprehension: 74 })
       }} color={color} />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       {/* Group size selector */}
       <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'center',
@@ -1303,9 +1483,9 @@ function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: Rea
 
       {/* Current chunk */}
       <View style={{ flex:1, alignItems:'center', justifyContent:'center', paddingHorizontal:28 }}>
-        <Text style={{ fontSize: groupSize <= 2 ? 40 : 32, fontWeight:'900', color: t.colors.text,
+        <Text style={{ fontSize: Math.max(32, fontSize + 16), fontWeight:'900', color: t.colors.text,
           textAlign:'center', letterSpacing: groupSize === 1 ? 2 : 1,
-          lineHeight: groupSize <= 2 ? 54 : 46 }}>
+          lineHeight: Math.max(46, Math.round((fontSize + 16) * 1.35)) }}>
           {chunks[chunkIdx] ?? ''}
         </Text>
       </View>
@@ -1328,7 +1508,7 @@ function WordBurstView({ content, config, wpm, onFinish, onExit, t, color }: Rea
 // ═══════════════════════════════════════════════════════════════════
 // CÜMLE ADIM GÖRÜNÜMÜ — Cümle cümle anlama odaklı okuma
 // ═══════════════════════════════════════════════════════════════════
-function SentenceStepView({ content, config, onFinish, onExit, t, color }: ReadingViewProps) {
+function SentenceStepView({ content, config, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
   const sentences = useMemo(() => {
     const raw = content.text.replace(/\n+/g, ' ')
     const m = raw.match(/[^.!?]+[.!?]+/g)
@@ -1362,6 +1542,7 @@ function SentenceStepView({ content, config, onFinish, onExit, t, color }: Readi
     <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.background }}>
       <TopBar title={config.label} onExit={onExit} color={color} />
       <ProgressBar value={progress} color={color} />
+      <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
 
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 20 }}>
         {/* Sayaç */}
@@ -1380,8 +1561,8 @@ function SentenceStepView({ content, config, onFinish, onExit, t, color }: Readi
           justifyContent: 'center',
         }}>
           <Text style={{
-            fontSize: 19,
-            lineHeight: 30,
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.7),
             color: t.colors.text,
             fontWeight: '500',
             textAlign: 'center',
@@ -1437,6 +1618,357 @@ function SentenceStepView({ content, config, onFinish, onExit, t, color }: Readi
           </TouchableOpacity>
         </View>
       </View>
+    </SafeAreaView>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOD 13 — ✨ SERİ VURGU OKUMA (SVR)
+// ═══════════════════════════════════════════════════════════════════
+
+const SVR_WPL    = 9   // satır başına tahminî kelime
+const SVR_LINE_H = 28  // lineHeight
+const SVR_MIN_WPM = 60
+const SVR_MAX_WPM = 500
+const SVR_COLORS = [
+  { hex: '#22C55E', label: 'Yeşil' },
+  { hex: '#3B82F6', label: 'Mavi'  },
+  { hex: '#9CA3AF', label: 'Gri'   },
+  { hex: '#F97316', label: 'Turuncu' },
+] as const
+
+const SVR_MIN_FONT     = 14   // WCAG minimum
+const SVR_MAX_FONT     = 26
+const SVR_DEFAULT_FONT = 18   // READING_TYPOGRAPHY.standard.fontSize
+
+function SVRView({ content, config, wpm: initWpm, onFinish, onExit, t, color }: ReadingViewProps) { // fontSize/onFontSizeChange intentionally omitted — SVRView has its own fontSize slider
+  const [chunkSize,       setChunkSize]       = useState(3)
+  const [wpm,             setWpm]             = useState(Math.max(SVR_MIN_WPM, initWpm))
+  const [fontSize,        setFontSize]        = useState(SVR_DEFAULT_FONT)
+  const [activeChunk,     setActiveChunk]     = useState(0)
+  const [paused,          setPaused]          = useState(false)
+  const [hlColor,         setHlColor]         = useState(color)
+  const [wpmTrackWidth,   setWpmTrackWidth]   = useState(0)
+  const [fontTrackWidth,  setFontTrackWidth]  = useState(0)
+
+  const chunkSizeRef = useRef(chunkSize)
+  chunkSizeRef.current = chunkSize
+  // legacy alias — removed trackWidth, now split into wpmTrackWidth / fontTrackWidth
+
+  const chunks = useMemo(() => {
+    const words = content.text.split(/\s+/).filter(Boolean)
+    const res: string[] = []
+    for (let i = 0; i < words.length; i += chunkSize)
+      res.push(words.slice(i, i + chunkSize).join(' '))
+    return res
+  }, [content, chunkSize])
+
+  const startRef      = useRef(Date.now())
+  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollRef     = useRef<ScrollView>(null)
+  const chunkRef      = useRef(0)
+  const pausedRef     = useRef(false)
+  const wpmRef        = useRef(wpm)
+  const contentHRef   = useRef(0)   // gerçek içerik yüksekliği (onContentSizeChange)
+  const viewportHRef  = useRef(400) // scroll view görünür yüksekliği (onLayout)
+  wpmRef.current  = wpm
+
+  const tickRef = useRef<() => void>(() => {})
+  tickRef.current = () => {
+    if (pausedRef.current) return
+    const idx = chunkRef.current
+    setActiveChunk(idx)
+    // Orantılı scroll: sabit tahmin yerine gerçek içerik yüksekliği kullan
+    const progress  = (idx + 0.5) / Math.max(1, chunks.length)
+    const targetY   = progress * contentHRef.current - viewportHRef.current * 0.35
+    scrollRef.current?.scrollTo({ y: Math.max(0, targetY), animated: false })
+    if (idx >= chunks.length - 1) {
+      const elapsed = Date.now() - startRef.current
+      onFinish({ avgWPM: calcWPM(content.wordCount, elapsed),
+        durationSec: Math.round(elapsed / 1000), completion: 1.0, comprehension: 72 })
+      return
+    }
+    chunkRef.current = idx + 1
+    const delay = Math.round((chunkSizeRef.current / Math.max(1, wpmRef.current)) * 60_000)
+    timerRef.current = setTimeout(() => tickRef.current(), delay)
+  }
+
+  // Otomatik başlat — giriş ekranı yok
+  useEffect(() => {
+    startRef.current = Date.now()
+    chunkRef.current = 0
+    tickRef.current()
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Chunk size değişince orantılı pozisyon koru + yeniden başlat
+  const handleChunkSize = useCallback((newSize: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    const wordPos = chunkRef.current * chunkSizeRef.current
+    setChunkSize(newSize)
+    // chunks henüz güncellenmedi, ama chunkRef'i ayarla
+    setTimeout(() => {
+      chunkRef.current = Math.floor(wordPos / newSize)
+      if (!pausedRef.current) tickRef.current()
+    }, 0)
+  }, [])
+
+  const togglePause = useCallback(() => {
+    if (pausedRef.current) {
+      pausedRef.current = false; setPaused(false); tickRef.current()
+    } else {
+      pausedRef.current = true; setPaused(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
+  const pct        = chunks.length > 0 ? Math.round(((activeChunk + 1) / chunks.length) * 100) : 0
+  const wpmPct     = (wpm - SVR_MIN_WPM) / (SVR_MAX_WPM - SVR_MIN_WPM)
+  const fontPct    = (fontSize - SVR_MIN_FONT) / (SVR_MAX_FONT - SVR_MIN_FONT)
+  const lineH      = Math.round(fontSize * 1.6)   // READING_TYPOGRAPHY: 1.6 line-height ratio
+
+  const BLUE        = '#1A3A6C'        // ana mavi (header + footer)
+  const BLUE_LIGHT  = '#2554A0'        // slider fill + vurgu
+  const svrBg       = '#F0F4FA'        // metin alanı (açık mavi-gri)
+  const wordsRead   = Math.min(activeChunk * chunkSize, content.wordCount)
+  const remSec      = Math.max(0, Math.round((chunks.length - activeChunk - 1) * chunkSize / Math.max(1, wpm) * 60))
+  const remLabel    = remSec >= 60
+    ? `${Math.floor(remSec / 60)}dk ${remSec % 60}sn`
+    : `${remSec}sn`
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: BLUE }}>
+
+      {/* ── Header (MAVİ) ────────────────────────────────────────── */}
+      <View style={{ backgroundColor: BLUE, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 0 }}>
+
+        {/* Başlık satırı */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <TouchableOpacity onPress={onExit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ width: 32, height: 32, borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', fontWeight: '700' }}>✕</Text>
+          </TouchableOpacity>
+
+          <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800',
+            color: '#FFFFFF', letterSpacing: 0.3 }}>
+            {config.icon}  {config.label}
+          </Text>
+
+          <View style={{ width: 44, alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: hlColor }}>{pct}%</Text>
+          </View>
+        </View>
+
+        {/* İlerleme çubuğu */}
+        <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 2, marginBottom: 10 }}>
+          <View style={{ height: 4, backgroundColor: hlColor, borderRadius: 2,
+            width: `${pct}%` as `${number}%` }} />
+        </View>
+
+        {/* Kelime sayacı + kalan süre + renk seçici */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+            <Text style={{ fontSize: 22, fontWeight: '900', color: '#FFFFFF' }}>
+              {wordsRead.toLocaleString()}
+            </Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.60)', fontWeight: '500' }}>
+              / {content.wordCount.toLocaleString()} kelime
+            </Text>
+          </View>
+
+          <View style={{ flex: 1 }} />
+
+          {!paused && (
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginRight: 14 }}>
+              ~{remLabel}
+            </Text>
+          )}
+
+          {SVR_COLORS.map(({ hex }) => (
+            <TouchableOpacity
+              key={hex}
+              onPress={() => setHlColor(hex)}
+              style={{
+                width: hlColor === hex ? 26 : 20,
+                height: hlColor === hex ? 26 : 20,
+                borderRadius: 13, marginLeft: 8,
+                backgroundColor: hex,
+                borderWidth: hlColor === hex ? 2.5 : 0,
+                borderColor: '#fff',
+                shadowColor: hex,
+                shadowOpacity: hlColor === hex ? 0.6 : 0,
+                shadowRadius: 5,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: hlColor === hex ? 4 : 0,
+              }}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* ── Metin Alanı (flex: 1) ──────────────────────────────── */}
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1, backgroundColor: svrBg }}
+        contentContainerStyle={{ paddingHorizontal: 38, paddingTop: 14, paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onContentSizeChange={(_w, h) => { contentHRef.current = h }}
+        onLayout={e => { viewportHRef.current = e.nativeEvent.layout.height }}
+      >
+        <Text style={{ fontSize, lineHeight: lineH, color: '#1A1A2E',
+          letterSpacing: 0.2, textAlign: 'justify', fontFamily: 'Inter_400Regular' }}>  {/* Inter spec: 0.2 letter-spacing */}
+          {chunks.map((chunk, i) => (
+            <Text
+              key={i}
+              style={i === activeChunk ? {
+                backgroundColor: hlColor + '30',
+                color:           hlColor,
+                fontWeight:      '800',
+                fontFamily:      'Inter_800ExtraBold',
+              } : {
+                color:      '#1A1A2E',
+                opacity:    i < activeChunk ? 0.35 : 0.88,
+                fontFamily: 'Inter_400Regular',
+              }}
+            >
+              {chunk}{' '}
+            </Text>
+          ))}
+        </Text>
+      </ScrollView>
+
+      {/* ── Alt Kontrol Paneli (MAVİ) ──────────────────────────── */}
+      <View style={{
+        backgroundColor: BLUE,
+        paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10, gap: 8,
+      }}>
+
+        {/* Satır 1: Chunk seçici + Durdur/Devam */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700',
+            letterSpacing: 0.5 }}>
+            KELİME
+          </Text>
+          {([1, 2, 3, 4] as const).map(n => (
+            <TouchableOpacity
+              key={n}
+              onPress={() => handleChunkSize(n)}
+              style={{
+                width: 34, height: 34, borderRadius: 10,
+                backgroundColor: chunkSize === n ? hlColor : 'rgba(255,255,255,0.15)',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 14, fontWeight: '900',
+                color: chunkSize === n ? '#fff' : 'rgba(255,255,255,0.75)' }}>
+                {n}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            onPress={togglePause}
+            style={{
+              backgroundColor: paused ? hlColor : 'rgba(255,255,255,0.15)',
+              borderRadius: 10, paddingHorizontal: 16, height: 34,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '800',
+              color: '#fff' }}>
+              {paused ? '▶ Devam Et' : '⏸ Durdur'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Satır 2: Hız Slider */}
+        <View style={{ gap: 3 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 0.5 }}>
+              HIZ
+            </Text>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>{wpm} KDK</Text>
+          </View>
+          <View
+            style={{ height: 22, justifyContent: 'center' }}
+            onLayout={e => setWpmTrackWidth(e.nativeEvent.layout.width)}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={e => {
+              if (wpmTrackWidth <= 0) return
+              const x = Math.max(0, Math.min(wpmTrackWidth, e.nativeEvent.locationX))
+              setWpm(Math.round(SVR_MIN_WPM + (x / wpmTrackWidth) * (SVR_MAX_WPM - SVR_MIN_WPM)))
+            }}
+            onResponderMove={e => {
+              if (wpmTrackWidth <= 0) return
+              const x = Math.max(0, Math.min(wpmTrackWidth, e.nativeEvent.locationX))
+              setWpm(Math.round(SVR_MIN_WPM + (x / wpmTrackWidth) * (SVR_MAX_WPM - SVR_MIN_WPM)))
+            }}
+          >
+            <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 2 }}>
+              <View style={{ height: 3, backgroundColor: hlColor, borderRadius: 2,
+                width: `${Math.round(wpmPct * 100)}%` as `${number}%` }} />
+            </View>
+            <View style={{
+              position: 'absolute',
+              left: Math.max(0, Math.round(wpmPct * (wpmTrackWidth - 18))),
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: hlColor,
+              shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 }, elevation: 4,
+              top: -7.5,
+            }} />
+          </View>
+        </View>
+
+        {/* Satır 3: Yazı Boyutu Slider */}
+        <View style={{ gap: 3 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 0.5 }}>
+              YAZI BOYUTU
+            </Text>
+            <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFFFFF' }}>{fontSize}pt</Text>
+          </View>
+          <View
+            style={{ height: 22, justifyContent: 'center' }}
+            onLayout={e => setFontTrackWidth(e.nativeEvent.layout.width)}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={e => {
+              if (fontTrackWidth <= 0) return
+              const x = Math.max(0, Math.min(fontTrackWidth, e.nativeEvent.locationX))
+              setFontSize(Math.round(SVR_MIN_FONT + (x / fontTrackWidth) * (SVR_MAX_FONT - SVR_MIN_FONT)))
+            }}
+            onResponderMove={e => {
+              if (fontTrackWidth <= 0) return
+              const x = Math.max(0, Math.min(fontTrackWidth, e.nativeEvent.locationX))
+              setFontSize(Math.round(SVR_MIN_FONT + (x / fontTrackWidth) * (SVR_MAX_FONT - SVR_MIN_FONT)))
+            }}
+          >
+            <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 2 }}>
+              <View style={{ height: 3, backgroundColor: BLUE_LIGHT, borderRadius: 2,
+                width: `${Math.round(fontPct * 100)}%` as `${number}%` }} />
+            </View>
+            <View style={{
+              position: 'absolute',
+              left: Math.max(0, Math.round(fontPct * (fontTrackWidth - 18))),
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: '#FFFFFF',
+              shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3,
+              shadowOffset: { width: 0, height: 2 }, elevation: 3,
+              top: -7.5,
+            }} />
+          </View>
+        </View>
+
+      </View>
+
     </SafeAreaView>
   )
 }
@@ -1607,6 +2139,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
   const [content,      setContent]      = useState<ImportedContent | null>(initialContent ?? null)
   const [showImport,   setShowImport]   = useState(false)
   const [wpm,          setWpm]          = useState(config.defaultWpm)
+  const [fontSize,     setFontSize]     = useState(16)
   const [adaptiveWpm,  setAdaptiveWpm]  = useState<number | null>(null)
   const [finalMetrics,  setFinalMetrics]  = useState<ReadingModesMetrics | null>(null)
   const [pendingResult, setPendingResult] = useState<FinishResult | null>(null)
@@ -1652,7 +2185,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
     try {
       const { data } = await (supabase as any)
         .from('text_questions')
-        .select('*')
+        .select('id, text_id, chapter_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index')
         .eq('text_id', textId)
         .order('order_index')
         .limit(10)
@@ -1850,8 +2383,8 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
   // ── AŞAMA 2: Aktif Okuma ──────────────────────────────────────────
   if (phase === 'reading' && content) {
     const props: ReadingViewProps = {
-      content, config, wpm, onFinish: handleFinish,
-      onExit: () => setPhase('select'), t, color,
+      content, config, wpm, fontSize, onFontSizeChange: setFontSize,
+      onFinish: handleFinish, onExit: () => setPhase('select'), t, color,
     }
     let readEl: React.ReactElement | null = null
     switch (mode) {
@@ -1867,6 +2400,7 @@ export default function ReadingModesExercise({ mode, onComplete, onExit, initial
       case 'speed_ladder': readEl = <SpeedLadderView  {...props} />; break
       case 'word_burst':   readEl = <WordBurstView    {...props} />; break
       case 'sentence_step':readEl = <SentenceStepView {...props} />; break
+      case 'svr':          readEl = <SVRView          {...props} />; break
     }
     if (!readEl) return null
     return (

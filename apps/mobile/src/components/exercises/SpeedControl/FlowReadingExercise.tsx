@@ -788,7 +788,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
     try {
       const { data } = await (supabase as any)
         .from('text_questions')
-        .select('*')
+        .select('id, text_id, chapter_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index')
         .eq('text_id', textId)
         .order('order_index')
         .limit(5)

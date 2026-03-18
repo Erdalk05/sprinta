@@ -116,7 +116,7 @@ export const VocabularyExercise = React.memo(function VocabularyExercise({
   useEffect(() => {
     ;(async () => {
       try {
-        let query = (supabase as any).from('vocabulary_words').select('*')
+        let query = (supabase as any).from('vocabulary_words').select('id, word, meaning, example_sentence, exam_type, difficulty, wrong_option_1, wrong_option_2, wrong_option_3')
         if (examFilter !== 'all') {
           query = query.in('exam_type', [examFilter, 'all'])
         }
