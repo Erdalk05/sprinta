@@ -13,15 +13,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@sprinta/api": "file:../../packages/api-client",
     "@sprinta/shared": "file:../../packages/shared",
     "@supabase/supabase-js": "^2.43.0",
     "expo": "~54.0.33",
+    "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
     "expo-blur": "^15.0.8",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.21",
+    "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
     "expo-linear-gradient": "^15.0.8",
     "expo-notifications": "~0.32.16",

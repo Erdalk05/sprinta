@@ -1,19 +1,238 @@
 @import "tailwindcss";
 
+/* ================================================================
+   SPRINTA TYPOGRAPHY SYSTEM
+   Primary font: Inter (Google Fonts)
+   Fallback:     -apple-system / system-ui / Roboto / Helvetica Neue
+   Grid:         8px base spacing
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── CSS Typography Tokens ────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds */
+  --background:        #ffffff;
+  --foreground:        #0F2357;
+  --surface:           #F8FAFF;
+  --surface-sub:       #EEF2FD;
+  --border:            #D0DBEF;
+
+  /* Font family */
+  --font-sans:         'Inter', -apple-system, BlinkMacSystemFont,
+                       'SF Pro Display', 'Roboto', 'Helvetica Neue',
+                       Arial, sans-serif;
+  --font-mono:         'Courier New', Courier, monospace;
+
+  /* ── Type Scale ─────────────────────────────────────────────── */
+
+  /* Headings */
+  --fs-h1:             2rem;       /* 32px */
+  --lh-h1:             2.375rem;   /* 38px */
+  --fw-h1:             700;
+  --ls-h1:             -0.03125rem;
+
+  --fs-h2:             1.625rem;   /* 26px */
+  --lh-h2:             2rem;       /* 32px */
+  --fw-h2:             600;
+  --ls-h2:             -0.01875rem;
+
+  --fs-h3:             1.375rem;   /* 22px */
+  --lh-h3:             1.75rem;    /* 28px */
+  --fw-h3:             600;
+  --ls-h3:             -0.0125rem;
+
+  --fs-h4:             1.25rem;    /* 20px */
+  --lh-h4:             1.625rem;   /* 26px */
+  --fw-h4:             600;
+  --ls-h4:             -0.00625rem;
+
+  /* Body */
+  --fs-body-lg:        1.125rem;   /* 18px */
+  --lh-body-lg:        1.75rem;    /* 28px */
+  --fw-body-lg:        400;
+
+  --fs-body:           1rem;       /* 16px */
+  --lh-body:           1.625rem;   /* 26px */
+  --fw-body:           400;
+
+  --fs-body-sm:        0.875rem;   /* 14px */
+  --lh-body-sm:        1.375rem;   /* 22px */
+  --fw-body-sm:        400;
+
+  /* Captions */
+  --fs-caption:        0.75rem;    /* 12px */
+  --lh-caption:        1.125rem;   /* 18px */
+  --fw-caption:        400;
+
+  --fs-micro:          0.625rem;   /* 10px */
+  --lh-micro:          0.875rem;   /* 14px */
+
+  /* Buttons */
+  --fs-btn:            1rem;       /* 16px */
+  --fw-btn:            600;
+  --ls-btn:            0.03125rem; /* 0.5px */
+
+  /* Marketing */
+  --fs-hero:           2.25rem;    /* 36px */
+  --lh-hero:           2.75rem;    /* 44px */
+  --fw-hero:           700;
+  --ls-hero:           -0.05rem;
+
+  --fs-display:        3rem;       /* 48px */
+  --lh-display:        3.5rem;     /* 56px */
+  --fw-display:        800;
+
+  /* Reading modules */
+  --fs-reading:        1.25rem;    /* 20px */
+  --lh-reading:        2rem;       /* 1.6 × 20px */
+  --ls-reading:        0.0125rem;  /* 0.2px */
+  --max-reading-width: 85%;
+
+  /* Overline */
+  --fs-overline:       0.6875rem;  /* 11px */
+  --fw-overline:       700;
+  --ls-overline:       0.075rem;   /* 1.2px */
+
+  /* Readability guard */
+  --min-font-size:     1rem;       /* 16px — WCAG AA */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background:  #0A1A4A;
+    --foreground:  #FFFFFF;
+    --surface:     #1A3594;
+    --surface-sub: #1C3A8A;
+    --border:      rgba(255,255,255,0.15);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Base Styles ──────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background:   var(--background);
+  color:        var(--foreground);
+  font-family:  var(--font-sans);
+  font-size:    var(--fs-body);
+  line-height:  var(--lh-body);
+  font-weight:  var(--fw-body);
+  -webkit-font-smoothing:  antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings:   'cv02', 'cv03', 'cv04', 'cv11'; /* Inter stylistic sets */
+}
+
+/* ── Heading Resets ───────────────────────────────────────────── */
+
+h1 {
+  font-size:      var(--fs-h1);
+  line-height:    var(--lh-h1);
+  font-weight:    var(--fw-h1);
+  letter-spacing: var(--ls-h1);
+  margin: 0;
+}
+
+h2 {
+  font-size:      var(--fs-h2);
+  line-height:    var(--lh-h2);
+  font-weight:    var(--fw-h2);
+  letter-spacing: var(--ls-h2);
+  margin: 0;
+}
+
+h3 {
+  font-size:      var(--fs-h3);
+  line-height:    var(--lh-h3);
+  font-weight:    var(--fw-h3);
+  letter-spacing: var(--ls-h3);
+  margin: 0;
+}
+
+h4 {
+  font-size:      var(--fs-h4);
+  line-height:    var(--lh-h4);
+  font-weight:    var(--fw-h4);
+  letter-spacing: var(--ls-h4);
+  margin: 0;
+}
+
+p {
+  font-size:   var(--fs-body);
+  line-height: var(--lh-body);
+  margin: 0;
+}
+
+/* ── Utility Classes ──────────────────────────────────────────── */
+
+.text-hero {
+  font-size:      var(--fs-hero);
+  line-height:    var(--lh-hero);
+  font-weight:    var(--fw-hero);
+  letter-spacing: var(--ls-hero);
+}
+
+.text-display {
+  font-size:   var(--fs-display);
+  line-height: var(--lh-display);
+  font-weight: var(--fw-display);
+}
+
+.text-body-lg  { font-size: var(--fs-body-lg); line-height: var(--lh-body-lg); }
+.text-body     { font-size: var(--fs-body);    line-height: var(--lh-body);    }
+.text-body-sm  { font-size: var(--fs-body-sm); line-height: var(--lh-body-sm); }
+.text-caption  { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+.text-overline {
+  font-size:      var(--fs-overline);
+  font-weight:    var(--fw-overline);
+  letter-spacing: var(--ls-overline);
+  text-transform: uppercase;
+}
+
+/* ── Reading Module Typography ────────────────────────────────── */
+
+.reading-text {
+  font-family:  var(--font-sans);
+  font-size:    var(--fs-reading);
+  line-height:  var(--lh-reading);
+  letter-spacing: var(--ls-reading);
+  max-width:    var(--max-reading-width);
+  margin:       0 auto;
+  text-align:   justify;
+  hyphens:      auto;
+  word-break:   break-word;
+}
+
+/* ORP highlight */
+.orp-bold {
+  font-weight: 800;
+}
+
+/* ── Button Typography ────────────────────────────────────────── */
+
+button, .btn {
+  font-family:    var(--font-sans);
+  font-size:      var(--fs-btn);
+  font-weight:    var(--fw-btn);
+  letter-spacing: var(--ls-btn);
+}
+
+/* ── Readability Rules ────────────────────────────────────────── */
+
+/* Max 70 chars per line for body text */
+.prose {
+  max-width: 70ch;
+}
+
+/* Minimum font size guard */
+.text-xs { font-size: max(var(--min-font-size), 0.75rem); }

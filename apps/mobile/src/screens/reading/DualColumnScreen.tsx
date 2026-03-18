@@ -241,7 +241,7 @@ const s = StyleSheet.create({
   doneBtn:    { marginHorizontal: 20, marginBottom: 24, backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
   doneTxt:    { color: '#0A0F1F', fontSize: 16, fontWeight: '800' },
   // Questions
-  qScroll:    { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40 },
+  qScroll:    { paddingHorizontal: 31, paddingTop: 60, paddingBottom: 40 },
   qTitle:     { color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginBottom: 24 },
   qBlock:     { marginBottom: 24 },
   qText:      { color: '#FFFFFF', fontSize: 15, fontWeight: '600', lineHeight: 22, marginBottom: 12 },

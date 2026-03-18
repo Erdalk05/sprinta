@@ -19,6 +19,7 @@ export type ReadingModeKey =
   | 'speed_ladder'   // 🪜 Hız Merdiveni   — artan hızlı RSVP antrenmanı
   | 'word_burst'     // 💫 Çok Kelime      — çoklu kelime RSVP (2-4 kelime)
   | 'sentence_step'  // 📝 Cümle Adım      — cümle cümle anlama odaklı okuma
+  | 'svr'            // ✨ Seri Vurgu Okuma — sıralı vurgu ile tüm metni gör
 
 export interface ModeConfig {
   key:               ReadingModeKey
@@ -92,6 +93,11 @@ export const MODE_CONFIGS: Record<ReadingModeKey, ModeConfig> = {
     key: 'sentence_step', icon: '📝', label: 'Cümle Adım', color: '#6366F1',
     description: 'Cümle cümle ilerle — anlama odaklı okuma, sınav pasajı pratik',
     defaultWpm: 150,
+  },
+  svr: {
+    key: 'svr', icon: '✨', label: 'Seri Vurgu Okuma', color: '#7C3AED',
+    description: 'Tüm metin görünür — sıralı vurgu gözünü yönlendirir, odak + hız birlikte gelişir',
+    defaultWpm: 220,
   },
 }
 

@@ -3,6 +3,14 @@ import { LogBox } from 'react-native'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated'
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter'
 import { useAuthStore } from '../src/stores/authStore'
 import { useOnboardingStore } from '../src/features/onboarding/onboardingStore'
 import { initRewardEngine } from '../src/features/rewards/RewardEngine'
@@ -39,6 +47,14 @@ export default function RootLayout() {
   const { completed: quizCompleted, loadFromStorage } = useOnboardingStore()
   const [mounted, setMounted] = useState(false)
   const [quizLoaded, setQuizLoaded] = useState(false)
+
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  })
 
   useEffect(() => {
     initRewardEngine()
@@ -92,6 +108,8 @@ export default function RootLayout() {
       router.replace('/(tabs)')
     }
   }, [mounted, quizLoaded, quizCompleted, isAuthenticated, student?.hasCompletedDiagnostic])
+
+  if (!fontsLoaded) return null
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

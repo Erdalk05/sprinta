@@ -102,6 +102,26 @@ function difficultyColor(d: number): string {
   return '#7C3AED'
 }
 
+function getCategoryIcon(cat: string): string {
+  const lower = cat.toLowerCase()
+  if (lower.includes('türkçe') || lower.includes('edebiyat') || lower.includes('dil bilgisi')) return '📖'
+  if (lower.includes('matematik')) return '🔢'
+  if (lower.includes('fen') || lower.includes('biyoloji') || lower.includes('kimya') || lower.includes('fizik')) return '🔬'
+  if (lower.includes('sosyal') || lower.includes('coğrafya')) return '🌍'
+  if (lower.includes('ingilizce') || lower.includes('yds') || lower.includes('okuma')) return '🌐'
+  if (lower.includes('tarih') || lower.includes('inkılap') || lower.includes('mücadele')) return '📜'
+  if (lower.includes('vatandaşlık') || lower.includes('anayasa') || lower.includes('demokrasi')) return '🏛️'
+  if (lower.includes('felsefe')) return '💭'
+  if (lower.includes('psikoloji')) return '🧠'
+  if (lower.includes('sosyoloji')) return '👥'
+  if (lower.includes('ekonomi') || lower.includes('istatistik')) return '💰'
+  if (lower.includes('teknoloji')) return '💻'
+  if (lower.includes('çevre') || lower.includes('doğa')) return '🌿'
+  if (lower.includes('akademik') || lower.includes('dilbilim')) return '📚'
+  if (lower.includes('hukuk')) return '⚖️'
+  return '📋'
+}
+
 // ─── Main Component ───────────────────────────────────────────────────
 
 export default function ContentLibraryScreen({
@@ -124,6 +144,7 @@ export default function ContentLibraryScreen({
   const [pickedFile,      setPickedFile]      = useState<{ name: string; text: string } | null>(null)
   const [pickingFile,     setPickingFile]     = useState(false)
   const [pickError,       setPickError]       = useState<string | null>(null)
+  const [dynamicLessons,  setDynamicLessons]  = useState<{ category: string; count: number }[]>([])
 
   // Recent yükle
   useEffect(() => {
@@ -139,17 +160,37 @@ export default function ContentLibraryScreen({
       (e) => e.key.toUpperCase() === initialExamKey.toUpperCase()
     )
     if (exam) {
-      setSelectedExam(exam)
-      setLevel('lessons')
+      handleExamSelect(exam)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Library Navigation ─────────────────────────────────────────────
 
-  const handleExamSelect = useCallback((exam: ExamCategory) => {
+  const handleExamSelect = useCallback(async (exam: ExamCategory) => {
     setSelectedExam(exam)
     setLevel('lessons')
+    setLoading(true)
+    setDynamicLessons([])
+    try {
+      const { data } = await (supabase as any)
+        .from('text_library')
+        .select('category')
+        .eq('exam_type', exam.key)
+        .order('category', { ascending: true })
+
+      const categoryMap = new Map<string, number>()
+      ;(data ?? []).forEach((row: any) => {
+        categoryMap.set(row.category, (categoryMap.get(row.category) ?? 0) + 1)
+      })
+      setDynamicLessons(
+        Array.from(categoryMap.entries()).map(([category, count]) => ({ category, count }))
+      )
+    } catch {
+      setDynamicLessons([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const handleLessonSelect = useCallback(async (lesson: LessonFolder) => {
@@ -416,20 +457,34 @@ export default function ContentLibraryScreen({
 
               {level === 'lessons' && selectedExam && (
                 <View style={s.listGap}>
-                  {selectedExam.lessons.map((lesson) => (
-                    <TouchableOpacity
-                      key={lesson.category}
-                      style={[s.lessonRow, { borderColor: selectedExam.color + '30' }]}
-                      onPress={() => handleLessonSelect(lesson)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={[s.lessonIcon, { backgroundColor: selectedExam.color + '15' }]}>
-                        <Text style={s.lessonIconText}>{lesson.icon}</Text>
-                      </View>
-                      <Text style={s.lessonLabel}>{lesson.label}</Text>
-                      <Text style={[s.lessonArrow, { color: selectedExam.color }]}>›</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {dynamicLessons.length === 0 ? (
+                    <View style={s.emptyBox}>
+                      <Text style={s.emptyIcon}>📭</Text>
+                      <Text style={s.emptyText}>Bu sınav için henüz metin eklenmedi</Text>
+                    </View>
+                  ) : (
+                    dynamicLessons.map((lesson) => (
+                      <TouchableOpacity
+                        key={lesson.category}
+                        style={[s.lessonRow, { borderColor: selectedExam.color + '30' }]}
+                        onPress={() => handleLessonSelect({
+                          category: lesson.category,
+                          label:    lesson.category,
+                          icon:     getCategoryIcon(lesson.category),
+                        })}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[s.lessonIcon, { backgroundColor: selectedExam.color + '15' }]}>
+                          <Text style={s.lessonIconText}>{getCategoryIcon(lesson.category)}</Text>
+                        </View>
+                        <Text style={s.lessonLabel}>{lesson.category}</Text>
+                        <View style={[s.lessonCountBadge, { backgroundColor: selectedExam.color + '18' }]}>
+                          <Text style={[s.lessonCountTxt, { color: selectedExam.color }]}>{lesson.count}</Text>
+                        </View>
+                        <Text style={[s.lessonArrow, { color: selectedExam.color }]}>›</Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
                 </View>
               )}
 
@@ -848,6 +903,18 @@ const s = StyleSheet.create({
     color:      '#111827',
   },
   lessonArrow: { fontSize: 22, fontWeight: '700' },
+  lessonCountBadge: {
+    backgroundColor:   '#F3F4F6',
+    borderRadius:      10,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+    minWidth:          28,
+    alignItems:        'center',
+  },
+  lessonCountTxt: {
+    fontSize:   11,
+    fontWeight: '700',
+  },
 
   // Texts
   textCard: {

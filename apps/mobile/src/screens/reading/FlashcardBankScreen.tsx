@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Animated as RNAnimated,
 } from 'react-native'
 import Animated, {
   useSharedValue, withTiming, useAnimatedStyle, interpolate, Extrapolation,
@@ -91,7 +91,8 @@ export default function FlashcardBankScreen({ onExit }: Props) {
   const [flipped, setFlipped] = useState(false)
   const [phase, setPhase] = useState<Phase>('cards')
   const [sessionQueue, setSessionQueue] = useState<string[]>(SAMPLE_CARDS.map(c => c.id))
-  const startMs = useRef(Date.now())
+  const startMs      = useRef(Date.now())
+  const progressAnim = useRef(new RNAnimated.Value(0)).current
 
   const flip = useSharedValue(0)
 
@@ -103,6 +104,12 @@ export default function FlashcardBankScreen({ onExit }: Props) {
     opacity: interpolate(flip.value, [0, 0.5, 1], [0, 0, 1], Extrapolation.CLAMP),
     transform: [{ rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` }],
   }))
+
+  useEffect(() => {
+    const known = cards.filter(c => c.status === 'known').length
+    RNAnimated.timing(progressAnim, { toValue: known / Math.max(1, cards.length), duration: 300, useNativeDriver: false }).start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards])
 
   const handleFlip = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -198,7 +205,7 @@ export default function FlashcardBankScreen({ onExit }: Props) {
       </View>
 
       <View style={s.progressBg}>
-        <View style={[s.progressFill, { width: `${prog}%` }]} />
+        <RNAnimated.View style={[s.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
       </View>
 
       {/* Card */}

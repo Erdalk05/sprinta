@@ -252,7 +252,7 @@ const s = StyleSheet.create({
   root:         { flex: 1, backgroundColor: BG },
   exit:         { position: 'absolute', top: 52, right: 20, zIndex: 10, padding: 8 },
   exitTxt:      { color: 'rgba(255,255,255,0.45)', fontSize: 18 },
-  scroll:       { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40 },
+  scroll:       { paddingHorizontal: 31, paddingTop: 60, paddingBottom: 40 },
   title:        { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginBottom: 4 },
   sub:          { color: ACCENT, fontSize: 13, marginBottom: 24 },
   textCard:     { backgroundColor: '#0F1A35', borderRadius: 18, padding: 18, marginBottom: 20 },

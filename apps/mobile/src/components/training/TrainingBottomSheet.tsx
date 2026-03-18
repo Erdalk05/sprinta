@@ -168,6 +168,7 @@ const AKADEMI_CATEGORIES = [
 // ─── Okuma modülü başlık renk paleti (25 modül) ───────────────────
 const OKUMA_ACCENTS: Record<string, string> = {
   '/exercise/chunk-rsvp':          '#0891B2',
+  '/exercise/svr':                 '#7C3AED',
   '/exercise/timed-reading':       '#EA580C',
   '/exercise/flow-reading':        '#059669',
   '/exercise/speed-ladder':        '#D97706',
@@ -192,8 +193,9 @@ const OKUMA_ACCENTS: Record<string, string> = {
 // ─── Okuma module data (25 modül) ────────────────────────────────
 const OKUMA_MODULES = [
   // ── Hız Okuma ──────────────────────────────────────────────
-  { icon: '⚡', label: 'Chunk Okuma',        subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
-  { icon: '⏱️', label: 'Zamanlı Okuma',      subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
+  { icon: '⚡', label: 'Chunk Okuma',          subtitle: 'Kelimeyi grup grup gör · hızını 2×',              route: '/exercise/chunk-rsvp'        },
+  { icon: '✨', label: 'Seri Vurgu Okuma',    subtitle: 'Vurgu gözünü yönlendirir · tüm metin görünür',    route: '/exercise/svr'               },
+  { icon: '⏱️', label: 'Zamanlı Okuma',       subtitle: 'Süre baskısı · YKS/TYT simülasyonu',              route: '/exercise/timed-reading'     },
   { icon: '🌊', label: 'Akış Okuma',         subtitle: 'Satır pacing · anlama + hız dengesi',             route: '/exercise/flow-reading'      },
   { icon: '🪜', label: 'Hız Merdiveni',      subtitle: 'Her 30 kelimede +25 WPM · limitini zorla',        route: '/exercise/speed-ladder'      },
   { icon: '🧬', label: 'Biyonik Okuma',      subtitle: 'İlk heceler kalın · beyin tamamlar',              route: '/exercise/bionic-reading'    },

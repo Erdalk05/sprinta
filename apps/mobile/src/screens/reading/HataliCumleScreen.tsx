@@ -306,7 +306,7 @@ const s = StyleSheet.create({
   scoreRow:  { flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 },
   chip:      { backgroundColor: '#0F1A35', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
   chipTxt:   { fontSize: 14, fontWeight: '800' },
-  cont:      { paddingHorizontal: 20, paddingBottom: 40 },
+  cont:      { paddingHorizontal: 31, paddingBottom: 40 },
   qCard:     { backgroundColor: '#0F1A35', borderRadius: 16, padding: 18, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   qTxt:      { color: '#FFFFFF', fontSize: 15, fontWeight: '600', lineHeight: 24 },
   optBtn:    { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#0F1A35', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(64,200,240,0.2)', padding: 14, marginBottom: 10 },

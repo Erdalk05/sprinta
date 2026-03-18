@@ -1,6 +1,7 @@
 // Sprinta — İş Bankası + Facebook Mavi Tema Sistemi
 
 import { getScheme } from './colorSchemes'
+import { typography, READING_TYPOGRAPHY, READING_MAX_WIDTH_RATIO, READING_PARAGRAPH_SPACING, MIN_FONT_SIZE } from './typography'
 export { COLOR_SCHEMES, getScheme } from './colorSchemes'
 export type { ColorScheme } from './colorSchemes'
 
@@ -161,9 +162,19 @@ export function buildTheme(isDark: boolean, _schemeId = 'default') {
       konuSaglik:    ['#1877F2', '#40C8F0']           as string[],
     },
 
+    // ── Legacy size shortcuts (bozma — eski bileşenler için) ─────
     typography: {
       heroNumber: 72, displayLg: 48, displayMd: 36, displaySm: 28,
       titleLg: 22, titleMd: 18, body: 15, caption: 12,
+    },
+
+    // ── Yeni Tip Sistemi (Inter tabanlı, tam spec) ───────────────
+    ty: {
+      ...typography,
+      reading: READING_TYPOGRAPHY,
+      maxReadingWidth: READING_MAX_WIDTH_RATIO,
+      paragraphSpacing: READING_PARAGRAPH_SPACING,
+      minFontSize: MIN_FONT_SIZE,
     },
 
     module: {

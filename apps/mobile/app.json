@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#6C3EE8"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.sprinta.mobile",
@@ -23,15 +25,22 @@
         "backgroundColor": "#6C3EE8"
       },
       "package": "app.sprinta.mobile",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       [
         "expo-av",
-        { "microphonePermission": false }
-      ]
+        {
+          "microphonePermission": false
+        }
+      ],
+      "expo-audio",
+      "expo-font"
     ],
     "scheme": "sprinta",
     "experiments": {
@@ -39,7 +48,11 @@
     },
     "newArchEnabled": true,
     "extra": {
-      "eas": { "projectId": "YOUR_EAS_PROJECT_ID" }
-    }
+      "eas": {
+        "projectId": "94d2acbc-724f-430d-8d9f-1f40c03a114c"
+      },
+      "router": {}
+    },
+    "owner": "erdalk"
   }
 }

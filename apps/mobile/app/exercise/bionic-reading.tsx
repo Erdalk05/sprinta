@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/stores/authStore'
 import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
-import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
 import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
 import ReadingModuleFlow from '../../src/components/reading/ReadingModuleFlow'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
@@ -11,27 +10,16 @@ import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/
 const ACCENT     = '#0284C7'
 const MODULE_KEY = 'bionic-reading'
 
-type Phase = 'setup' | 'picking' | 'reading'
+type Phase = 'picking' | 'reading'
 
 export default function BionicReadingScreen() {
   const router      = useRouter()
   const { student } = useAuthStore()
-  const [phase,        setPhase]        = useState<Phase>('setup')
+  const [phase,        setPhase]        = useState<Phase>('picking')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [pickFiltered, setPickFiltered] = useState(false)
 
   const onBack = () => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }
-
-  if (phase === 'setup') {
-    return (
-      <ModuleSetupScreen
-        moduleKey={MODULE_KEY}
-        onSelectText={() => { setPickFiltered(false); setPhase('picking') }}
-        onQuickStart={() => { setPickFiltered(true);  setPhase('picking') }}
-        onBack={onBack}
-      />
-    )
-  }
 
   if (phase === 'picking') {
     return (
@@ -39,7 +27,7 @@ export default function BionicReadingScreen() {
         accentColor={ACCENT}
         moduleKey={MODULE_KEY}
         onContentSelected={(c) => { setContent(c); setPhase('reading') }}
-        onBack={() => setPhase('setup')}
+        onBack={onBack}
         initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
       />
     )

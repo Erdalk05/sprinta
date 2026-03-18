@@ -14,37 +14,25 @@ import { createFlowReadingService } from '@sprinta/api'
 
 import FlowReadingExercise, { FlowReadingMetrics } from '../../src/components/exercises/SpeedControl/FlowReadingExercise'
 import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
-import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
 import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
 
 const flowSvc   = createFlowReadingService(supabase)
 const ACCENT    = '#059669'
 const MODULE_KEY = 'flow-reading'
 
-type Phase = 'setup' | 'picking' | 'reading'
+type Phase = 'picking' | 'reading'
 
 export default function FlowReadingScreen() {
   const router      = useRouter()
   const { student } = useAuthStore()
 
-  const [phase,        setPhase]        = useState<Phase>('setup')
+  const [phase,        setPhase]        = useState<Phase>('picking')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [pickFiltered, setPickFiltered] = useState(false)
 
   const onExit = () => (usePendingSheetStore.getState().setPendingSheet('okuma'), router.back())
 
   // ── Adım 1: Modül Tanıtımı ───────────────────────────────────────
-  if (phase === 'setup') {
-    return (
-      <ModuleSetupScreen
-        moduleKey={MODULE_KEY}
-        onSelectText={() => { setPickFiltered(false); setPhase('picking') }}
-        onQuickStart={() => { setPickFiltered(true);  setPhase('picking') }}
-        onBack={onExit}
-      />
-    )
-  }
-
   // ── Adım 2-4: İçerik Kütüphanesi ────────────────────────────────
   if (phase === 'picking') {
     return (
@@ -52,7 +40,7 @@ export default function FlowReadingScreen() {
         accentColor={ACCENT}
         moduleKey={MODULE_KEY}
         onContentSelected={(c) => { setContent(c); setPhase('reading') }}
-        onBack={() => setPhase('setup')}
+        onBack={onExit}
         initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
       />
     )
@@ -67,7 +55,7 @@ export default function FlowReadingScreen() {
         if (student?.id) flowSvc.saveSession(m, student.id).catch(() => {})
       }}
       onExit={onExit}
-      onRepeat={() => { setContent(null); setPhase('setup') }}
+      onRepeat={() => { setContent(null); setPhase('picking') }}
     />
   )
 }

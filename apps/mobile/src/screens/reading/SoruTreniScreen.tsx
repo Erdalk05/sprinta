@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Animated as RNAnimated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { supabase } from '../../lib/supabase'
@@ -85,7 +85,14 @@ export default function SoruTreniScreen({ onExit }: Props) {
   const [answers, setAnswers] = useState<(number | null)[]>(Array(QUESTIONS.length).fill(null))
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME)
   const [selected, setSelected] = useState<number | null>(null)
-  const startMs = useRef(Date.now())
+  const startMs      = useRef(Date.now())
+  const progressAnim = useRef(new RNAnimated.Value(0)).current
+
+  useEffect(() => {
+    const answeredCount = answers.filter(a => a !== null).length
+    RNAnimated.timing(progressAnim, { toValue: answeredCount / Math.max(1, QUESTIONS.length), duration: 300, useNativeDriver: false }).start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers])
 
   // Timer
   useEffect(() => {
@@ -199,7 +206,7 @@ export default function SoruTreniScreen({ onExit }: Props) {
 
       {/* Progress */}
       <View style={s.progressBg}>
-        <View style={[s.progressFill, { width: `${(answered / QUESTIONS.length) * 100}%` }]} />
+        <RNAnimated.View style={[s.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
       </View>
 
       <ScrollView contentContainerStyle={s.qCont}>
@@ -267,7 +274,7 @@ const s = StyleSheet.create({
   timerRed:    { color: '#EF4444' },
   progressBg:  { height: 3, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 20, marginBottom: 16, borderRadius: 2 },
   progressFill:{ height: 3, backgroundColor: ACCENT, borderRadius: 2 },
-  qCont:       { paddingHorizontal: 20, paddingBottom: 100 },
+  qCont:       { paddingHorizontal: 31, paddingBottom: 100 },
   subjTag:     { color: ACCENT, fontSize: 11, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   qCard:       { backgroundColor: '#0F1A35', borderRadius: 16, padding: 18, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: ACCENT },
   qTxt:        { color: '#FFFFFF', fontSize: 16, lineHeight: 26, fontWeight: '600' },

@@ -1,15 +1,16 @@
 /**
  * VanishingReadingScreen — Kaybolma Okuma
- * Metin 8 saniye gösterilir → Reanimated opacity 0 → 3 MCQ anlama sorusu
+ * Metin 8 saniye gösterilir → Reanimated opacity 0 → 3 MCQ anlama sorusu (tek tek)
  */
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Animated as RNAnimated,
 } from 'react-native'
 import Animated, {
   useSharedValue, withTiming, useAnimatedStyle, Easing,
 } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
+import { Audio } from 'expo-av'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -40,30 +41,57 @@ const PASSAGES = [
 
 type Phase = 'reading' | 'fading' | 'questions' | 'result'
 
+async function playFeedback(correct: boolean) {
+  try {
+    const asset = correct
+      ? require('../../../assets/sounds/success.wav')
+      : require('../../../assets/sounds/miss.wav')
+    const { sound } = await Audio.Sound.createAsync(asset)
+    await sound.playAsync()
+    sound.setOnPlaybackStatusUpdate(status => {
+      if (status.isLoaded && status.didJustFinish) sound.unloadAsync()
+    })
+  } catch { /* sessiz */ }
+}
+
 export default function VanishingReadingScreen({ onExit }: Props) {
   const { student } = useAuthStore()
-  const [passageIdx, setPassageIdx] = useState(0)
-  const [phase, setPhase] = useState<Phase>('reading')
-  const [timeLeft, setTimeLeft] = useState(8)
-  const [answers, setAnswers] = useState<(number | null)[]>([null, null, null])
-  const [score, setScore] = useState(0)
-  const [totalScore, setTotalScore] = useState(0)
-  const [round, setRound] = useState(1)
+  const [passageIdx,    setPassageIdx]    = useState(0)
+  const [phase,         setPhase]         = useState<Phase>('reading')
+  const [timeLeft,      setTimeLeft]      = useState(8)
+  const [round,         setRound]         = useState(1)
 
-  const opacity = useSharedValue(1)
-  const passage = PASSAGES[passageIdx % PASSAGES.length]
+  // Tek-tek soru state
+  const [currentQ,      setCurrentQ]      = useState(0)
+  const [selectedOpt,   setSelectedOpt]   = useState<number | null>(null)
+  const [showFeedback,  setShowFeedback]  = useState(false)
+  const [answers,       setAnswers]       = useState<boolean[]>([])  // doğru/yanlış listesi
 
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+  const [score,         setScore]         = useState(0)
+  const [totalScore,    setTotalScore]    = useState(0)
 
-  // Countdown timer during reading phase
+  const advanceTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const progressAnim   = useRef(new RNAnimated.Value(0)).current
+  const opacity        = useSharedValue(1)
+  const passage      = PASSAGES[passageIdx % PASSAGES.length]
+  const animStyle    = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+  useEffect(() => {
+    const qTotal = PASSAGES[passageIdx % PASSAGES.length]?.questions.length ?? 1
+    const val = (currentQ + (showFeedback ? 1 : 0)) / qTotal
+    RNAnimated.timing(progressAnim, { toValue: Math.min(1, val), duration: 300, useNativeDriver: false }).start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQ, showFeedback, passageIdx])
+
+  // Temizlik
+  useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current) }, [])
+
+  // Countdown timer
   useEffect(() => {
     if (phase !== 'reading') return
     if (timeLeft <= 0) {
       setPhase('fading')
-      opacity.value = withTiming(0, { duration: 1500, easing: Easing.out(Easing.quad) }, () => {
-        'worklet'
-        // nothing needed — phase change below
-      })
+      opacity.value = withTiming(0, { duration: 1500, easing: Easing.out(Easing.quad) })
       setTimeout(() => setPhase('questions'), 1600)
       return
     }
@@ -71,53 +99,71 @@ export default function VanishingReadingScreen({ onExit }: Props) {
     return () => clearTimeout(t)
   }, [phase, timeLeft])
 
-  const handleAnswer = useCallback((qIdx: number, optIdx: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setAnswers(prev => {
-      const next = [...prev]
-      next[qIdx] = optIdx
-      return next
-    })
-  }, [])
+  const handleAnswer = useCallback((optIdx: number) => {
+    if (showFeedback) return  // zaten cevaplandı
+    const q       = passage.questions[currentQ]
+    const correct = optIdx === q.ans
 
-  const handleSubmit = useCallback(async () => {
-    const roundScore = answers.reduce<number>((acc, ans, i) =>
-      acc + (ans === passage.questions[i].ans ? 1 : 0), 0)
-    const newTotal = totalScore + roundScore
-    setScore(roundScore)
-    setTotalScore(newTotal)
+    setSelectedOpt(optIdx)
+    setShowFeedback(true)
+    setAnswers(prev => [...prev, correct])
 
-    if (student?.id) {
-      try {
-        await (supabase as any).from('reading_mode_sessions').insert({
-          student_id:   student.id,
-          mode:         'vanishing_reading',
-          avg_wpm:      0,
-          total_words:  passage.text.split(' ').length,
-          duration_sec: 8,
-          arp_score:    roundScore * 2,
-          xp_earned:    roundScore * 10,
-          completion:   1,
-        })
-      } catch { /* sessiz */ }
+    if (correct) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
     }
-    setPhase('result')
-  }, [answers, passage, student, totalScore])
+    playFeedback(correct)
+
+    // 1.1 saniye sonra sonraki soruya geç
+    advanceTimer.current = setTimeout(async () => {
+      const nextQ = currentQ + 1
+      if (nextQ >= passage.questions.length) {
+        // Tüm sorular bitti → sonuç hesapla
+        const newAnswers = [...answers, correct]
+        const roundScore = newAnswers.filter(Boolean).length
+        const newTotal   = totalScore + roundScore
+        setScore(roundScore)
+        setTotalScore(newTotal)
+
+        if (student?.id) {
+          try {
+            await (supabase as any).from('reading_mode_sessions').insert({
+              student_id:   student.id,
+              mode:         'vanishing_reading',
+              avg_wpm:      0,
+              total_words:  passage.text.split(' ').length,
+              duration_sec: 8,
+              arp_score:    roundScore * 2,
+              xp_earned:    roundScore * 10,
+              completion:   1,
+            })
+          } catch { /* sessiz */ }
+        }
+        setPhase('result')
+      } else {
+        setCurrentQ(nextQ)
+        setSelectedOpt(null)
+        setShowFeedback(false)
+      }
+    }, 1100)
+  }, [showFeedback, currentQ, passage, answers, totalScore, student])
 
   const handleNext = useCallback(() => {
-    if (round >= 3) {
-      onExit()
-      return
-    }
+    if (advanceTimer.current) clearTimeout(advanceTimer.current)
+    if (round >= 3) { onExit(); return }
     setRound(r => r + 1)
     setPassageIdx(i => i + 1)
     setPhase('reading')
     setTimeLeft(8)
-    setAnswers([null, null, null])
+    setCurrentQ(0)
+    setSelectedOpt(null)
+    setShowFeedback(false)
+    setAnswers([])
     opacity.value = 1
   }, [round, onExit, opacity])
 
-  // ── Reading phase ─────────────────────────────────────────────
+  // ── Reading phase ──────────────────────────────────────────────
   if (phase === 'reading' || phase === 'fading') {
     return (
       <SafeAreaView style={s.root}>
@@ -145,50 +191,68 @@ export default function VanishingReadingScreen({ onExit }: Props) {
     )
   }
 
-  // ── Questions phase ───────────────────────────────────────────
+  // ── Questions phase (tek tek) ──────────────────────────────────
   if (phase === 'questions') {
+    const q     = passage.questions[currentQ]
+    const total = passage.questions.length
+
     return (
       <SafeAreaView style={s.root}>
         <TouchableOpacity style={s.exit} onPress={onExit}>
           <Text style={s.exitTxt}>✕</Text>
         </TouchableOpacity>
-        <ScrollView contentContainerStyle={s.qScroll}>
-          <Text style={s.qTitle}>🧠 Anlama Soruları</Text>
-          <Text style={s.qSub}>{passage.title}</Text>
 
-          {passage.questions.map((q, qi) => (
-            <View key={qi} style={s.qBlock}>
-              <Text style={s.qText}>{qi + 1}. {q.q}</Text>
-              {q.opts.map((opt, oi) => (
-                <TouchableOpacity
-                  key={oi}
-                  style={[s.optBtn, answers[qi] === oi && s.optSelected]}
-                  onPress={() => handleAnswer(qi, oi)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[s.optLetter, answers[qi] === oi && s.optLetterSel]}>
-                    {String.fromCharCode(65 + oi)}
-                  </Text>
-                  <Text style={[s.optTxt, answers[qi] === oi && s.optTxtSel]}>{opt}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
+        <View style={s.qHeader}>
+          <Text style={s.qTitle}>🧠 Anlama Sorusu</Text>
+          <Text style={s.qCounter}>{currentQ + 1} / {total}</Text>
+        </View>
 
-          <TouchableOpacity
-            style={[s.submitBtn, answers.every(a => a !== null) && s.submitActive]}
-            onPress={handleSubmit}
-            disabled={!answers.every(a => a !== null)}
-            activeOpacity={0.85}
-          >
-            <Text style={s.submitTxt}>Cevapla →</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        {/* İlerleme çubuğu */}
+        <View style={s.progressTrack}>
+          <RNAnimated.View style={[s.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
+        </View>
+
+        <View style={s.qBody}>
+          <Text style={s.qText}>{q.q}</Text>
+
+          {q.opts.map((opt, oi) => {
+            const isSelected = selectedOpt === oi
+            const isCorrect  = oi === q.ans
+            let optStyle = s.optBtn
+            let letterStyle = s.optLetter
+            let txtStyle    = s.optTxt
+
+            if (showFeedback) {
+              if (isCorrect)                    { optStyle = s.optCorrect; letterStyle = s.optLetterCorrect; txtStyle = s.optTxtCorrect }
+              else if (isSelected && !isCorrect){ optStyle = s.optWrong;   letterStyle = s.optLetterWrong;   txtStyle = s.optTxtWrong   }
+              else                              { optStyle = s.optDimmed }
+            } else if (isSelected) {
+              optStyle = s.optSelected
+              letterStyle = s.optLetterSel
+              txtStyle    = s.optTxtSel
+            }
+
+            return (
+              <TouchableOpacity
+                key={oi}
+                style={[s.optBase, optStyle]}
+                onPress={() => handleAnswer(oi)}
+                activeOpacity={showFeedback ? 1 : 0.75}
+                disabled={showFeedback}
+              >
+                <Text style={[s.optLetterBase, letterStyle]}>
+                  {showFeedback ? (isCorrect ? '✓' : isSelected ? '✗' : String.fromCharCode(65 + oi)) : String.fromCharCode(65 + oi)}
+                </Text>
+                <Text style={[s.optTxtBase, txtStyle]}>{opt}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       </SafeAreaView>
     )
   }
 
-  // ── Result phase ─────────────────────────────────────────────
+  // ── Result phase ───────────────────────────────────────────────
   return (
     <SafeAreaView style={s.root}>
       <View style={s.resultWrap}>
@@ -196,7 +260,7 @@ export default function VanishingReadingScreen({ onExit }: Props) {
         <Text style={s.resultTitle}>Tur {round} Bitti!</Text>
         <Text style={s.resultScore}>{score} / 3 Doğru</Text>
         <Text style={s.resultXp}>+{score * 10} XP</Text>
-        <Text style={s.totalScore}>Toplam: {totalScore} puan</Text>
+        <Text style={s.totalTxt}>Toplam: {totalScore} puan</Text>
         <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
           <Text style={s.nextTxt}>{round >= 3 ? 'Bitir' : 'Sonraki Metin →'}</Text>
         </TouchableOpacity>
@@ -208,49 +272,68 @@ export default function VanishingReadingScreen({ onExit }: Props) {
   )
 }
 
-const BG = '#0A0F1F'
-const CARD = '#0F1A35'
+const BG     = '#0A0F1F'
+const CARD   = '#0F1A35'
 const ACCENT = '#40C8F0'
+const GREEN  = '#22C55E'
+const RED    = '#EF4444'
 
 const s = StyleSheet.create({
-  root:       { flex: 1, backgroundColor: BG },
-  exit:       { position: 'absolute', top: 52, right: 20, zIndex: 10, padding: 8 },
-  exitTxt:    { color: 'rgba(255,255,255,0.45)', fontSize: 18 },
-  topBar:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 56, paddingHorizontal: 20, marginBottom: 12 },
-  label:      { color: ACCENT, fontSize: 16, fontWeight: '700' },
-  roundTxt:   { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
-  timerRow:   { alignItems: 'center', marginBottom: 16 },
-  timerNum:   { color: '#FFFFFF', fontSize: 56, fontWeight: '900', lineHeight: 60 },
-  timerRed:   { color: '#EF4444' },
-  timerSub:   { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 },
-  card:       { marginHorizontal: 20, backgroundColor: CARD, borderRadius: 18, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
-  passTitle:  { color: ACCENT, fontSize: 16, fontWeight: '800', marginBottom: 12 },
-  passText:   { color: '#E8F4F8', fontSize: 16, lineHeight: 27, letterSpacing: 0.2 },
-  hint:       { textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 20 },
+  root:        { flex: 1, backgroundColor: BG },
+  exit:        { position: 'absolute', top: 52, right: 20, zIndex: 10, padding: 8 },
+  exitTxt:     { color: 'rgba(255,255,255,0.45)', fontSize: 18 },
+  topBar:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 56, paddingHorizontal: 20, marginBottom: 12 },
+  label:       { color: ACCENT, fontSize: 16, fontWeight: '700' },
+  roundTxt:    { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
+  timerRow:    { alignItems: 'center', marginBottom: 16 },
+  timerNum:    { color: '#FFFFFF', fontSize: 56, fontWeight: '900', lineHeight: 60 },
+  timerRed:    { color: RED },
+  timerSub:    { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 },
+  card:        { marginHorizontal: 10, backgroundColor: CARD, borderRadius: 18, paddingHorizontal: 34, paddingVertical: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
+  passTitle:   { color: ACCENT, fontSize: 16, fontWeight: '800', marginBottom: 12 },
+  passText:    { color: '#E8F4F8', fontSize: 16, lineHeight: 27, letterSpacing: 0.2 },
+  hint:        { textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 20 },
+
   // Questions
-  qScroll:    { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 40 },
-  qTitle:     { color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginBottom: 4 },
-  qSub:       { color: ACCENT, fontSize: 13, marginBottom: 24 },
-  qBlock:     { marginBottom: 24 },
-  qText:      { color: '#FFFFFF', fontSize: 15, fontWeight: '600', lineHeight: 22, marginBottom: 12 },
-  optBtn:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F1A35', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(64,200,240,0.2)', padding: 12, marginBottom: 8 },
-  optSelected:{ backgroundColor: 'rgba(64,200,240,0.15)', borderColor: ACCENT },
-  optLetter:  { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 10, textAlign: 'center', lineHeight: 28, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' },
-  optLetterSel:{ color: ACCENT },
-  optTxt:     { color: 'rgba(255,255,255,0.75)', fontSize: 14, flex: 1 },
-  optTxtSel:  { color: '#FFFFFF', fontWeight: '600' },
-  submitBtn:  { backgroundColor: 'rgba(64,200,240,0.15)', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8, borderWidth: 1.5, borderColor: 'rgba(64,200,240,0.3)' },
-  submitActive:{ backgroundColor: ACCENT, borderColor: ACCENT },
-  submitTxt:  { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  qHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 56, paddingHorizontal: 24, marginBottom: 10 },
+  qTitle:      { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  qCounter:    { color: ACCENT, fontSize: 15, fontWeight: '700' },
+  progressTrack:{ height: 3, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 24, borderRadius: 2, marginBottom: 28 },
+  progressFill: { height: 3, backgroundColor: ACCENT, borderRadius: 2 },
+  qBody:       { flex: 1, paddingHorizontal: 24 },
+  qText:       { color: '#FFFFFF', fontSize: 16, fontWeight: '600', lineHeight: 24, marginBottom: 20 },
+
+  // Option base
+  optBase:          { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 10 },
+  optBtn:           { backgroundColor: CARD, borderColor: 'rgba(64,200,240,0.2)' },
+  optSelected:      { backgroundColor: 'rgba(64,200,240,0.12)', borderColor: ACCENT },
+  optCorrect:       { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: GREEN },
+  optWrong:         { backgroundColor: 'rgba(239,68,68,0.15)', borderColor: RED },
+  optDimmed:        { backgroundColor: CARD, borderColor: 'rgba(255,255,255,0.05)', opacity: 0.4 },
+
+  // Letter badge
+  optLetterBase:    { width: 30, height: 30, borderRadius: 15, textAlign: 'center', lineHeight: 30, fontSize: 13, fontWeight: '700', marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' },
+  optLetter:        {},
+  optLetterSel:     { color: ACCENT, backgroundColor: 'rgba(64,200,240,0.15)' },
+  optLetterCorrect: { color: GREEN, backgroundColor: 'rgba(34,197,94,0.15)' },
+  optLetterWrong:   { color: RED, backgroundColor: 'rgba(239,68,68,0.15)' },
+
+  // Option text
+  optTxtBase:       { color: 'rgba(255,255,255,0.7)', fontSize: 14, flex: 1, lineHeight: 20 },
+  optTxt:           {},
+  optTxtSel:        { color: '#FFFFFF', fontWeight: '600' },
+  optTxtCorrect:    { color: GREEN, fontWeight: '700' },
+  optTxtWrong:      { color: RED },
+
   // Result
-  resultWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  resultEmoji:{ fontSize: 64, marginBottom: 16 },
-  resultTitle:{ color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  resultScore:{ color: ACCENT, fontSize: 40, fontWeight: '900', marginBottom: 8 },
-  resultXp:   { color: '#FFD700', fontSize: 22, fontWeight: '800', marginBottom: 6 },
-  totalScore: { color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 32 },
-  nextBtn:    { backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center', marginBottom: 12 },
-  nextTxt:    { color: '#0A0F1F', fontSize: 16, fontWeight: '800' },
-  exitSmall:  { padding: 12 },
+  resultWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  resultEmoji: { fontSize: 64, marginBottom: 16 },
+  resultTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', marginBottom: 8 },
+  resultScore: { color: ACCENT, fontSize: 40, fontWeight: '900', marginBottom: 8 },
+  resultXp:    { color: '#FFD700', fontSize: 22, fontWeight: '800', marginBottom: 6 },
+  totalTxt:    { color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 32 },
+  nextBtn:     { backgroundColor: ACCENT, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 40, alignItems: 'center', marginBottom: 12 },
+  nextTxt:     { color: '#0A0F1F', fontSize: 16, fontWeight: '800' },
+  exitSmall:   { padding: 12 },
   exitSmallTxt:{ color: 'rgba(255,255,255,0.4)', fontSize: 14 },
 })

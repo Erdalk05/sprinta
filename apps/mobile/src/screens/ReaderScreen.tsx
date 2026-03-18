@@ -551,7 +551,7 @@ function createStyles(t: AppTheme) {
 
     scroll:        { flex: 1 },
     scrollContent: {
-      paddingHorizontal: t.spacing.lg,
+      paddingHorizontal: 21,   // t.spacing.lg(16) × 1.3
       paddingTop:        OVERLAY_H,
       paddingBottom:     OVERLAY_H,
     },

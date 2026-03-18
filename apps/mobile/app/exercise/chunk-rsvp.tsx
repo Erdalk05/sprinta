@@ -14,7 +14,6 @@ import { createChunkRsvpService } from '@sprinta/api'
 
 import ChunkRSVPExercise, { ChunkRSVPMetrics } from '../../src/components/exercises/SpeedControl/ChunkRSVPExercise'
 import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
-import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
 import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
 
 const chunkSvc = createChunkRsvpService(supabase)
@@ -22,30 +21,19 @@ const chunkSvc = createChunkRsvpService(supabase)
 const ACCENT = '#0891B2'
 const MODULE_KEY = 'chunk-rsvp'
 
-type Phase = 'setup' | 'picking' | 'reading'
+type Phase = 'picking' | 'reading'
 
 export default function ChunkRSVPScreen() {
   const router        = useRouter()
   const { student }   = useAuthStore()
 
-  const [phase,        setPhase]        = useState<Phase>('setup')
+  const [phase,        setPhase]        = useState<Phase>('picking')
   const [content,      setContent]      = useState<ImportedContent | null>(null)
   const [pickFiltered, setPickFiltered] = useState(false)
 
   const onExit = () => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )
 
   // ── Adım 1: Modül Tanıtımı ───────────────────────────────────────
-  if (phase === 'setup') {
-    return (
-      <ModuleSetupScreen
-        moduleKey={MODULE_KEY}
-        onSelectText={() => { setPickFiltered(false); setPhase('picking') }}
-        onQuickStart={() => { setPickFiltered(true);  setPhase('picking') }}
-        onBack={onExit}
-      />
-    )
-  }
-
   // ── Adım 2-4: İçerik Kütüphanesi ────────────────────────────────
   if (phase === 'picking') {
     return (
@@ -53,7 +41,7 @@ export default function ChunkRSVPScreen() {
         accentColor={ACCENT}
         moduleKey={MODULE_KEY}
         onContentSelected={(c) => { setContent(c); setPhase('reading') }}
-        onBack={() => setPhase('setup')}
+        onBack={onExit}
         initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
       />
     )
@@ -68,7 +56,7 @@ export default function ChunkRSVPScreen() {
         if (student?.id) chunkSvc.saveSession(metrics, student.id).catch(() => {})
       }}
       onExit={onExit}
-      onRepeat={() => { setContent(null); setPhase('setup') }}
+      onRepeat={() => { setContent(null); setPhase('picking') }}
     />
   )
 }

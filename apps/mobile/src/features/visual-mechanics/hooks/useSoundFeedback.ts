@@ -4,7 +4,8 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react'
-import { Audio } from 'expo-av'
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio'
+import type { AudioPlayer } from 'expo-audio'
 import { useSoundStore } from '../../../stores/soundStore'
 import { feedbackEvents } from '../utils/feedbackEvents'
 
@@ -28,28 +29,27 @@ const VOLUMES: Record<SoundKey, number> = {
 
 export function useSoundFeedback() {
   const { isMuted } = useSoundStore()
-  const sounds     = useRef<Partial<Record<SoundKey, Audio.Sound>>>({})
+  const sounds     = useRef<Partial<Record<SoundKey, AudioPlayer>>>({})
   const comboCount = useRef(0)
 
   useEffect(() => {
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS:      false,
-      staysActiveInBackground: false,
-      playsInSilentModeIOS:    true,
+    setAudioModeAsync({
+      playsInSilentMode: true,
     }).catch(() => {})
 
     const load = async () => {
       for (const [key, src] of Object.entries(SOURCES) as [SoundKey, any][]) {
         try {
-          const { sound } = await Audio.Sound.createAsync(src, { volume: VOLUMES[key as SoundKey] })
-          sounds.current[key as SoundKey] = sound
+          const player = createAudioPlayer(src)
+          player.volume = VOLUMES[key as SoundKey]
+          sounds.current[key as SoundKey] = player
         } catch (_) {}
       }
     }
     load()
 
     return () => {
-      Object.values(sounds.current).forEach(s => s?.unloadAsync().catch(() => {}))
+      Object.values(sounds.current).forEach(s => { try { s?.remove() } catch (_) {} })
       sounds.current = {}
     }
   }, [])
@@ -59,8 +59,8 @@ export function useSoundFeedback() {
     try {
       const s = sounds.current[key]
       if (!s) return
-      await s.setPositionAsync(0)
-      await s.playAsync()
+      await s.seekTo(0)
+      s.play()
     } catch (_) {}
   }, [isMuted])
 

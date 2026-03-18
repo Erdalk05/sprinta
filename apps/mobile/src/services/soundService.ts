@@ -1,13 +1,17 @@
 // soundService.ts — Sprinta ses yöneticisi
-// expo-av kullanır; paket yoksa veya ses dosyası yoksa sessizce devre dışı kalır.
+// expo-audio kullanır; paket yoksa veya ses dosyası yoksa sessizce devre dışı kalır.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let Audio: any = null
+let createAudioPlayerFn: ((src: any) => any) | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let setAudioModeFn: ((mode: any) => Promise<void>) | null = null
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  Audio = require('expo-av').Audio
+  const expoAudio = require('expo-audio')
+  createAudioPlayerFn = expoAudio.createAudioPlayer
+  setAudioModeFn      = expoAudio.setAudioModeAsync
 } catch {
-  // expo-av kurulu değil — silent
+  // expo-audio kurulu değil — silent
 }
 
 // Semantik ses anahtarları
@@ -49,13 +53,10 @@ class SoundService {
   private _audioSessionReady = false
 
   private async _ensureAudioSession(): Promise<void> {
-    if (!Audio || this._audioSessionReady) return
+    if (!setAudioModeFn || this._audioSessionReady) return
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
+      await setAudioModeFn({
+        playsInSilentMode: true,
       })
       this._audioSessionReady = true
     } catch { /* ignore */ }
@@ -63,25 +64,22 @@ class SoundService {
 
   /**
    * Belirtilen sesi çalar. İlk çağrıda yükler, sonrakilerde önbellekten kullanır.
-   * expo-av yoksa veya dosya eksikse sessizce geçer.
+   * expo-audio yoksa veya dosya eksikse sessizce geçer.
    */
   async play(key: SoundKey): Promise<void> {
-    if (!Audio || this._isMuted) return
+    if (!createAudioPlayerFn || this._isMuted) return
     const asset = SOUND_ASSETS[key]
     if (!asset) return
     await this._ensureAudioSession()
     try {
-      let sound = this.soundCache[key]
-      if (!sound) {
-        const { sound: newSound } = await Audio.Sound.createAsync(asset, {
-          shouldPlay: false,
-          volume: 1.0,
-        })
-        this.soundCache[key] = newSound
-        sound = newSound
+      let player = this.soundCache[key]
+      if (!player) {
+        player = createAudioPlayerFn(asset)
+        player.volume = 1.0
+        this.soundCache[key] = player
       }
-      await sound.setPositionAsync(0)
-      await sound.playAsync()
+      await player.seekTo(0)
+      player.play()
     } catch (e) {
       if (__DEV__) {
         console.warn(`[SoundService] play(${key}):`, e)
@@ -94,7 +92,7 @@ class SoundService {
    * Uygulama başlangıcında veya ekran useEffect'inde çağrılır.
    */
   async preload(keys: SoundKey[]): Promise<void> {
-    if (!Audio) return
+    if (!createAudioPlayerFn) return
     await Promise.all(keys.map(k => this._loadSound(k)))
   }
 
@@ -102,12 +100,12 @@ class SoundService {
    * Tüm yüklü sesleri bellekten boşaltır.
    */
   async unloadAll(): Promise<void> {
-    if (!Audio) return
+    if (!createAudioPlayerFn) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const entries = Object.entries(this.soundCache) as [SoundKey, any][]
     await Promise.all(
-      entries.map(async ([key, sound]) => {
-        try { await sound.unloadAsync() } catch { /* already unloaded */ }
+      entries.map(async ([key, player]) => {
+        try { player.remove() } catch { /* already removed */ }
         delete this.soundCache[key]
       }),
     )
@@ -124,12 +122,13 @@ class SoundService {
   }
 
   private async _loadSound(key: SoundKey): Promise<void> {
-    if (!Audio || this.soundCache[key]) return
+    if (!createAudioPlayerFn || this.soundCache[key]) return
     const asset = SOUND_ASSETS[key]
     if (!asset) return
     try {
-      const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: false, volume: 1.0 })
-      this.soundCache[key] = sound
+      const player = createAudioPlayerFn(asset)
+      player.volume = 1.0
+      this.soundCache[key] = player
     } catch (e) {
       if (__DEV__) {
         console.warn(`[SoundService] preload(${key}):`, e)

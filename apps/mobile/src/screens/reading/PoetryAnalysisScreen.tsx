@@ -360,7 +360,7 @@ const GOLD = '#F59E0B'
 
 const s = StyleSheet.create({
   root:        { flex: 1, backgroundColor: BG },
-  scroll:      { padding: 20, paddingBottom: 40 },
+  scroll:      { paddingHorizontal: 31, paddingVertical: 20, paddingBottom: 40 },
   exit:        { position: 'absolute', top: 52, right: 20, zIndex: 10, padding: 8 },
   exitTxt:     { color: '#fff', fontSize: 18 },
   title:       { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 4 },

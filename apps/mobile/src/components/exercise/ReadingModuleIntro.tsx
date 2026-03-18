@@ -15,7 +15,7 @@ const CONTENT_MODULES = new Set([
   'chunk-rsvp', 'timed-reading', 'flow-reading', 'speed-ladder', 'bionic-reading',
   'fixation-trainer', 'auto-scroll',
   'academic-mode', 'focus-filter', 'memory-anchor', 'prediction-reading',
-  'speed-camp', 'vanishing-reading', 'dual-column',
+  'speed-camp', 'vanishing-reading', 'dual-column', 'svr',
 ])
 
 function getPalette(hex: string) {
@@ -48,6 +48,26 @@ export const MODULE_INTRO: Record<string, ModuleInfo> = {
     benefits: ['WPM hızını %30-50 artırır', 'Göz geri dönüşlerini sıfırlar', 'Odak kapasitesini güçlendirir'],
     steps:    ['Ekranda kelime grupları belirir', 'Her grubu tek bakışta yakala', 'Hız arttıkça chunk boyutu büyür'],
     stats:    [{ label: 'Süre', value: '5 dk' }, { label: 'Grup Boyutu', value: '2-4 kelime' }, { label: 'Hedef', value: '+50 WPM' }],
+  },
+  'svr': {
+    icon: '✨', label: 'Seri Vurgu Okuma', accent: '#7C3AED',
+    subtitle: 'Tüm metin görünür — sıralı vurgu gözünü yönlendirir, bağlam hiç kaybolmaz',
+    tip: 'SVR, RSVP\'nin aksine tüm metni gösterir. Sınav pasajlarında bağlam takibi için idealdir.',
+    benefits: [
+      'Göz geri dönüşlerini %60 azaltır',
+      'Tüm metin göründüğü için anlama kopmaz',
+      'Hız + bağlam dengesini en iyi kuran yöntemlerden biri',
+    ],
+    steps: [
+      'Metin ekrana yüklenir, vurgulama başlar',
+      '3 kelimelik gruplar sırayla parlayarak ilerler',
+      'Duraklat, hız ayarla — egzersiz sonu anlama soruları',
+    ],
+    stats: [
+      { label: 'Chunk',  value: '3 kelime' },
+      { label: 'Kontrol', value: 'Hız ± 20' },
+      { label: 'Kazanım', value: '+35 WPM' },
+    ],
   },
   'timed-reading': {
     icon: '⏱️', label: 'Zamanlı Okuma', accent: '#EA580C',

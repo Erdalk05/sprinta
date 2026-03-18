@@ -15,6 +15,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Animated as RNAnimated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { type ImportedContent } from '../exercises/shared/ContentImportModal'
@@ -118,6 +119,11 @@ function QuestionPhase({
   onAnswer,
 }: QuestionPhaseProps) {
   const LETTERS = ['A', 'B', 'C', 'D', 'E']
+  const progressAnim = useRef(new RNAnimated.Value(0)).current
+  useEffect(() => {
+    RNAnimated.timing(progressAnim, { toValue: (index + 1) / Math.max(1, total), duration: 300, useNativeDriver: false }).start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, total])
 
   const getOptionStyle = (optIdx: number) => {
     if (!showFeedback) {
@@ -157,11 +163,11 @@ function QuestionPhase({
 
       {/* Progress bar */}
       <View style={qs.progressTrack}>
-        <View
+        <RNAnimated.View
           style={[
             qs.progressFill,
             {
-              width: `${((index + 1) / total) * 100}%`,
+              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
               backgroundColor: accentColor,
             },
           ]}
