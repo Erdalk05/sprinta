@@ -1,5 +1,69 @@
 # SPRINTA — Sprint Durum Raporu
-> **Tarih:** 23 Şubat 2026 | **Branch:** claude | **Versiyon:** 1.0.0
+> **Son Güncelleme:** 18 Mart 2026 | **Branch:** claude | **Versiyon:** 1.3.0
+
+---
+
+## 0. Son Commit'ler (18 Mart 2026 Oturumu)
+
+| Hash | Mesaj |
+|---|---|
+| `2a32d7c0` | feat: okuma modülü akışı, ses servisi, tema ve egzersiz route güncellemeleri |
+| `b24261fc` | fix: ikinci tur güvenlik ve performans iyileştirmeleri (audit) |
+| `5cf311bb` | fix: güvenlik ve performans iyileştirmeleri (audit) |
+| `d2bd9d08` | feat: ReadingModuleFlow — setup/picking phase'leri entegre edildi |
+
+### Bu Oturumda Tamamlanan Özellikler
+
+#### Okuma Modülleri (29 Modül Tam)
+- **ReadingModuleFlow.tsx** → 5 fazlı state machine: `setup → picking → exercising → questioning → results`
+- **ModuleSetupScreen** → her modül için zengin tanıtım ekranı (faydalar, adımlar, süre, zorluk)
+- **ContentLibraryScreen** → 3-seviyeli hiyerarşik kütüphane (Sınav → Ders → Metin), paste + recent sekmeleri
+- **SpeedTier / ComprehensionTier** → egzersiz sonucunda kişiselleştirilmiş analiz kartları
+- **25 egzersiz route dosyası** → `initialContent` prop + `usePendingContent` hook entegrasyonu
+- **TrainingBottomSheet** → 29 modülün tamamı (3 kategorili: Hız / Anlama / Gelişim)
+- **ReadingModuleIntro** → 29 modül için zengin içerik (icon, label, accent, benefits, steps, stats)
+- Yeni ekranlar: VanishingReadingScreen, ClozeTestScreen, DualColumnScreen, FlashcardBankScreen, GraphReadingScreen, HataliCumleScreen, PoetryAnalysisScreen, SoruTreniScreen
+
+#### Kartal Gözü (23 Egzersiz Tam)
+- 15 temel egzersiz + 8 yeni kelime oyunu (KelimeYagmuru, HarfZinciri, KelimeEslestirme, AnagramCozucu, KelimeSniper, CumleYarisi, HeceleAtla, SoruKosusu)
+- Boss sistemi, eyeTrainingStore (completedExercises, categoryScores, bossUnlocked)
+
+#### Görsel Mekanik (17 Egzersiz)
+- 15 temel + YagmurHedef + RenkHafiza
+- ExerciseProps + DifficultyLevel + onComplete(RawMetrics) standart API
+
+#### Güvenlik ve Performans Audit Sonuçları
+- **CORS** → 6 edge function `_shared/cors.ts` kullanıyor (`ALLOWED_ORIGIN` env var)
+- **AsyncStorage → MMKV** → supabase.ts, authStore, themeStore, soundStore tamamen MMKV
+- **authStore** → `student` nesnesi persist edilmiyor (sadece `isAuthenticated`)
+- **select('*') kaldırıldı** → 4 bileşen
+- **Zustand stores** → tüm store'larda `version: 1` eklendi
+- **extract-text** → AbortSignal.timeout + boyut limiti
+- **ai-coach** → AbortSignal.timeout(45_000)
+- **migration 068** → vocabulary_words anon → authenticated
+- **migration 069** → question_id FK, FULLTEXT index, composite index
+- **PrivacyInfo.xcprivacy** → email, name, usage data eksiksiz
+- **Admin API** → content route admin role check eklendi
+- **RewardEngine** → cleanupRewardEngine() EventBus memory leak kapatıldı
+
+### Kritik Eksikler (Hâlâ Yapılmayı Bekleyen)
+
+| Öncelik | Konu | Not |
+|---|---|---|
+| 🔴 ACIL | AYT içerik = 0 | text_library CHECK constraint AYT'yi tanımıyor → `045_ayt_yds_schema_fix.sql` |
+| 🔴 ACIL | YDS içerik = 0 | İngilizce sınav metni yok |
+| 🔴 ACIL | LGS Matematik yetersiz | 2 metin var, 10+ gerekli |
+| 🟠 YÜKSEK | Kelime = sadece 40 | TYT/AYT/LGS için yetersiz |
+| 🟠 YÜKSEK | Mock Sınav YOK | Tam sınav simülasyonu (zamanlayıcı, soru sırası, analiz) |
+| 🟠 YÜKSEK | SRS Sistemi YOK | Yanlış cevap tablosu + spaced repetition |
+| 🟡 ORTA | 14 VM Stubı | ComingSoonExercise.tsx return eden 14 Visual Mechanics modülü |
+| 🟡 ORTA | Push Notification YOK | Streak hatırlatıcı, görev bildirimi |
+| 🟡 ORTA | Offline Cache YOK | MMKV + React Query persistQueryClient |
+| 🔵 DÜŞÜK | EAS credentials | eas.json Apple/Google ID placeholder |
+| 🔵 DÜŞÜK | Supabase Edge Fn secret | ALLOWED_ORIGIN=https://sprinta.app dashboard'dan ayarlanmalı |
+
+### 14 Visual Mechanics Stub (Gerçek Implementasyon Yok)
+HareketliKare, KademelihIzgaraFlicker, MerkezNoktaOdak, CiftNoktaOdak, PeriferiTespit, KarmaşıkIzgaraFlicker, HiyerarşikOkuma, DiagonalTarama, ZigzagOkuma, ParagrafÇerçeveleme, TersOkuma, RitimliOkuma, SayfaHaritalamaExercise, FovealPushExercise
 
 ---
 
@@ -506,4 +570,42 @@ plugins: ['react-native-worklets/plugin']
 
 ---
 
-*Rapor otomatik oluşturuldu — Claude Code tarafından, 23 Şubat 2026*
+---
+
+## Sıradaki Adımlar (Öncelik Sırası)
+
+1. `045_ayt_yds_schema_fix.sql` → AYT + YDS exam_type CHECK constraint'i güncelle
+2. AYT içerik ekleme → 10-15 metin + sorular (Fizik, Kimya, Biyoloji, Edebiyat)
+3. YDS içerik ekleme → 5-10 akademik İngilizce metin + sorular
+4. LGS Matematik içerik → 10+ metin
+5. Kelime sayısını artır → TYT/AYT/LGS için 200+ kelime
+6. Mock Sınav modu → tam sınav simülasyonu
+7. SRS sistemi → yanlış cevap tablosu + tekrar zamanlayıcı
+8. 14 VM stubını implement et
+9. Push Notification → Expo Notifications + streak entegrasyonu
+10. Offline cache → MMKV + React Query
+
+---
+
+## Komutlar
+
+```bash
+# iOS build
+cd apps/mobile && ./node_modules/.bin/expo run:ios --device "iPhone 16 Pro"
+
+# TypeScript kontrolü
+cd apps/mobile && ./node_modules/.bin/tsc --noEmit
+
+# DB reset
+supabase db reset
+
+# Test
+cd packages/shared && /proje_kökü/node_modules/.bin/vitest run
+```
+
+**Test kullanıcı:** test@test.com / Test1234
+**GitHub:** https://github.com/Erdalk05/sprinta
+
+---
+
+*Rapor güncellendi — Claude Code tarafından, 18 Mart 2026*
