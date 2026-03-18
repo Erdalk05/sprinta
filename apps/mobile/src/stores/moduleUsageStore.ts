@@ -73,6 +73,7 @@ export const useModuleUsageStore = create<ModuleUsageState>()(
     }),
     {
       name: 'module-usage-store',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
     },
   ),

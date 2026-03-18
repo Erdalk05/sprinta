@@ -53,7 +53,7 @@ function useCountUp(target: number, duration = 1000): number {
       anim.removeListener(listener)
     })
     return () => anim.removeAllListeners()
-  }, [target])
+  }, [target, duration])
   return display
 }
 
@@ -74,7 +74,7 @@ function BadgeToast({ badgeId, onHide }: { badgeId: string; onHide: () => void }
       ]).start(onHide)
     }, 2500)
     return () => clearTimeout(t)
-  }, [])
+  }, [onHide])
   if (!badge) return null
   return (
     <Animated.View style={[g.toast, { transform: [{ translateY: slideY }], opacity }]}>
@@ -281,6 +281,7 @@ export default function GameHomeScreen() {
               keyExtractor={(b) => b.id}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={g.badgeList}
+              getItemLayout={(_data, index) => ({ length: 80, offset: 80 * index, index })}
               renderItem={({ item }) => (
                 <View style={g.badgeItem}>
                   <View style={[g.badgeCircle, { backgroundColor: item.color + '20' }]}>

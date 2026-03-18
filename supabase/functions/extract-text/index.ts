@@ -48,14 +48,26 @@ serve(async (req: Request) => {
     if (body.url) {
       const resp = await fetch(body.url, {
         headers: { 'User-Agent': 'Sprinta/1.0 (content-extractor)' },
+        signal: AbortSignal.timeout(10000),  // 10 sn timeout
       })
       if (!resp.ok) {
         return new Response(JSON.stringify({ error: `URL alınamadı: ${resp.status}` }), {
           status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
         })
       }
+      const contentLength = resp.headers.get('content-length')
+      if (contentLength && parseInt(contentLength) > 5 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Dosya çok büyük (max 5MB)' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
       const contentType = resp.headers.get('content-type') ?? ''
       const raw = await resp.text()
+      if (raw.length > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'İçerik çok büyük (max 10MB)' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
 
       if (contentType.includes('text/html')) {
         // Basit HTML → metin dönüşümü (tag'leri sil)

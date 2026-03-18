@@ -44,6 +44,7 @@ export const useGamificationStore = create<GamificationState>()(
     }),
     {
       name: 'gamification-store',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
       // Sadece rozetleri sakla; pending state her seans başında sıfırlanır
       partialize: (state) => ({

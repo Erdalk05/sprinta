@@ -32,6 +32,7 @@ export const useTanilamaHistoryStore = create<TanilamaHistoryState>()(
     }),
     {
       name:    'tanilama-history-store',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
     },
   ),

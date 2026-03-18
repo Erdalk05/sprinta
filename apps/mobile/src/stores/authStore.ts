@@ -134,9 +134,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-store',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
+      // Sadece kimlik doğrulama durumunu sakla — student objesi (email, fullName, id)
+      // hassas veri içerdiği için persist edilmiyor; uygulama açılışında Supabase'den yenilenir.
       partialize: (state) => ({
-        student: state.student,
         isAuthenticated: state.isAuthenticated,
       }),
     }

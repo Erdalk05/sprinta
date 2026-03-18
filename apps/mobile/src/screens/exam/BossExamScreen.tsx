@@ -288,6 +288,7 @@ export default function BossExamScreen({ examType, subject }: Props) {
             numColumns={10}
             horizontal={false}
             scrollEnabled={false}
+            getItemLayout={(_data, index) => ({ length: 30, offset: 30 * Math.floor(index / 10), index })}
             renderItem={({ item, index }) => {
               const ans = store.answers[item.id]
               const isActive = index === store.currentIndex

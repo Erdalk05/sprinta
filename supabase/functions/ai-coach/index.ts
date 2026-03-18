@@ -191,6 +191,7 @@ Analiz sonucunda:
         system:     SYSTEM_PROMPT,
         messages,
       }),
+      signal: AbortSignal.timeout(45000),  // 45 sn — Supabase Edge Function 60 sn limit
     })
 
     const claudeData = await claudeRes.json()

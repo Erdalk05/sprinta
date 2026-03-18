@@ -15,6 +15,7 @@ export const useSoundStore = create<SoundStore>()(
     }),
     {
       name: 'sprinta-sound-settings',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
     },
   ),

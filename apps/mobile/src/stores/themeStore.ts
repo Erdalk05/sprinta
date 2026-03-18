@@ -23,6 +23,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name:    'sprinta-theme-v2',
+      version: 1,
       storage: createJSONStorage(() => mmkvStorage),
     }
   )
