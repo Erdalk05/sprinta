@@ -531,6 +531,15 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     const correct    = idx === questions[currentQ].correct_index
     const newAnswers = [...answers, correct]
 
+    // SM-2 SRS güncelle (best-effort, non-blocking)
+    if (student?.id && questions[currentQ].id) {
+      ;(supabase as any).rpc('update_sm2', {
+        p_student_id:  student.id,
+        p_question_id: questions[currentQ].id,
+        p_quality:     correct ? 4 : 1,
+      }).catch(() => { /* silent */ })
+    }
+
     setTimeout(() => {
       setShowFeedback(false)
       setSelectedAns(null)

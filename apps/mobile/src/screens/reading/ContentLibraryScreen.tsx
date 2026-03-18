@@ -85,7 +85,11 @@ interface Props {
   initialTab?:       Tab
 }
 
-type Tab = 'library' | 'paste' | 'dosya' | 'recent'
+type Tab = 'library' | 'paste' | 'dosya' | 'recent' | 'tekrar'
+
+interface DueText extends LibraryText {
+  dueCount: number
+}
 
 // ─── Difficulty Helpers ───────────────────────────────────────────────
 
@@ -145,6 +149,8 @@ export default function ContentLibraryScreen({
   const [pickingFile,     setPickingFile]     = useState(false)
   const [pickError,       setPickError]       = useState<string | null>(null)
   const [dynamicLessons,  setDynamicLessons]  = useState<{ category: string; count: number }[]>([])
+  const [dueTexts,        setDueTexts]        = useState<DueText[]>([])
+  const [loadingDue,      setLoadingDue]      = useState(false)
 
   // Recent yükle
   useEffect(() => {
@@ -152,6 +158,65 @@ export default function ContentLibraryScreen({
       loadRecent().then(setRecentItems)
     }
   }, [tab])
+
+  // SRS — bugün vadesi gelen sorular
+  const loadDueTexts = useCallback(async () => {
+    setLoadingDue(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+
+      const { data: dueAnswers } = await (supabase as any)
+        .from('wrong_answers')
+        .select('question_id')
+        .lte('next_review_at', today)
+
+      if (!dueAnswers || dueAnswers.length === 0) {
+        setDueTexts([])
+        return
+      }
+
+      const questionIds = (dueAnswers as { question_id: string }[]).map((a) => a.question_id)
+
+      const { data: questionRows } = await (supabase as any)
+        .from('text_questions')
+        .select('id, text_id')
+        .in('id', questionIds)
+
+      if (!questionRows || questionRows.length === 0) {
+        setDueTexts([])
+        return
+      }
+
+      const textCountMap = new Map<string, number>()
+      ;(questionRows as { id: string; text_id: string }[]).forEach((q) => {
+        textCountMap.set(q.text_id, (textCountMap.get(q.text_id) ?? 0) + 1)
+      })
+
+      const textIds = Array.from(textCountMap.keys())
+
+      const { data: textRows } = await (supabase as any)
+        .from('text_library')
+        .select('id, title, category, exam_type, difficulty, word_count')
+        .in('id', textIds)
+
+      setDueTexts(
+        ((textRows as LibraryText[]) ?? []).map((t) => ({
+          ...t,
+          dueCount: textCountMap.get(t.id) ?? 0,
+        }))
+      )
+    } catch {
+      setDueTexts([])
+    } finally {
+      setLoadingDue(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'tekrar') {
+      loadDueTexts()
+    }
+  }, [tab, loadDueTexts])
 
   // Hızlı Başlat: kullanıcının sınav türüne otomatik git
   useEffect(() => {
@@ -389,6 +454,7 @@ export default function ContentLibraryScreen({
           { key: 'paste',   icon: '✏️',  label: 'Metin'     },
           { key: 'dosya',   icon: '📄',  label: 'Dosya'     },
           { key: 'recent',  icon: '🕐',  label: 'Son'       },
+          { key: 'tekrar',  icon: '🔄',  label: 'Tekrar'    },
         ] as { key: Tab; icon: string; label: string }[]).map(({ key, icon, label }) => {
           const active = tab === key
           return (
@@ -680,6 +746,63 @@ export default function ContentLibraryScreen({
                     </Text>
                   </View>
                   <Text style={[s.recentArrow, { color: accentColor }]}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {tab === 'tekrar' && (
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {loadingDue ? (
+            <View style={s.centerBox}>
+              <ActivityIndicator size="large" color={accentColor} />
+              <Text style={[s.loadingText, { color: accentColor }]}>Tekrar listesi yükleniyor…</Text>
+            </View>
+          ) : dueTexts.length === 0 ? (
+            <View style={s.emptyBox}>
+              <Text style={s.emptyIcon}>🎉</Text>
+              <Text style={s.emptyText}>Bugün tekrar edilecek soru yok!</Text>
+              <Text style={[s.emptyText, { fontSize: 12, marginTop: 6 }]}>
+                Bir metni okuyup sorulara yanıt verdikçe yanlış cevaplar burada belirecek.
+              </Text>
+            </View>
+          ) : (
+            <View style={s.listGap}>
+              <View style={s.srsHeader}>
+                <Text style={[s.srsHeaderTxt, { color: accentColor }]}>
+                  🔄 {dueTexts.reduce((sum, t) => sum + t.dueCount, 0)} soru tekrar bekliyor
+                </Text>
+              </View>
+              {dueTexts.map((text) => (
+                <TouchableOpacity
+                  key={text.id}
+                  style={s.textCard}
+                  onPress={() => handleTextSelect(text)}
+                  activeOpacity={0.85}
+                  disabled={fetchingBody}
+                >
+                  <View style={s.textCardHeader}>
+                    <Text style={s.textTitle} numberOfLines={2}>{text.title}</Text>
+                    <View style={[s.srsBadge, { backgroundColor: accentColor + '20' }]}>
+                      <Text style={[s.srsBadgeTxt, { color: accentColor }]}>
+                        🔄 {text.dueCount}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={s.textCardMeta}>
+                    <Text style={s.metaChip}>{text.exam_type}</Text>
+                    <Text style={s.metaChip}>{text.category}</Text>
+                    {text.word_count ? <Text style={s.metaChip}>{text.word_count} kelime</Text> : null}
+                  </View>
+                  {fetchingBody && (
+                    <ActivityIndicator size="small" color={accentColor} style={s.loadingOverlay} />
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -1031,6 +1154,26 @@ const s = StyleSheet.create({
     fontSize:   16,
     fontWeight: '800',
     color:      '#FFFFFF',
+  },
+
+  // SRS
+  srsHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  srsHeaderTxt: {
+    fontSize:   14,
+    fontWeight: '700',
+  },
+  srsBadge: {
+    borderRadius:      8,
+    paddingHorizontal: 7,
+    paddingVertical:   3,
+    flexShrink:        0,
+  },
+  srsBadgeTxt: {
+    fontSize:   12,
+    fontWeight: '700',
   },
 
   // Recent
