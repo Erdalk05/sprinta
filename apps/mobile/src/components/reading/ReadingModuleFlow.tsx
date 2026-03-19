@@ -18,6 +18,7 @@ import {
   Animated as RNAnimated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { soundService } from '../../services/soundService'
 import { type ImportedContent } from '../exercises/shared/ContentImportModal'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
@@ -529,6 +530,9 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
     const correct    = idx === questions[currentQ].correct_index
+
+    // Ses geri bildirimi
+    soundService.play(correct ? 'correct' : 'wrong')
     const newAnswers = [...answers, correct]
 
     // SM-2 SRS güncelle (best-effort, non-blocking)
