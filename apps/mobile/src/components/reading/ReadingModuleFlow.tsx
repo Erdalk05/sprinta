@@ -8,6 +8,7 @@
  */
 import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'expo-router'
 import {
   View,
   Text,
@@ -27,7 +28,7 @@ import { MODULE_INTRO } from '../exercise/ReadingModuleIntro'
 import ModuleSetupScreen from '../../screens/reading/ModuleSetupScreen'
 import ContentLibraryScreen from '../../screens/reading/ContentLibraryScreen'
 import type { Badge } from '@sprinta/api'
-import type { SpeedTier, ComprehensionTier } from '../../types/reading'
+import type { SpeedTier, ComprehensionTier, AnalysisResult } from '../../types/reading'
 
 const badgeSvc = createBadgeService(supabase)
 
@@ -246,9 +247,11 @@ interface ResultPhaseProps {
   moduleLabel:     string
   moduleIcon:      string
   badges:          Badge[]
+  analysis:        AnalysisResult | null
   onRetry:         () => void
   onHome:          () => void
   onExit:          () => void
+  onApplyPlan:     (moduleKey: string) => void
 }
 
 function ResultPhase({
@@ -259,9 +262,11 @@ function ResultPhase({
   moduleLabel,
   moduleIcon,
   badges,
+  analysis,
   onRetry,
   onHome,
   onExit,
+  onApplyPlan,
 }: ResultPhaseProps) {
   const comprehensionPct = totalQuestions > 0
     ? Math.round((correctAnswers / totalQuestions) * 100)
@@ -448,6 +453,47 @@ function ResultPhase({
           </View>
         </View>
 
+        {/* Önerilen Sonraki Adımlar */}
+        {analysis && (
+          <View style={[rs.analysisCard, { borderColor: accentColor + '35' }]}>
+            <Text style={[rs.analysisTitle, { color: accentColor }]}>🎯 Önerilen Sonraki Adımlar</Text>
+            <Text style={rs.analysisFocus}>{analysis.focus_area}</Text>
+
+            {analysis.weaknesses.length > 0 && (
+              <View style={rs.analysisList}>
+                {analysis.weaknesses.slice(0, 2).map((w, i) => (
+                  <Text key={i} style={rs.analysisWeakness}>⚠️ {w}</Text>
+                ))}
+              </View>
+            )}
+
+            {analysis.next_action.length > 0 && (
+              <View style={rs.analysisChips}>
+                {analysis.next_action.map((key) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[rs.actionChip, { backgroundColor: accentColor + '14', borderColor: accentColor + '40' }]}
+                    onPress={() => onApplyPlan(key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[rs.actionChipTxt, { color: accentColor }]}>
+                      {MODULE_INTRO[key]?.label ?? key}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[rs.applyBtn, { backgroundColor: accentColor }]}
+              onPress={() => onApplyPlan(analysis.next_action[0])}
+              activeOpacity={0.85}
+            >
+              <Text style={rs.applyBtnTxt}>Planı Uygula →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Butonlar */}
         <View style={rs.buttonsRow}>
           <TouchableOpacity style={[rs.retryBtn, { borderColor: accentColor }]} onPress={onRetry} activeOpacity={0.8}>
@@ -466,6 +512,7 @@ function ResultPhase({
 
 export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, initialContent, renderExercise }: Props) {
   const student = useAuthStore((s) => s.student)
+  const router  = useRouter()
 
   const info   = MODULE_INTRO[moduleKey]
   const accent = info?.accent ?? '#0891B2'
@@ -480,6 +527,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
   const [showFeedback, setShowFeedback] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [savedBadges,  setSavedBadges]  = useState<Badge[]>([])
+  const [analysis,     setAnalysis]     = useState<AnalysisResult | null>(null)
 
   // ── Exercise complete ─────────────────────────────────────────────
   const handleExerciseComplete = useCallback(async (m: BaseReadingMetrics) => {
@@ -599,6 +647,17 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     } catch {
       // silently fail
     }
+
+    // Performans analizi — non-blocking, best-effort
+    ;(async () => {
+      try {
+        const { data: fnData } = await (supabase as any).functions.invoke(
+          'analyze-student-performance',
+          { body: { studentId: student.id } }
+        )
+        if (fnData && !fnData.error) setAnalysis(fnData as AnalysisResult)
+      } catch { /* silent */ }
+    })()
   }, [student, moduleKey, content])
 
   // ── Retry ─────────────────────────────────────────────────────────
@@ -612,6 +671,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     setSelectedAns(null)
     setShowFeedback(false)
     setSavedBadges([])
+    setAnalysis(null)
   }, [])
 
   // ── Setup / Picking handlers ───────────────────────────────────────
@@ -687,9 +747,11 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
         moduleLabel={info?.label ?? moduleKey}
         moduleIcon={info?.icon ?? '📖'}
         badges={savedBadges}
+        analysis={analysis}
         onRetry={handleRetry}
         onHome={onBack}
         onExit={onBack}
+        onApplyPlan={(key) => router.replace(`/exercise/${key}` as never)}
       />
     )
   }
@@ -951,4 +1013,65 @@ const rs = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 }, elevation: 4,
   },
   homeBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+
+  // Analysis block
+  analysisCard: {
+    marginHorizontal: 16,
+    marginTop:        16,
+    borderRadius:     16,
+    borderWidth:      1.5,
+    padding:          16,
+    gap:              10,
+    backgroundColor:  '#FAFAFA',
+  },
+  analysisTitle: {
+    fontSize:     13,
+    fontWeight:   '800',
+    letterSpacing: 0.2,
+  },
+  analysisFocus: {
+    fontSize:   14,
+    fontWeight: '600',
+    color:      '#374151',
+    lineHeight: 20,
+  },
+  analysisList: {
+    gap: 4,
+  },
+  analysisWeakness: {
+    fontSize:   12,
+    color:      '#6B7280',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  analysisChips: {
+    flexDirection: 'row',
+    flexWrap:      'wrap',
+    gap:           8,
+  },
+  actionChip: {
+    borderRadius:      999,
+    borderWidth:       1,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+  },
+  actionChipTxt: {
+    fontSize:   12,
+    fontWeight: '700',
+  },
+  applyBtn: {
+    borderRadius:    12,
+    paddingVertical: 13,
+    alignItems:      'center',
+    shadowColor:     '#000',
+    shadowOpacity:   0.12,
+    shadowRadius:    6,
+    shadowOffset:    { width: 0, height: 2 },
+    elevation:       3,
+  },
+  applyBtnTxt: {
+    fontSize:   14,
+    fontWeight: '800',
+    color:      '#FFFFFF',
+  },
 })

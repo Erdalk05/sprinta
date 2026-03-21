@@ -47,3 +47,12 @@ export type ComprehensionTier =
   | 'Mükemmel'
 
 export type LibraryLevel = 'exams' | 'lessons' | 'texts'
+
+export interface AnalysisResult {
+  weaknesses:  string[]
+  strengths:   string[]
+  risk_level:  'low' | 'medium' | 'high'
+  trend:       'improving' | 'declining' | 'stable'
+  focus_area:  string
+  next_action: string[]
+}
