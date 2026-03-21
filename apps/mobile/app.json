@@ -40,7 +40,15 @@
         }
       ],
       "expo-audio",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1A3594",
+          "sounds": []
+        }
+      ]
     ],
     "scheme": "sprinta",
     "experiments": {
