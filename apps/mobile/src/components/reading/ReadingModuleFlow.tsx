@@ -238,6 +238,11 @@ function getComprehensionTierInfo(score: number) {
 
 // ─── ResultPhase ─────────────────────────────────────────────────────
 
+interface AiExplanation {
+  explanation: string
+  tips:        string[]
+}
+
 interface ResultPhaseProps {
   moduleKey:       string
   metrics:         BaseReadingMetrics
@@ -248,6 +253,7 @@ interface ResultPhaseProps {
   moduleIcon:      string
   badges:          Badge[]
   analysis:        AnalysisResult | null
+  aiExplanation:   AiExplanation | null
   onRetry:         () => void
   onHome:          () => void
   onExit:          () => void
@@ -263,6 +269,7 @@ function ResultPhase({
   moduleIcon,
   badges,
   analysis,
+  aiExplanation,
   onRetry,
   onHome,
   onExit,
@@ -494,6 +501,24 @@ function ResultPhase({
           </View>
         )}
 
+        {/* AI Koç Açıklaması — sadece risk yüksek veya düşüş trendi varsa */}
+        {aiExplanation && (
+          <View style={rs.aiCard}>
+            <Text style={[rs.aiCardTitle, { color: accentColor }]}>🤖 AI Koç</Text>
+            <Text style={rs.aiCardText}>{aiExplanation.explanation}</Text>
+            {aiExplanation.tips.length > 0 && (
+              <View style={rs.aiTipsList}>
+                {aiExplanation.tips.map((tip, i) => (
+                  <View key={i} style={rs.aiTipRow}>
+                    <Text style={[rs.aiTipBullet, { color: accentColor }]}>{i + 1}.</Text>
+                    <Text style={rs.aiTipText}>{tip}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Butonlar */}
         <View style={rs.buttonsRow}>
           <TouchableOpacity style={[rs.retryBtn, { borderColor: accentColor }]} onPress={onRetry} activeOpacity={0.8}>
@@ -527,7 +552,8 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
   const [showFeedback, setShowFeedback] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [savedBadges,  setSavedBadges]  = useState<Badge[]>([])
-  const [analysis,     setAnalysis]     = useState<AnalysisResult | null>(null)
+  const [analysis,       setAnalysis]       = useState<AnalysisResult | null>(null)
+  const [aiExplanation,  setAiExplanation]  = useState<AiExplanation | null>(null)
 
   // ── Exercise complete ─────────────────────────────────────────────
   const handleExerciseComplete = useCallback(async (m: BaseReadingMetrics) => {
@@ -655,7 +681,28 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
           'analyze-student-performance',
           { body: { studentId: student.id } }
         )
-        if (fnData && !fnData.error) setAnalysis(fnData as AnalysisResult)
+        if (!fnData || fnData.error) return
+        const analysisResult = fnData as AnalysisResult
+        setAnalysis(analysisResult)
+
+        // ── Cost Control: AI sadece yüksek risk veya düşüş trendi varsa ──
+        const shouldCallAI = analysisResult.risk_level === 'high'
+          || analysisResult.trend === 'declining'
+        if (!shouldCallAI) return
+
+        const { data: aiData } = await (supabase as any).functions.invoke(
+          'ai-explain-analysis',
+          {
+            body: {
+              studentId:  student.id,
+              weaknesses: analysisResult.weaknesses,
+              trend:      analysisResult.trend,
+              focus_area: analysisResult.focus_area,
+              risk_level: analysisResult.risk_level,
+            },
+          }
+        )
+        if (aiData && !aiData.error) setAiExplanation(aiData as AiExplanation)
       } catch { /* silent */ }
     })()
   }, [student, moduleKey, content])
@@ -668,6 +715,8 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
     setQuestions([])
     setCurrentQ(0)
     setAnswers([])
+    setAnalysis(null)
+    setAiExplanation(null)
     setSelectedAns(null)
     setShowFeedback(false)
     setSavedBadges([])
@@ -748,6 +797,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
         moduleIcon={info?.icon ?? '📖'}
         badges={savedBadges}
         analysis={analysis}
+        aiExplanation={aiExplanation}
         onRetry={handleRetry}
         onHome={onBack}
         onExit={onBack}
@@ -1073,5 +1123,47 @@ const rs = StyleSheet.create({
     fontSize:   14,
     fontWeight: '800',
     color:      '#FFFFFF',
+  },
+
+  // AI Koç kartı
+  aiCard: {
+    marginHorizontal: 16,
+    marginTop:        12,
+    borderRadius:     16,
+    borderWidth:      1,
+    borderColor:      '#E5E7EB',
+    padding:          16,
+    gap:              10,
+    backgroundColor:  '#F0FDF4',
+  },
+  aiCardTitle: {
+    fontSize:     13,
+    fontWeight:   '800',
+    letterSpacing: 0.2,
+  },
+  aiCardText: {
+    fontSize:   14,
+    color:      '#374151',
+    lineHeight: 22,
+  },
+  aiTipsList: {
+    gap: 6,
+  },
+  aiTipRow: {
+    flexDirection: 'row',
+    gap:           6,
+    alignItems:    'flex-start',
+  },
+  aiTipBullet: {
+    fontSize:   13,
+    fontWeight: '700',
+    lineHeight: 20,
+    minWidth:   16,
+  },
+  aiTipText: {
+    flex:       1,
+    fontSize:   13,
+    color:      '#4B5563',
+    lineHeight: 20,
   },
 })
