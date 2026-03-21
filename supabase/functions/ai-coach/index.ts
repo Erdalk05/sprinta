@@ -63,6 +63,24 @@ serve(async (req) => {
       })
     }
 
+    // ── Rate limit kontrolü: 10 istek / kullanıcı / gün ─────────────────
+    const { data: isAllowed, error: rlErr } = await supabase
+      .rpc('check_and_increment_ai_rate_limit', {
+        p_user_id:       user.id,
+        p_function_name: 'ai-coach',
+        p_daily_limit:   10,
+      })
+    if (rlErr || isAllowed === false) {
+      return new Response(
+        JSON.stringify({
+          error:      'Günlük AI koç limiti doldu (10/gün). Yarın tekrar dene.',
+          error_code: 'rate_limited',
+        }),
+        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     // ── Öğrenci bağlamını yükle ──────────────────────────────────
     const [{ data: student }, { data: profile }, { data: recentStats }, { data: activeProgram }] =
       await Promise.all([

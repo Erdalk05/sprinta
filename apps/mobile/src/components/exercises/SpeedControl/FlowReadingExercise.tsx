@@ -162,13 +162,24 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
 
   // ── İçerik seçimi ─────────────────────────────────────────────
 
+  // İçerik olmadan açıldığında modal otomatik açılır
+  useEffect(() => {
+    if (!initialContent) setShowImport(true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleContentSelected = useCallback((c: ImportedContent) => {
-    setContent(c)
-    setShowImport(false)
     const raw = parseTextToLines(c.text, settings.wordsPerLine)
     const withDurations = applyLineDurations(raw, currentWPM, settings.readingMode, settings.smartSlowing)
+    setContent(c)
     setLines(withDurations)
     setLineIdx(0)
+    setShowImport(false)
+    // İçerik seçilince select ekranını atla — direkt okumaya geç
+    setPhase('reading')
+    setIsPlaying(true)
+    setStartTime(Date.now())
+    setWpmHistory([])
+    setRegressionCount(0)
   }, [settings.wordsPerLine, settings.readingMode, settings.smartSlowing, currentWPM])
 
   const handleStart = () => {
@@ -665,7 +676,7 @@ export default function FlowReadingExercise({ onComplete, onExit, initialContent
           {WPM_PRESETS.map((w) => (
             <TouchableOpacity
               key={w}
-              style={[s.presetBtn, currentWPM === w && { backgroundColor: accentClr }]}
+              style={[s.presetBtn, currentWPM === w && { backgroundColor: 'rgba(255,255,255,0.28)', borderColor: '#fff' }]}
               onPress={() => changeWPM(w - currentWPM)}
             >
               <Text style={[s.presetTxt, currentWPM === w && s.presetTxtActive]}>{w}</Text>

@@ -197,36 +197,65 @@ function CircleTimer({
   )
 }
 
+// ── Renk yardımcıları (bottom panel için) ─────────────────────────
+function rmHexToRgb(hex: string): [number, number, number] {
+  const safe = hex.startsWith('#') ? hex : '#EF4444'
+  return [parseInt(safe.slice(1,3),16), parseInt(safe.slice(3,5),16), parseInt(safe.slice(5,7),16)]
+}
+function rmDarken(hex: string, f: number): string {
+  const [r,g,b] = rmHexToRgb(hex)
+  return `rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`
+}
+function rmLighten(hex: string): string {
+  const [r,g,b] = rmHexToRgb(hex)
+  return `rgb(${Math.min(255,Math.round(r*0.12+218))},${Math.min(255,Math.round(g*0.12+218))},${Math.min(255,Math.round(b*0.12+218))})`
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MOD 1 — ⏱️ ZAMANLI OKUMA
 // ═══════════════════════════════════════════════════════════════════
 
+const TIMED_FONT_SIZES = [12, 14, 16, 18, 20, 22, 24] as const
+const TIMED_DURATIONS  = [
+  { s: 90,  l: '1:30' },
+  { s: 180, l: '3 dk' },
+  { s: 300, l: '5 dk' },
+  { s: 600, l: '10 dk' },
+] as const
+
 function TimedView({ content, config, fontSize, onFontSizeChange, onFinish, onExit, t, color }: ReadingViewProps) {
-  const totalSec   = config.timerSeconds ?? 180
-  const targetWpm  = Math.round(content.wordCount / (totalSec / 60))
+  // Dark panel renkleri (kırmızı tema — teal/mavi'den farklı)
+  const navyBg = rmDarken(color, 0.42)
+  const deepBg = rmDarken(color, 0.26)
+  const lightBg = rmLighten(color)
 
-  const [timeLeft,    setTimeLeft]    = useState(totalSec)
-  const [scrollRatio, setScrollRatio] = useState(0)
-  const [liveWpm,     setLiveWpm]     = useState(0)
-  const [started,     setStarted]     = useState(false)
+  const [activeDuration, setActiveDuration] = useState(config.timerSeconds ?? 180)
+  const [timeLeft,       setTimeLeft]       = useState(config.timerSeconds ?? 180)
+  const [scrollRatio,    setScrollRatio]    = useState(0)
+  const [liveWpm,        setLiveWpm]        = useState(0)
+  const [paused,         setPaused]         = useState(false)
 
-  const startRef       = useRef<number>(0)
+  const startRef       = useRef<number>(Date.now())
   const scrollRatioRef = useRef(0)
   const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fontWidthRef   = useRef(0)
+  const pausedAtRef    = useRef(0)
+  const totalPausedRef = useRef(0)
   const urgency        = useSharedValue(0)
   const borderGlow     = useSharedValue(0)
 
-  const urgentStyle = useAnimatedStyle(() => ({
-    opacity: 1 - urgency.value * 0.35,
-  }))
-  const glowStyle = useAnimatedStyle(() => ({
+  const urgentStyle = useAnimatedStyle(() => ({ opacity: 1 - urgency.value * 0.35 }))
+  const glowStyle   = useAnimatedStyle(() => ({
     borderWidth: borderGlow.value * 3,
     borderColor: `rgba(239,68,68,${borderGlow.value * 0.6})`,
   }))
 
+  const targetWpm = Math.round(content.wordCount / (activeDuration / 60))
+  const pct       = Math.round(scrollRatio * 100)
+
   const finish = useCallback((success: boolean) => {
     if (timerRef.current) clearInterval(timerRef.current)
-    const elapsed = Date.now() - startRef.current
+    const elapsed = Date.now() - startRef.current - totalPausedRef.current
     onFinish({
       avgWPM:        calcWPM(content.wordCount, elapsed),
       durationSec:   Math.round(elapsed / 1000),
@@ -236,31 +265,20 @@ function TimedView({ content, config, fontSize, onFontSizeChange, onFinish, onEx
     })
   }, [content, onFinish])
 
-  const start = useCallback(() => {
-    setStarted(true)
-    startRef.current = Date.now()
+  // Timer interval fabrikası — pause/resume/reset için ortak
+  const runInterval = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!)
-          finish(false)
-          return 0
-        }
+        if (prev <= 1) { clearInterval(timerRef.current!); finish(false); return 0 }
         if (prev === 31) {
-          urgency.value = withRepeat(
-            withSequence(withTiming(1, { duration:350 }), withTiming(0, { duration:350 })),
-            -1,
-          )
-          borderGlow.value = withRepeat(
-            withSequence(withTiming(1, { duration:400 }), withTiming(0.3, { duration:400 })),
-            -1,
-          )
+          urgency.value   = withRepeat(withSequence(withTiming(1,{duration:350}), withTiming(0,{duration:350})), -1)
+          borderGlow.value = withRepeat(withSequence(withTiming(1,{duration:400}), withTiming(0.3,{duration:400})), -1)
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
         }
         return prev - 1
       })
-      // Canlı WPM güncelle
-      const elapsed = (Date.now() - startRef.current) / 60000
+      const elapsed = (Date.now() - startRef.current - totalPausedRef.current) / 60000
       if (elapsed > 0.05) {
         const wordsRead = Math.round(content.wordCount * scrollRatioRef.current)
         setLiveWpm(wordsRead > 0 ? Math.round(wordsRead / elapsed) : 0)
@@ -268,108 +286,65 @@ function TimedView({ content, config, fontSize, onFontSizeChange, onFinish, onEx
     }, 1000)
   }, [finish, content.wordCount, urgency, borderGlow])
 
+  // Otomatik başlat
   useEffect(() => {
-    if (scrollRatioRef.current > 0.92 && started) {
-      finish(true)
-    }
+    startRef.current = Date.now()
+    runInterval()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // %92 scroll → tamamlandı
+  useEffect(() => {
+    if (scrollRatioRef.current > 0.92) finish(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollRatio])
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current) }, [])
 
-  const pct = Math.round(scrollRatio * 100)
+  const togglePause = useCallback(() => {
+    if (!paused) {
+      if (timerRef.current) clearInterval(timerRef.current)
+      pausedAtRef.current = Date.now()
+      setPaused(true)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    } else {
+      totalPausedRef.current += Date.now() - pausedAtRef.current
+      runInterval()
+      setPaused(false)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    }
+  }, [paused, runInterval])
 
-  // ── Başlangıç ekranı ─────────────────────────────────────────────
-  if (!started) {
-    const dkNeeded  = totalSec / 60
-    const difficulty = targetWpm > 280 ? '🔴 Zorlu' : targetWpm > 200 ? '🟡 Orta' : '🟢 Kolay'
-    return (
-      <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
-        <TopBar title={config.label} onExit={onExit} color={color} />
-        <ScrollView contentContainerStyle={{ padding:24, gap:20, paddingBottom:40 }}>
-          {/* Hero */}
-          <View style={{ backgroundColor: t.colors.panel, borderRadius:20, padding:24,
-            alignItems:'center', gap:10 }}>
-            <Text style={{ fontSize:56 }}>{config.icon}</Text>
-            <Text style={{ fontSize:21, fontWeight:'900', color:'#fff', textAlign:'center' }}>
-              {config.label}
-            </Text>
-            <Text style={{ fontSize:13, color:'rgba(255,255,255,0.75)', textAlign:'center', lineHeight:20 }}>
-              {config.description}
-            </Text>
-          </View>
+  const resetTimer = useCallback((newSec: number) => {
+    setActiveDuration(newSec)
+    setTimeLeft(newSec)
+    setLiveWpm(0)
+    setScrollRatio(0)
+    scrollRatioRef.current = 0
+    totalPausedRef.current = 0
+    startRef.current = Date.now()
+    setPaused(false)
+    urgency.value    = 0
+    borderGlow.value = 0
+    runInterval()
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+  }, [runInterval, urgency, borderGlow])
 
-          {/* İstatistik chips */}
-          <View style={{ flexDirection:'row', gap:10 }}>
-            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
-              padding:14, alignItems:'center', gap:4 }}>
-              <Text style={{ fontSize:24, fontWeight:'900', color }}>
-                {Math.floor(dkNeeded)}<Text style={{ fontSize:14 }}> dk</Text>
-              </Text>
-              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Süre Limiti</Text>
-            </View>
-            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
-              padding:14, alignItems:'center', gap:4 }}>
-              <Text style={{ fontSize:24, fontWeight:'900', color }}>
-                {content.wordCount}
-              </Text>
-              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Kelime</Text>
-            </View>
-            <View style={{ flex:1, backgroundColor: t.colors.surface, borderRadius:14,
-              padding:14, alignItems:'center', gap:4 }}>
-              <Text style={{ fontSize:24, fontWeight:'900', color }}>
-                {targetWpm}
-              </Text>
-              <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>Hedef WPM</Text>
-            </View>
-          </View>
-
-          {/* Zorluk + ipucu */}
-          <View style={{ backgroundColor: t.colors.surface, borderRadius:14, padding:16, gap:8 }}>
-            <Text style={{ fontSize:13, fontWeight:'800', color:'rgba(255,255,255,0.8)' }}>
-              {difficulty} Seviye
-            </Text>
-            <Text style={{ fontSize:13, color: t.colors.textHint, lineHeight:20 }}>
-              Bu metni {dkNeeded} dakikada bitirmek için dakikada {targetWpm} kelime okumalısın.
-              Metni kaydırarak ilerle — %92'ye ulaşınca egzersiz otomatik tamamlanır.
-            </Text>
-          </View>
-
-          {/* Başlat */}
-          <TouchableOpacity
-            style={{ backgroundColor:color, borderRadius:18, paddingVertical:20,
-              alignItems:'center', shadowColor:'#000', shadowOpacity:0.25,
-              shadowRadius:10, shadowOffset:{ width:0, height:4 }, elevation:6 }}
-            onPress={start}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize:18, fontWeight:'900', color:'#fff', letterSpacing:0.3 }}>
-              ▶  Süreyi Başlat
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    )
-  }
+  const formatSec = (s: number) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`
 
   // ── Okuma ekranı ─────────────────────────────────────────────────
   return (
     <Animated.View style={[{ flex:1 }, glowStyle]}>
       <SafeAreaView style={{ flex:1, backgroundColor: t.colors.background }}>
-        <TopBar title={config.label} onExit={() => finish(false)} color={color}
-          right={
-            <Animated.View style={urgentStyle}>
-              <CircleTimer timeLeft={timeLeft} totalSec={totalSec} color={color} />
-            </Animated.View>
-          }
-        />
 
-        {/* Gelişmiş ilerleme çubuğu */}
-        <View style={{ backgroundColor: t.colors.surface, paddingHorizontal:16,
-          paddingVertical:8, gap:6 }}>
-          <View style={{ height:8, backgroundColor:'rgba(128,128,128,0.18)',
-            borderRadius:4, overflow:'hidden' }}>
-            <View style={{ height:8, backgroundColor:color, borderRadius:4,
+        {/* Header: sadece X + başlık (timer alta taşındı) */}
+        <TopBar title={config.label} onExit={() => finish(false)} color={color} />
+
+        {/* İlerleme çubuğu */}
+        <View style={{ paddingHorizontal:16, paddingVertical:8,
+          backgroundColor: t.colors.surface, gap:6 }}>
+          <View style={{ height:6, backgroundColor:'rgba(128,128,128,0.18)',
+            borderRadius:3, overflow:'hidden' }}>
+            <View style={{ height:6, backgroundColor:color, borderRadius:3,
               width:`${pct}%` as `${number}%` }} />
           </View>
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
@@ -377,32 +352,100 @@ function TimedView({ content, config, fontSize, onFontSizeChange, onFinish, onEx
               {pct}% okundu
             </Text>
             {liveWpm > 0 && (
-              <Text style={{ fontSize:11, color, fontWeight:'800' }}>
-                ⚡ {liveWpm} WPM
-              </Text>
+              <Text style={{ fontSize:11, color, fontWeight:'800' }}>⚡ {liveWpm} WPM</Text>
             )}
-            <Text style={{ fontSize:11, color: t.colors.textHint, fontWeight:'600' }}>
-              Hedef: {targetWpm} WPM
-            </Text>
+            <Animated.Text style={[{ fontSize:11, fontWeight:'800', color }, urgentStyle]}>
+              ⏱ {formatSec(timeLeft)}
+            </Animated.Text>
           </View>
         </View>
 
-        <ReadingControlBar fontSize={fontSize} onChange={onFontSizeChange} color={color} t={t} />
-
+        {/* Kaydırmalı metin */}
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal:41, paddingVertical:20, paddingBottom:80 }}
+          style={{ flex:1 }}
+          contentContainerStyle={{ paddingHorizontal:24, paddingVertical:20, paddingBottom:16 }}
           onScroll={e => {
-            const { contentOffset:{ y }, contentSize:{ height }, layoutMeasurement:{ height:lh } } = e.nativeEvent
+            const { contentOffset:{y}, contentSize:{height}, layoutMeasurement:{height:lh} } = e.nativeEvent
             const ratio = Math.min(1, y / Math.max(1, height - lh))
             scrollRatioRef.current = ratio
             setScrollRatio(ratio)
           }}
           scrollEventThrottle={100}
         >
-          <Text style={{ fontFamily: 'Inter_400Regular', fontSize, color: t.colors.text, lineHeight: Math.round(fontSize * 1.75), letterSpacing:0.2 }}>
+          <Text style={{ fontFamily:'Inter_400Regular', fontSize, color: t.colors.text,
+            lineHeight: Math.round(fontSize * 1.75), letterSpacing:0.2 }}>
             {content.text}
           </Text>
         </ScrollView>
+
+        {/* ── Kontrol Paneli (Chunk Okuma stili) ────────────────── */}
+        <View style={{ backgroundColor:'#0D1A4A', paddingHorizontal:18, paddingVertical:14, gap:14,
+          borderTopWidth:1, borderTopColor:'rgba(255,255,255,0.10)',
+          paddingBottom: Platform.OS === 'ios' ? 20 : 14 }}>
+
+          {/* Row 1: SÜRE segments + Durdur butonu */}
+          <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
+            <Text style={{ fontSize:11, fontWeight:'700', color:'rgba(255,255,255,0.55)', letterSpacing:1, width:44 }}>SÜRE</Text>
+            <View style={{ flexDirection:'row', gap:8, flex:1 }}>
+              {TIMED_DURATIONS.map(({ s, l }) => (
+                <TouchableOpacity
+                  key={s}
+                  style={{ flex:1, height:38, borderRadius:10, alignItems:'center', justifyContent:'center',
+                    backgroundColor: activeDuration === s ? color : 'rgba(255,255,255,0.10)',
+                    borderWidth:1, borderColor: activeDuration === s ? color : 'rgba(255,255,255,0.18)' }}
+                  onPress={() => resetTimer(s)}
+                >
+                  <Text style={{ fontSize:12, fontWeight: activeDuration === s ? '900' : '700',
+                    color: activeDuration === s ? '#fff' : 'rgba(255,255,255,0.55)' }}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={{ flexDirection:'row', alignItems:'center', gap:5,
+                backgroundColor:'rgba(255,255,255,0.13)', borderRadius:10,
+                paddingHorizontal:12, paddingVertical:9,
+                borderWidth:1, borderColor:'rgba(255,255,255,0.22)' }}
+              onPress={togglePause}
+              activeOpacity={0.75}
+            >
+              <Text style={{ fontSize:12, fontWeight:'700', color:'#fff' }}>
+                {paused ? '▶ Devam Et' : '⏸ Durdur'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Row 2: YAZI BOYUTU slider */}
+          <View style={{ gap:8 }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+              <Text style={{ fontSize:11, fontWeight:'700', color:'rgba(255,255,255,0.55)', letterSpacing:1 }}>YAZI BOYUTU</Text>
+              <Text style={{ fontSize:13, fontWeight:'800', color:'#fff' }}>{fontSize}pt</Text>
+            </View>
+            <View
+              style={{ height:5, backgroundColor:'rgba(100,80,220,0.38)', borderRadius:3, position:'relative' }}
+              onLayout={e => { fontWidthRef.current = e.nativeEvent.layout.width }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={e => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+                onFontSizeChange(TIMED_FONT_SIZES[Math.round(p * (TIMED_FONT_SIZES.length - 1))])
+              }}
+              onResponderMove={e => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+                onFontSizeChange(TIMED_FONT_SIZES[Math.round(p * (TIMED_FONT_SIZES.length - 1))])
+              }}
+            >
+              <View style={{ height:5, backgroundColor:'#4B7FFF', borderRadius:3,
+                width:`${(TIMED_FONT_SIZES.indexOf(fontSize as typeof TIMED_FONT_SIZES[number]) / (TIMED_FONT_SIZES.length - 1)) * 100}%` as `${number}%` }} />
+              <View style={{ position:'absolute', top:-9, width:22, height:22,
+                borderRadius:11, backgroundColor:'#fff', marginLeft:-11,
+                shadowColor:'#000', shadowOpacity:0.30, shadowRadius:6,
+                shadowOffset:{width:0,height:2}, elevation:4,
+                left:`${(TIMED_FONT_SIZES.indexOf(fontSize as typeof TIMED_FONT_SIZES[number]) / (TIMED_FONT_SIZES.length - 1)) * 100}%` as `${number}%` }} />
+            </View>
+          </View>
+
+        </View>
+
       </SafeAreaView>
     </Animated.View>
   )

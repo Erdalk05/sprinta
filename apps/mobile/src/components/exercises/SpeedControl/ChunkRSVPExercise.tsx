@@ -166,6 +166,7 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
   const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const fontWidthRef    = useRef(0)
+  const wpmSliderRef    = useRef(0)
 
   // Her render'da güncellenen ref'ler (stale closure'ı önler)
   const chunksRef      = useRef<typeof chunks>([])
@@ -180,13 +181,25 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
 
   // ── İçerik seçimi ─────────────────────────────────────────────
 
+  // İçerik olmadan açıldığında modal otomatik açılır
+  useEffect(() => {
+    if (!initialContent) setShowImport(true)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleContentSelected = useCallback((c: ImportedContent) => {
-    setContent(c)
-    setShowImport(false)
     const raw = tokenizeToChunks(c.text, settings.chunkSize)
     const withDurations = applyDurations(raw, currentWPM, settings.smartSlowing)
+    setContent(c)
     setChunks(withDurations)
     setChunkIdx(0)
+    setShowImport(false)
+    // İçerik seçilince select ekranını atla — direkt okumaya geç
+    setPhase('reading')
+    setIsPlaying(true)
+    setStartTime(Date.now())
+    setElapsedMs(0)
+    setWpmHistory([])
+    setRegressionCount(0)
   }, [settings.chunkSize, settings.smartSlowing, currentWPM])
 
   const handleStart = () => {
@@ -621,92 +634,78 @@ export default function ChunkRSVPExercise({ onComplete, onExit, initialContent, 
           </Text>
         </View>
 
-        {/* ── Yeni Alt Bölüm (Hız Kontrolü stili) ───────────────── */}
+        {/* ── Kontrol Paneli ─────────────────────────────────── */}
+        <View style={s.ctrlPanel}>
 
-        {/* Açık alan: geri pill + WPM göstergesi */}
-        <View style={s.lightBottomRow}>
-          <TouchableOpacity style={[s.backPill, { backgroundColor: navyBg }]} onPress={() => { stopTimer(); onExit() }}>
-            <Text style={s.backPillTxt}>← Geri</Text>
-          </TouchableOpacity>
-          <Text style={[s.liveWPM, { color: navyBg }]}>⚡ {displayWPM} WPM</Text>
-        </View>
-
-        {/* Duraklat / Devam Et butonu */}
-        <TouchableOpacity
-          style={[s.pauseBtn, { borderColor: navyBg + '60' }]}
-          onPress={togglePause}
-          activeOpacity={0.8}
-        >
-          <Text style={[s.pauseBtnTxt, { color: navyBg }]}>
-            {isPlaying ? '⏸  Duraklat' : '▶  Devam Et'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Koyu panel: WPM slider + Yazı boyutu slider */}
-        <View style={[s.darkSlidersPanel, { backgroundColor: navyBg }]}>
-          {/* OKUMA HIZI */}
-          <View style={s.sliderLabelRow}>
-            <Text style={s.sliderLabel}>⚡ OKUMA HIZI</Text>
-            <Text style={s.sliderValue}>{currentWPM} WPM</Text>
-          </View>
-          <View
-            style={s.sliderTrack}
-            onLayout={(e) => { trackWidthRef.current = e.nativeEvent.layout.width }}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-            onResponderGrant={(e) => {
-              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
-              adjustWPM(100 + pct * 700)
-            }}
-            onResponderMove={(e) => {
-              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / trackWidthRef.current))
-              adjustWPM(100 + pct * 700)
-            }}
-          >
-            <View style={[s.sliderFill, { width: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
-            <View style={[s.sliderThumb, { left: `${((currentWPM - 100) / 700) * 100}%` as `${number}%` }]} />
-          </View>
-
-          {/* GRUP BOYUTU */}
-          <View style={[s.sliderLabelRow, { marginTop: 10 }]}>
-            <Text style={s.sliderLabel}>📦 GRUP BOYUTU</Text>
-            <View style={s.chunkBtnsRow}>
+          {/* Row 1: KELIME segment + Durdur/Devam butonu */}
+          <View style={s.ctrlRow}>
+            <Text style={s.ctrlLabel}>KELIME</Text>
+            <View style={s.kelimeBtns}>
               {([1, 2, 3, 4] as const).map((n) => (
                 <TouchableOpacity
                   key={n}
-                  style={[s.chunkBtn, settings.chunkSize === n && s.chunkBtnActive]}
+                  style={[s.kelimeBtn, settings.chunkSize === n && { backgroundColor: accentColor, borderColor: accentColor }]}
                   onPress={() => changeChunkSize(n)}
                 >
-                  <Text style={[s.chunkBtnTxt, settings.chunkSize === n && s.chunkBtnTxtActive]}>{n}</Text>
+                  <Text style={[s.kelimeBtnTxt, settings.chunkSize === n && s.kelimeBtnTxtActive]}>{n}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            <TouchableOpacity style={s.durdurBtn} onPress={togglePause} activeOpacity={0.75}>
+              <Text style={s.durdurBtnTxt}>{isPlaying ? '⏸ Durdur' : '▶ Devam Et'}</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* YAZI BOYUTU */}
-          <View style={[s.sliderLabelRow, { marginTop: 10 }]}>
-            <Text style={s.sliderLabel}>YAZI BOYUTU</Text>
-            <Text style={s.sliderValue}>{fontSize}pt</Text>
+          {/* Row 2: HIZ slider */}
+          <View style={s.sliderSection}>
+            <View style={s.sliderHeader}>
+              <Text style={s.ctrlLabel}>HIZ</Text>
+              <Text style={s.sliderVal}>{currentWPM} KDK</Text>
+            </View>
+            <View
+              style={s.sliderTrack}
+              onLayout={(e) => { wpmSliderRef.current = e.nativeEvent.layout.width }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / wpmSliderRef.current))
+                adjustWPM(Math.round((100 + p * 400) / 25) * 25)
+              }}
+              onResponderMove={(e) => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / wpmSliderRef.current))
+                adjustWPM(Math.round((100 + p * 400) / 25) * 25)
+              }}
+            >
+              <View style={[s.sliderFill, { width: `${((currentWPM - 100) / 400) * 100}%` as `${number}%`, backgroundColor: accentColor }]} />
+              <View style={[s.sliderThumb, { left: `${((currentWPM - 100) / 400) * 100}%` as `${number}%` }]} />
+            </View>
           </View>
-          <View
-            style={s.sliderTrack}
-            onLayout={(e) => { fontWidthRef.current = e.nativeEvent.layout.width }}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-            onResponderGrant={(e) => {
-              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
-              const idx = Math.round(pct * (FONT_SIZES.length - 1))
-              setFontSize(FONT_SIZES[idx])
-            }}
-            onResponderMove={(e) => {
-              const pct = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
-              const idx = Math.round(pct * (FONT_SIZES.length - 1))
-              setFontSize(FONT_SIZES[idx])
-            }}
-          >
-            <View style={[s.sliderFill, { width: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%` }]} />
-            <View style={[s.sliderThumb, { left: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%` }]} />
+
+          {/* Row 3: YAZI BOYUTU slider */}
+          <View style={s.sliderSection}>
+            <View style={s.sliderHeader}>
+              <Text style={s.ctrlLabel}>YAZI BOYUTU</Text>
+              <Text style={s.sliderVal}>{fontSize}pt</Text>
+            </View>
+            <View
+              style={s.sliderTrack}
+              onLayout={(e) => { fontWidthRef.current = e.nativeEvent.layout.width }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+                setFontSize(FONT_SIZES[Math.round(p * (FONT_SIZES.length - 1))])
+              }}
+              onResponderMove={(e) => {
+                const p = Math.max(0, Math.min(1, e.nativeEvent.locationX / fontWidthRef.current))
+                setFontSize(FONT_SIZES[Math.round(p * (FONT_SIZES.length - 1))])
+              }}
+            >
+              <View style={[s.sliderFill, { width: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%`, backgroundColor: '#4B7FFF' }]} />
+              <View style={[s.sliderThumb, { left: `${(FONT_SIZES.indexOf(fontSize) / (FONT_SIZES.length - 1)) * 100}%` as `${number}%` }]} />
+            </View>
           </View>
+
         </View>
 
         {/* Settings Sheet */}
@@ -1087,47 +1086,47 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
     selectScroll: { flex: 1, padding: 16, gap: 12 },
     heroBox:      { alignItems: 'center', paddingVertical: 10 },
     heroEmoji:    { fontSize: 56, marginBottom: 12 },
-    heroTitle:    { fontSize: 26, fontWeight: '900', color: t.colors.text, marginBottom: 6 },
-    heroSub:      { fontSize: 14, color: t.colors.textHint, textAlign: 'center' },
+    heroTitle:    { fontSize: 26, fontWeight: '900', color: '#fff', marginBottom: 6 },
+    heroSub:      { fontSize: 14, color: 'rgba(255,255,255,0.60)', textAlign: 'center' },
 
-    // WPM kartı — select ekranı
+    // WPM kartı — select ekranı (dark navy, reading panel stili)
     wpmCard: {
-      backgroundColor: t.colors.surface, borderRadius: 16,
-      padding: 16, borderWidth: 1, borderColor: t.colors.border, gap: 12,
+      backgroundColor: navyBg, borderRadius: 16,
+      padding: 16, gap: 12,
     },
-    wpmCardLabel: { fontSize: 11, fontWeight: '700', color: t.colors.textHint, letterSpacing: 1.5 },
+    wpmCardLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.60)', letterSpacing: 1.5 },
     wpmRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     wpmAdjBtnSelect: {
       width: 44, height: 44, borderRadius: 12,
-      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
       alignItems: 'center', justifyContent: 'center',
     },
-    wpmAdjTxtSelect:  { fontSize: 20, fontWeight: '700', color: t.colors.text },
-    wpmDisplaySelect: { fontSize: 32, fontWeight: '900', color: SPEED_COLOR },
-    wpmUnitSelect:    { fontSize: 14, color: t.colors.textHint, fontWeight: '600' },
+    wpmAdjTxtSelect:  { fontSize: 20, fontWeight: '700', color: '#fff' },
+    wpmDisplaySelect: { fontSize: 32, fontWeight: '900', color: '#fff' },
+    wpmUnitSelect:    { fontSize: 14, color: 'rgba(255,255,255,0.60)', fontWeight: '600' },
     wpmPresetsSelect: { flexDirection: 'row', justifyContent: 'space-evenly' },
     wpmPresetSelect:  {
       paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8,
-      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
     },
-    wpmPresetSelectActive:    { backgroundColor: SPEED_COLOR, borderColor: SPEED_COLOR },
-    wpmPresetSelectTxt:       { fontSize: 12, fontWeight: '600', color: t.colors.textHint },
-    wpmPresetSelectTxtActive: { color: '#fff' },
+    wpmPresetSelectActive:    { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: '#fff' },
+    wpmPresetSelectTxt:       { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },
+    wpmPresetSelectTxtActive: { color: '#fff', fontWeight: '800' },
 
-    // Grup boyutu kartı — select ekranı
+    // Grup boyutu kartı — select ekranı (dark navy, reading panel stili)
     chunkSizeCard:    {
-      backgroundColor: t.colors.surface, borderRadius: 16,
-      padding: 16, borderWidth: 1, borderColor: t.colors.border, gap: 12,
+      backgroundColor: navyBg, borderRadius: 16,
+      padding: 16, gap: 12,
     },
     chunkSizeBtns:        { flexDirection: 'row', justifyContent: 'space-evenly' },
     chunkSizeBtn:         {
       width: 44, height: 44, borderRadius: 12,
-      backgroundColor: t.colors.background, borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)',
       alignItems: 'center', justifyContent: 'center',
     },
-    chunkSizeBtnActive:   { backgroundColor: SPEED_COLOR, borderColor: SPEED_COLOR },
-    chunkSizeBtnTxt:      { fontSize: 15, fontWeight: '700', color: t.colors.textHint },
-    chunkSizeBtnTxtActive:{ color: '#fff' },
+    chunkSizeBtnActive:   { backgroundColor: 'rgba(255,255,255,0.22)', borderColor: '#fff' },
+    chunkSizeBtnTxt:      { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.55)' },
+    chunkSizeBtnTxtActive:{ color: '#fff', fontWeight: '900' },
 
     chipRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip:         {
@@ -1139,26 +1138,25 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
     chipTxtActive:{ color: SPEED_COLOR },
 
     contentCard:  {
-      backgroundColor: t.colors.surface, borderRadius: 16, padding: 16,
-      borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: navyBg, borderRadius: 16, padding: 16,
     },
-    contentCardTitle: { fontSize: 16, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
-    contentCardMeta:  { fontSize: 12, color: t.colors.textHint, marginBottom: 12 },
+    contentCardTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 4 },
+    contentCardMeta:  { fontSize: 12, color: 'rgba(255,255,255,0.60)', marginBottom: 12 },
     changeBtn:    {
       alignSelf: 'flex-start', borderRadius: 999,
       paddingHorizontal: 12, paddingVertical: 6,
-      backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border,
+      backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.30)',
     },
-    changeBtnTxt: { fontSize: 12, color: t.colors.primary, fontWeight: '600' },
+    changeBtnTxt: { fontSize: 12, color: '#fff', fontWeight: '600' },
 
     importBtn:    {
-      backgroundColor: t.colors.surface, borderRadius: 20, padding: 24,
-      alignItems: 'center', borderWidth: 2, borderColor: SPEED_COLOR + '40',
+      backgroundColor: navyBg, borderRadius: 20, padding: 24,
+      alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
       borderStyle: 'dashed',
     },
     importBtnEmoji: { fontSize: 40, marginBottom: 8 },
-    importBtnTxt: { fontSize: 17, fontWeight: '700', color: t.colors.text, marginBottom: 4 },
-    importBtnSub: { fontSize: 13, color: t.colors.textHint },
+    importBtnTxt: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 4 },
+    importBtnSub: { fontSize: 13, color: 'rgba(255,255,255,0.60)' },
 
     startBtn:     {
       backgroundColor: SPEED_COLOR, borderRadius: 16,
@@ -1167,8 +1165,8 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
     startBtnDisabled: { opacity: 0.4 },
     startBtnTxt:  { fontSize: 18, fontWeight: '800', color: '#fff' },
 
-    // Reading — Hız Kontrolü stili: accent header + açık okuma alanı
-    readingBg:    { backgroundColor: lightBg },
+    // Reading — koyu lacivert okuma alanı (Seri Vurgu Okuma ile aynı)
+    readingBg:    { backgroundColor: '#0D1A4A' },
 
     readingHeader: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1199,9 +1197,9 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
       shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 4, elevation: 4,
     },
     // ORP kelime render
-    orpBefore:  { fontWeight: '700', color: navyBg },
+    orpBefore:  { fontWeight: '700', color: '#fff' },
     orpLetter:  { fontWeight: '900', color: accent },
-    orpAfter:   { fontWeight: '700', color: navyBg },
+    orpAfter:   { fontWeight: '700', color: '#fff' },
     // Chunk boyutu butonları
     chunkBtnsRow:   { flexDirection: 'row', gap: 5 },
     chunkBtn:       {
@@ -1225,18 +1223,18 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
     wordGrowthLabel: { fontSize: 10, fontWeight: '600', marginTop: 5, opacity: 0.65 },
 
     progressPanel: {
-      backgroundColor: lightBg,
+      backgroundColor: '#0D1A4A',
       paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6,
     },
-    progressTrack: { height: 4, backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: 2 },
-    progressFill:  { height: 4, backgroundColor: navyBg, borderRadius: 2 },
-    progressInfo:  { fontSize: 11, color: navyBg, textAlign: 'center', marginTop: 6, fontWeight: '600' },
+    progressTrack: { height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2 },
+    progressFill:  { height: 4, backgroundColor: accent, borderRadius: 2 },
+    progressInfo:  { fontSize: 11, color: 'rgba(255,255,255,0.60)', textAlign: 'center', marginTop: 6, fontWeight: '600' },
 
-    chunkStage:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, backgroundColor: lightBg },
+    chunkStage:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, backgroundColor: '#0D1A4A' },
     chunkBox:     { alignItems: 'center', justifyContent: 'center' },
-    chunkText:    { fontSize: 16, fontWeight: '800', color: navyBg, textAlign: 'center', lineHeight: 24 },
+    chunkText:    { fontSize: 16, fontWeight: '800', color: '#fff', textAlign: 'center', lineHeight: 24 },
     chunkWordsRow:{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
-    chunkWord:    { fontSize: 16, color: navyBg },
+    chunkWord:    { fontSize: 16, color: '#fff' },
     bionicBold:   { fontWeight: '900' },
     bionicLight:  { fontWeight: '300' },
 
@@ -1262,45 +1260,73 @@ function ms(t: AppTheme, rtBg: string, rtText: string, accent = '#0891B2', navyB
     pauseBtnTxt: { fontSize: 16, fontWeight: '700' },
 
     darkSlidersPanel: {
-      paddingHorizontal: 16, paddingVertical: 14,
-      paddingBottom: Platform.OS === 'ios' ? 20 : 14,
+      paddingHorizontal: 16, paddingVertical: 12,
+      backgroundColor: deepBg,
+      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)',
     },
     sliderLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     sliderLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.8 },
     sliderValue: { fontSize: 13, fontWeight: '800', color: '#fff' },
     sliderTrack: {
-      height: 6, backgroundColor: 'rgba(255,255,255,0.20)',
+      height: 5, backgroundColor: 'rgba(100,80,220,0.38)',
       borderRadius: 3, position: 'relative',
     },
-    sliderFill:  { height: 6, backgroundColor: '#fff', borderRadius: 3 },
+    sliderFill:  { height: 5, borderRadius: 3 },
     sliderThumb: {
-      position: 'absolute', top: -7, width: 20, height: 20,
-      borderRadius: 10, backgroundColor: '#fff', marginLeft: -10,
-      shadowColor: '#000', shadowOpacity: 0.20, shadowRadius: 4,
-      shadowOffset: { width: 0, height: 2 }, elevation: 3,
+      position: 'absolute', top: -9, width: 22, height: 22,
+      borderRadius: 11, backgroundColor: '#fff', marginLeft: -11,
+      shadowColor: '#000', shadowOpacity: 0.30, shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 }, elevation: 4,
     },
 
-    // Keep unused refs for settings sheet / select phase
-    bottomPanel:   { backgroundColor: navyBg },
-    controls:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24, paddingVertical: 12 },
-    controlBtn:    { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-    controlBtnTxt: { fontSize: 22, color: 'rgba(255,255,255,0.7)' },
-    playBtn:       { width: 60, height: 60, borderRadius: 30, backgroundColor: accent, alignItems: 'center', justifyContent: 'center' },
-    playBtnTxt:    { fontSize: 24 },
-    wpmSliderRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 8, paddingVertical: 4 },
-    wpmLabel:      { fontSize: 11, color: 'rgba(255,255,255,0.6)', width: 30 },
-    wpmSliderTrack:{ flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, position: 'relative' },
-    wpmSliderFill: { height: 4, backgroundColor: '#fff', borderRadius: 2 },
-    wpmThumb:      { position: 'absolute', top: -6, width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', marginLeft: -8 },
-    wpmBtnsRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, paddingVertical: 4, paddingBottom: 8 },
+    // Kontrol paneli — KELIME/HIZ/YAZI BOYUTU
+    ctrlPanel:  {
+      backgroundColor: '#0D1A4A',
+      paddingHorizontal: 18, paddingVertical: 14,
+      gap: 14,
+      borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)',
+      paddingBottom: Platform.OS === 'ios' ? 20 : 14,
+    },
+    ctrlRow:    { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    ctrlLabel:  { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 1, width: 88 },
+    kelimeBtns: { flexDirection: 'row', gap: 8, flex: 1 },
+    kelimeBtn:  {
+      width: 38, height: 38, borderRadius: 10,
+      backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    kelimeBtnTxt:      { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.55)' },
+    kelimeBtnTxtActive:{ fontSize: 15, fontWeight: '900', color: '#fff' },
+    durdurBtn:  {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 10,
+      paddingHorizontal: 12, paddingVertical: 9,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+    },
+    durdurBtnTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },
+    sliderSection:{ gap: 8 },
+    sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    sliderVal:    { fontSize: 13, fontWeight: '800', color: '#fff' },
+    // Stiller paylaşımlı (SettingsSheet de kullanır)
+    controls:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#1A3070', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)' },
+    ctrlBtn:     { padding: 8 },
+    ctrlBtnTxt:  { fontSize: 13, fontWeight: '600', color: '#93C5FD' },
+    playBtn:     { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    playBtnTxt:  { fontSize: 20, color: '#fff' },
+    wpmSlider:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    wpmStepBtn:  { padding: 8 },
+    wpmStepTxt:  { fontSize: 14, fontWeight: '700', color: '#93C5FD' },
+    wpmValueLive:{ fontSize: 15, fontWeight: '800', minWidth: 70, textAlign: 'center' },
+    presetScroll: { maxHeight: 36, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)', backgroundColor: '#132558' },
+    presetContent:{ paddingHorizontal: 12, gap: 6, alignItems: 'center' },
     wpmPresetsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', marginBottom: 8 },
-    wpmAdjBtn:     { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-    wpmAdjTxt:     { fontSize: 14, fontWeight: '700', color: '#fff' },
-    wpmDisplay:    { fontSize: 16, fontWeight: '800', color: '#fff', minWidth: 90, textAlign: 'center' },
-    statsBar:      { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: deepBg, paddingVertical: 10, paddingHorizontal: 8 },
-    statItem:      { alignItems: 'center' },
-    statValue:     { fontSize: 14, fontWeight: '800', color: '#fff' },
-    statLabel:     { fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+    presetBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' },
+    presetTxt:   { fontSize: 12, color: '#BFDBFE', fontWeight: '600' },
+    presetTxtActive: { color: '#fff' },
+    statsBar:    { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8, paddingBottom: Platform.OS === 'ios' ? 4 : 8, backgroundColor: '#0F1F50', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)' },
+    statCell:    { alignItems: 'center' },
+    statValue:   { fontSize: 15, fontWeight: '800', color: '#DBEAFE' },
+    statLabel:   { fontSize: 9, color: '#93C5FD', marginTop: 1, letterSpacing: 0.5 },
 
     // Result
     resultScroll: { padding: 16, gap: 12, paddingBottom: 32, alignItems: 'center' },

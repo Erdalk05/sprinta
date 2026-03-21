@@ -11,7 +11,8 @@ BEGIN
 -- ─── AYT BİYOLOJİ ────────────────────────────────────────────────
 
 -- Bağışıklık Sistemi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '077f08d5-acd0-4f6a-acd1-8326d386a1c0') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '077f08d5-acd0-4f6a-acd1-8326d386a1c0')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '077f08d5-acd0-4f6a-acd1-8326d386a1c0') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('077f08d5-acd0-4f6a-acd1-8326d386a1c0','detail',
  'Metne göre sitotoksik T hücreleri (CD8⁺) hangi görevi üstlenir?',
@@ -24,7 +25,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- DNA Replikasyonu ve Protein Sentezi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '035d978c-dd91-4a7c-b77d-a251f0354572') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '035d978c-dd91-4a7c-b77d-a251f0354572')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '035d978c-dd91-4a7c-b77d-a251f0354572') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('035d978c-dd91-4a7c-b77d-a251f0354572','detail',
  'Translasyon sürecinde tRNA''nın işlevi nedir?',
@@ -37,7 +39,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Evrim ve Doğal Seçilim
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '0ee2ba57-aaa6-4139-b79c-45f5359c3a3b') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '0ee2ba57-aaa6-4139-b79c-45f5359c3a3b')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '0ee2ba57-aaa6-4139-b79c-45f5359c3a3b') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('0ee2ba57-aaa6-4139-b79c-45f5359c3a3b','detail',
  'Genetik sürüklenme özellikle hangi koşulda önem kazanır?',
@@ -50,7 +53,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Mitoz ve Mayoz Karşılaştırması
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'a4c1110c-e037-438f-a37a-3eec15785ee9') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'a4c1110c-e037-438f-a37a-3eec15785ee9')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'a4c1110c-e037-438f-a37a-3eec15785ee9') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('a4c1110c-e037-438f-a37a-3eec15785ee9','detail',
  'Mayoz bölünme kaç bölünme evresinden oluşur?',
@@ -63,7 +67,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Sinir Sistemi ve Nöron Fizyolojisi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '6ffcd014-41db-49af-ac0e-6106a6b2efec') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '6ffcd014-41db-49af-ac0e-6106a6b2efec')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '6ffcd014-41db-49af-ac0e-6106a6b2efec') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('6ffcd014-41db-49af-ac0e-6106a6b2efec','detail',
  'Aksiyon potansiyelinin oluşmasında hangi iyon kanalları önce açılır?',
@@ -78,7 +83,8 @@ END IF;
 -- ─── AYT FİZİK ───────────────────────────────────────────────────
 
 -- Elektromanyetik Dalgalar ve Işığın Doğası
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ea94e520-f14c-4227-8e01-35a3d400c3ef') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'ea94e520-f14c-4227-8e01-35a3d400c3ef')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ea94e520-f14c-4227-8e01-35a3d400c3ef') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('ea94e520-f14c-4227-8e01-35a3d400c3ef','detail',
  'Elektromanyetik dalgaların iletim için ortama ihtiyaç duymamasının nedeni nedir?',
@@ -91,7 +97,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Kuantum Mekaniği ve Dalga-Parçacık İkilemi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ccc342ec-af85-4da2-b8db-10d603cc5e42') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'ccc342ec-af85-4da2-b8db-10d603cc5e42')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ccc342ec-af85-4da2-b8db-10d603cc5e42') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('ccc342ec-af85-4da2-b8db-10d603cc5e42','detail',
  'Heisenberg''in belirsizlik ilkesine göre aynı anda kesin olarak bilinemeyen büyüklükler hangileridir?',
@@ -104,7 +111,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Nükleer Fizik ve Radyoaktivite
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'a47c1d7b-b02a-42c1-98d3-7c5f6d1814a5') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'a47c1d7b-b02a-42c1-98d3-7c5f6d1814a5')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'a47c1d7b-b02a-42c1-98d3-7c5f6d1814a5') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('a47c1d7b-b02a-42c1-98d3-7c5f6d1814a5','detail',
  'Alfa bozunmasında çekirdekten kopan parçacık nedir?',
@@ -117,7 +125,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Özel Görelilik Teorisi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '26db5bcd-054d-4401-9211-1508b0f3ac9e') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '26db5bcd-054d-4401-9211-1508b0f3ac9e')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '26db5bcd-054d-4401-9211-1508b0f3ac9e') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('26db5bcd-054d-4401-9211-1508b0f3ac9e','detail',
  'Einstein''ın Özel Görelilik Teorisi''nin iki temel postülatından biri nedir?',
@@ -130,7 +139,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Termodinamik Yasalar
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '26fd5a61-c367-4793-83d6-f7484f8a60e4') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '26fd5a61-c367-4793-83d6-f7484f8a60e4')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '26fd5a61-c367-4793-83d6-f7484f8a60e4') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('26fd5a61-c367-4793-83d6-f7484f8a60e4','detail',
  'Termodinamiğin birinci yasası neyi ifade eder?',
@@ -145,7 +155,8 @@ END IF;
 -- ─── AYT KİMYA ───────────────────────────────────────────────────
 
 -- Asit-Baz Dengesi ve pH
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '3d5b1016-f13e-4291-920d-284deb276072') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '3d5b1016-f13e-4291-920d-284deb276072')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '3d5b1016-f13e-4291-920d-284deb276072') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('3d5b1016-f13e-4291-920d-284deb276072','detail',
  'pH 7''nin altındaki bir çözeltinin özelliği nedir?',
@@ -158,7 +169,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Elektrokimya: Piller ve Elektroliz
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '5781a608-5750-4b67-8061-417afbc8eb0b') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '5781a608-5750-4b67-8061-417afbc8eb0b')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '5781a608-5750-4b67-8061-417afbc8eb0b') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('5781a608-5750-4b67-8061-417afbc8eb0b','detail',
  'Galvanik hücrede elektron akışı hangi yönde gerçekleşir?',
@@ -171,7 +183,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Kimyasal Bağlar ve Moleküler Yapı
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ae4511d4-b1a0-4178-9ea2-bd57dc516873') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'ae4511d4-b1a0-4178-9ea2-bd57dc516873')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'ae4511d4-b1a0-4178-9ea2-bd57dc516873') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('ae4511d4-b1a0-4178-9ea2-bd57dc516873','detail',
  'Kovalent bağ nasıl oluşur?',
@@ -184,7 +197,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Kimyasal Denge ve Le Chatelier İlkesi
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '0fd34809-fe08-4a4f-9f92-a5bfedce1ba9') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '0fd34809-fe08-4a4f-9f92-a5bfedce1ba9')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '0fd34809-fe08-4a4f-9f92-a5bfedce1ba9') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('0fd34809-fe08-4a4f-9f92-a5bfedce1ba9','detail',
  'Denge sabitinin (K) büyük olması ne anlama gelir?',
@@ -197,7 +211,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Organik Kimya: Fonksiyonel Gruplar
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = '21148f8e-d247-4408-bf4d-12b36be3fa24') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = '21148f8e-d247-4408-bf4d-12b36be3fa24')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = '21148f8e-d247-4408-bf4d-12b36be3fa24') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('21148f8e-d247-4408-bf4d-12b36be3fa24','detail',
  'Alkollerin genel fonksiyonel grubu nedir?',
@@ -212,7 +227,8 @@ END IF;
 -- ─── LGS İNGİLİZCE ───────────────────────────────────────────────
 
 -- Technology in Our Daily Life
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000001-0000-4000-b500-000000000001') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000001-0000-4000-b500-000000000001')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000001-0000-4000-b500-000000000001') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000001-0000-4000-b500-000000000001','inference',
  'What is the best title for this passage?',
@@ -221,7 +237,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Protecting Our Environment
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000002-0000-4000-b500-000000000002') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000002-0000-4000-b500-000000000002')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000002-0000-4000-b500-000000000002') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000002-0000-4000-b500-000000000002','inference',
  'What is the writer''s main message about environmental protection?',
@@ -230,7 +247,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Sports and a Healthy Life
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000003-0000-4000-b500-000000000003') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000003-0000-4000-b500-000000000003')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000003-0000-4000-b500-000000000003') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000003-0000-4000-b500-000000000003','inference',
  'According to the passage, what is the most important benefit of regular exercise?',
@@ -239,7 +257,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Endangered Animals
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000004-0000-4000-b500-000000000004') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000004-0000-4000-b500-000000000004')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000004-0000-4000-b500-000000000004') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000004-0000-4000-b500-000000000004','inference',
  'What can be inferred about the relationship between human activities and endangered animals?',
@@ -248,7 +267,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- School Life Around the World
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000005-0000-4000-b500-000000000005') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000005-0000-4000-b500-000000000005')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000005-0000-4000-b500-000000000005') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000005-0000-4000-b500-000000000005','inference',
  'What does the passage suggest about education systems around the world?',
@@ -257,7 +277,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Healthy Eating Habits
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000006-0000-4000-b500-000000000006') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000006-0000-4000-b500-000000000006')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000006-0000-4000-b500-000000000006') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000006-0000-4000-b500-000000000006','inference',
  'What is the writer trying to tell the reader about healthy eating?',
@@ -266,7 +287,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- The Benefits of Traveling
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000007-0000-4000-b500-000000000007') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000007-0000-4000-b500-000000000007')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000007-0000-4000-b500-000000000007') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000007-0000-4000-b500-000000000007','inference',
  'Which of the following best describes the overall tone of the passage?',
@@ -275,7 +297,8 @@ INSERT INTO text_questions (text_id, question_type, question_text, options, corr
 END IF;
 
 -- Marie Curie: A Pioneer of Science
-IF (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000008-0000-4000-b500-000000000008') < 5 THEN
+IF EXISTS (SELECT 1 FROM text_library WHERE id = 'b5000008-0000-4000-b500-000000000008')
+   AND (SELECT COUNT(*) FROM text_questions WHERE text_id = 'b5000008-0000-4000-b500-000000000008') < 5 THEN
 INSERT INTO text_questions (text_id, question_type, question_text, options, correct_index, explanation, difficulty, order_index) VALUES
 ('b5000008-0000-4000-b500-000000000008','inference',
  'What made Marie Curie''s achievements especially remarkable for her time?',

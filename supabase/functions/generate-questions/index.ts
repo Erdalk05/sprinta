@@ -40,7 +40,28 @@ serve(async (req: Request) => {
       status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   }
-  // ───────────────────────────────────────────────────────────────
+
+  // ── Rate limit kontrolü: 20 istek / kullanıcı / gün ─────────────────
+  const serviceClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+  const { data: isAllowed, error: rlErr } = await serviceClient
+    .rpc('check_and_increment_ai_rate_limit', {
+      p_user_id:       user.id,
+      p_function_name: 'generate-questions',
+      p_daily_limit:   20,
+    })
+  if (rlErr || isAllowed === false) {
+    return new Response(
+      JSON.stringify({
+        error:      'Günlük soru üretme limiti doldu (20/gün). Yarın tekrar dene.',
+        error_code: 'rate_limited',
+      }),
+      { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    )
+  }
+  // ────────────────────────────────────────────────────────────────────
 
   try {
     const body = await req.json() as {
