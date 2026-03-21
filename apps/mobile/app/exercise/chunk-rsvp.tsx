@@ -1,11 +1,4 @@
 import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
-/**
- * chunk-rsvp.tsx — Chunk RSVP 5-adımlı sihirbaz
- *
- * Adım 1 → ModuleSetupScreen    (modül tanıtımı, faydalar, adımlar)
- * Adım 2-4 → ContentLibraryScreen (sınav → ders → metin seçimi)
- * Adım 5 → ChunkRSVPExercise   (egzersiz + sonuç)
- */
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { useAuthStore } from '../../src/stores/authStore'
@@ -15,39 +8,45 @@ import { createChunkRsvpService } from '@sprinta/api'
 import ChunkRSVPExercise, { ChunkRSVPMetrics } from '../../src/components/exercises/SpeedControl/ChunkRSVPExercise'
 import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
 import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
+import ModuleSetupScreen from '../../src/screens/reading/ModuleSetupScreen'
 
-const chunkSvc = createChunkRsvpService(supabase)
-
-const ACCENT = '#0891B2'
+const chunkSvc   = createChunkRsvpService(supabase)
+const ACCENT     = '#0891B2'
 const MODULE_KEY = 'chunk-rsvp'
 
-type Phase = 'picking' | 'reading'
+type Phase = 'setup' | 'picking' | 'reading'
 
 export default function ChunkRSVPScreen() {
-  const router        = useRouter()
-  const { student }   = useAuthStore()
+  const router      = useRouter()
+  const { student } = useAuthStore()
 
-  const [phase,        setPhase]        = useState<Phase>('picking')
-  const [content,      setContent]      = useState<ImportedContent | null>(null)
-  const [pickFiltered, setPickFiltered] = useState(false)
+  const [phase,   setPhase]   = useState<Phase>('setup')
+  const [content, setContent] = useState<ImportedContent | null>(null)
 
-  const onExit = () => ( usePendingSheetStore.getState().setPendingSheet('okuma'), router.back() )
+  const onExit = () => (usePendingSheetStore.getState().setPendingSheet('okuma'), router.back())
 
-  // ── Adım 1: Modül Tanıtımı ───────────────────────────────────────
-  // ── Adım 2-4: İçerik Kütüphanesi ────────────────────────────────
+  if (phase === 'setup') {
+    return (
+      <ModuleSetupScreen
+        moduleKey={MODULE_KEY}
+        onSelectText={() => setPhase('picking')}
+        onQuickStart={() => setPhase('reading')}
+        onBack={onExit}
+      />
+    )
+  }
+
   if (phase === 'picking') {
     return (
       <ContentLibraryScreen
         accentColor={ACCENT}
         moduleKey={MODULE_KEY}
         onContentSelected={(c) => { setContent(c); setPhase('reading') }}
-        onBack={onExit}
-        initialExamKey={pickFiltered ? (student?.examTarget ?? undefined) : undefined}
+        onBack={() => setPhase('setup')}
       />
     )
   }
 
-  // ── Adım 5: Egzersiz ─────────────────────────────────────────────
   return (
     <ChunkRSVPExercise
       initialContent={content}
@@ -56,7 +55,7 @@ export default function ChunkRSVPScreen() {
         if (student?.id) chunkSvc.saveSession(metrics, student.id).catch(() => {})
       }}
       onExit={onExit}
-      onRepeat={() => { setContent(null); setPhase('picking') }}
+      onRepeat={() => { setContent(null); setPhase('setup') }}
     />
   )
 }

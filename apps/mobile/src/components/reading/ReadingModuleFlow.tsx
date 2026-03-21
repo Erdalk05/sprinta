@@ -470,7 +470,7 @@ export default function ReadingModuleFlow({ moduleKey, onBack, initialPhase, ini
   const info   = MODULE_INTRO[moduleKey]
   const accent = info?.accent ?? '#0891B2'
 
-  const [phase,        setPhase]        = useState<Phase>(initialPhase ?? 'exercising')
+  const [phase,        setPhase]        = useState<Phase>(initialPhase ?? 'setup')
   const [content,      setContent]      = useState<ImportedContent | null>(initialContent ?? null)
   const [metrics,      setMetrics]      = useState<BaseReadingMetrics | null>(null)
   const [questions,    setQuestions]    = useState<QuestionRow[]>([])

@@ -1,38 +1,18 @@
 import { usePendingSheetStore } from '../../src/stores/pendingSheetStore'
-import React, { useState } from 'react'
+import React from 'react'
 import { useRouter } from 'expo-router'
-import type { ImportedContent } from '../../src/components/exercises/shared/ContentImportModal'
-import ContentLibraryScreen from '../../src/screens/reading/ContentLibraryScreen'
 import ReadingModuleFlow from '../../src/components/reading/ReadingModuleFlow'
 import ReadingModesExercise, { ReadingModesMetrics } from '../../src/components/exercises/ReadingModes/ReadingModesExercise'
 
-const ACCENT = '#B45309'
 const MODULE_KEY = 'focus-filter'
-
-type Phase = 'picking' | 'reading'
 
 export default function FocusFilterScreen() {
   const router = useRouter()
-  const [phase, setPhase] = useState<Phase>('picking')
-  const [content, setContent] = useState<ImportedContent | null>(null)
-
   const onBack = () => { usePendingSheetStore.getState().setPendingSheet('okuma'); router.back() }
-
-  if (phase === 'picking') {
-    return (
-      <ContentLibraryScreen
-        accentColor={ACCENT}
-        moduleKey={MODULE_KEY}
-        onContentSelected={(c) => { setContent(c); setPhase('reading') }}
-        onBack={onBack}
-      />
-    )
-  }
 
   return (
     <ReadingModuleFlow
       moduleKey={MODULE_KEY}
-      initialContent={content}
       onBack={onBack}
       renderExercise={(c, onComplete, onExit, accentColor) => (
         <ReadingModesExercise
