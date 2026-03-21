@@ -63,6 +63,13 @@ const MODULE_LABELS: Record<string, string> = {
   mental_reset:       'Zihin Sıfırlama',
 }
 
+export interface PlanItem {
+  module_key:   string
+  label:        string
+  time_minutes: number
+  priority:     number
+}
+
 interface HomeState {
   // ── Performans ──────────────────────────────────────────────────
   currentWPM:      number
@@ -94,16 +101,22 @@ interface HomeState {
   aiCoachXpReward:   number
   aiCoachDifficulty: string
 
+  // ── Günlük Plan ──────────────────────────────────────────────────
+  dailyPlan:        PlanItem[]
+  dailyPlanReason:  string
+  dailyPlanLoading: boolean
+
   // ── Loading ──────────────────────────────────────────────────────
   isLoading: boolean
 
   // ── Actions ──────────────────────────────────────────────────────
-  fetchHomeData:  (studentId: string) => Promise<void>
-  setWPM:         (wpm: number, delta: number) => void
-  setFocusScore:  (score: number) => void
-  setEyeStability:(val: number) => void
-  setSkillValue:  (id: string, value: number) => void
-  bumpMission:    () => void
+  fetchHomeData:    (studentId: string) => Promise<void>
+  fetchDailyPlan:   (studentId: string) => Promise<void>
+  setWPM:           (wpm: number, delta: number) => void
+  setFocusScore:    (score: number) => void
+  setEyeStability:  (val: number) => void
+  setSkillValue:    (id: string, value: number) => void
+  bumpMission:      () => void
 }
 
 // Varsayılan değerler (fetch öncesi gösterilir)
@@ -133,6 +146,10 @@ export const useHomeStore = create<HomeState>((set, get) => ({
   aiCoachDrillRoute: '/exercise/eye_training',
   aiCoachXpReward:   75,
   aiCoachDifficulty: 'Lv.1',
+
+  dailyPlan:        [],
+  dailyPlanReason:  '',
+  dailyPlanLoading: false,
 
   isLoading: false,
 
@@ -272,9 +289,35 @@ export const useHomeStore = create<HomeState>((set, get) => ({
         aiCoachDifficulty: `Lv.${Math.max(1, Math.round((profile?.speed_skill ?? 10) / 20))}`,
         isLoading: false,
       })
+
+      // Günlük planı non-blocking olarak yükle
+      get().fetchDailyPlan(studentId).catch(() => { /* silent */ })
+
     } catch (e) {
       console.error('homeStore.fetchHomeData hatası:', e)
       set({ isLoading: false })
+    }
+  },
+
+  // ── Günlük Plan ─────────────────────────────────────────────────
+  fetchDailyPlan: async (studentId: string) => {
+    set({ dailyPlanLoading: true })
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'generate-daily-plan',
+        { body: { studentId } }
+      )
+      if (!error && data && !data.error) {
+        set({
+          dailyPlan:        data.today_plan ?? [],
+          dailyPlanReason:  data.reason     ?? '',
+          dailyPlanLoading: false,
+        })
+      } else {
+        set({ dailyPlanLoading: false })
+      }
+    } catch {
+      set({ dailyPlanLoading: false })
     }
   },
 

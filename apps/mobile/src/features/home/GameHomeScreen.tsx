@@ -25,12 +25,29 @@ import { DailyLeaderboard } from './components/DailyLeaderboard'
 import { WeeklyMomentumStrip } from './components/WeeklyMomentumStrip'
 import { AICoachCard } from './components/AICoachCard'
 import { QuickStartCard } from './components/QuickStartCard'
+import { DailyPlanCard } from './components/DailyPlanCard'
 
 // ─── Renk Paleti — İş Bankası + Facebook ─────────────────────────
 const NAVY = '#1A3594'   // İş Bankası royal blue
 const BLUE = '#1877F2'   // Facebook primary blue
 const TEAL = '#40C8F0'   // Light accent blue
 const BODY = '#D9E5FF'   // İş Bankası açık mavi zemin
+
+// ─── Sınava göre hedef ARP ────────────────────────────────────────
+const EXAM_TARGET_ARP: Record<string, number> = {
+  LGS:     250,
+  TYT:     200,
+  AYT:     320,
+  YDS:     280,
+  YOKDIL:  280,
+  ALES:    240,
+  KPSS:    220,
+  General: 300,
+}
+
+function targetArpForExam(examTarget: string | undefined): number {
+  return EXAM_TARGET_ARP[examTarget ?? ''] ?? 250
+}
 
 // ─── Sıralamadaki yüzdelik ────────────────────────────────────────
 function topPercent(arp: number): number {
@@ -136,6 +153,8 @@ export default function GameHomeScreen() {
   const badgeCount = earnedBadges.length
   const arpDisplay = useCountUp(currentArp, 1200)
   const topPct     = topPercent(currentArp)
+  const targetArp  = targetArpForExam(student?.examTarget)
+  const arpPct     = Math.min(100, Math.round((currentArp / targetArp) * 100))
 
   const motivation = useMemo(
     () => selectMotivation(name, streakDays, totalXp, null),
@@ -241,12 +260,26 @@ export default function GameHomeScreen() {
               <Text style={g.ctaSecondaryTxt}>🎯 Hedef</Text>
             </TouchableOpacity>
           </View>
+
+          {/* ARP Progression Bar */}
+          <View style={g.arpProgress}>
+            <View style={g.arpProgressRow}>
+              <Text style={g.arpProgressLabel}>ARP'INDAKİ YOL</Text>
+              <Text style={g.arpProgressPct}>{currentArp} / {targetArp}</Text>
+            </View>
+            <View style={g.arpProgressBg}>
+              <View style={[g.arpProgressFill, { width: `${arpPct}%` }]} />
+            </View>
+          </View>
         </View>
 
         {/* ══════════════════ İÇERİK KARTLARI ════════════════════ */}
 
         {/* İçerik Seç Kısayolları */}
         <QuickStartCard />
+
+        {/* Bugünün Planı */}
+        <DailyPlanCard />
 
         {/* AI Koç */}
         <AICoachCard />
@@ -354,6 +387,36 @@ const g = StyleSheet.create({
   },
   glassValue: { fontSize: 17, fontWeight: '800', color: '#fff', marginTop: 4 },
   glassLabel: { fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+
+  // ARP Progress
+  arpProgress: { gap: 6 },
+  arpProgressRow: {
+    flexDirection:  'row',
+    justifyContent: 'space-between',
+    alignItems:     'center',
+  },
+  arpProgressLabel: {
+    fontSize:     10,
+    fontWeight:   '700',
+    color:        'rgba(255,255,255,0.55)',
+    letterSpacing: 1.5,
+  },
+  arpProgressPct: {
+    fontSize:   11,
+    fontWeight: '600',
+    color:      'rgba(255,255,255,0.75)',
+  },
+  arpProgressBg: {
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    overflow:        'hidden',
+  },
+  arpProgressFill: {
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: TEAL,
+  },
 
   // CTA
   ctaRow: { flexDirection: 'row', gap: 12 },
