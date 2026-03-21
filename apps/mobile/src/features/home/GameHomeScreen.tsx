@@ -178,8 +178,8 @@ export default function GameHomeScreen() {
     router.push('/exercise/daily-training' as any)
   }
 
-  // İlk yükleme: student henüz yok veya veri çekiliyor
-  if (!student || homeLoading) {
+  // İlk yükleme: homeStore aktif olarak veri çekiyor
+  if (homeLoading) {
     return (
       <SafeAreaView style={g.root}>
         <View style={g.loadingContainer}>
