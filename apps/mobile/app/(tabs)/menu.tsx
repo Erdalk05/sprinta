@@ -108,9 +108,9 @@ function buildCategories(t: ReturnType<typeof import('../../src/theme').buildThe
       id: 'tercihler', icon: '⚙️', label: 'Tercihler', sub: 'Bildirim, gizlilik, çıkış',
       gradient: t.gradients.ayarlar as [string, string],
       items: [
-        { id: 'notif',   icon: '🔔', label: 'Bildirimler',     route: '/(tabs)/profile' },
-        { id: 'privacy', icon: '🔒', label: 'Gizlilik',        route: '/(tabs)/profile' },
-        { id: 'help',    icon: '❓', label: 'Yardım & Destek', route: '/(tabs)/profile' },
+        { id: 'notif',   icon: '🔔', label: 'Bildirimler',     route: '/(modals)/notifications-settings' },
+        { id: 'privacy', icon: '🔒', label: 'Gizlilik',        route: '/(modals)/privacy-policy'         },
+        { id: 'help',    icon: '❓', label: 'Yardım & Destek', route: '/(modals)/help-support'           },
         { id: 'logout',  icon: '⏻',  label: 'Çıkış Yap',      route: '__logout__'      },
       ],
     },

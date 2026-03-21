@@ -52,6 +52,24 @@ serve(async (req) => {
       });
     }
 
+    // ── Rate limit: 2 istek / kullanıcı / gün ────────────────────
+    const { data: isAllowed, error: rlErr } = await supabase
+      .rpc('check_and_increment_ai_rate_limit', {
+        p_user_id:       user.id,
+        p_function_name: 'ai-weekly-report',
+        p_daily_limit:   2,
+      })
+    if (rlErr || isAllowed === false) {
+      return new Response(
+        JSON.stringify({
+          error:      'Günlük haftalık rapor limiti doldu (2/gün).',
+          error_code: 'rate_limited',
+        }),
+        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+    // ─────────────────────────────────────────────────────────────
+
     const { data: student } = await supabase
       .from('students')
       .select('full_name, exam_target, current_arp, baseline_arp, growth_score, streak_days')

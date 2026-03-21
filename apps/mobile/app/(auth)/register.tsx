@@ -107,7 +107,11 @@ export default function RegisterScreen() {
       }
       setCompleted(true)
       await saveToStorage()
-      router.replace('/(onboarding)/welcome')
+      if (__DEV__) {
+        router.replace('/(onboarding)/welcome')
+      } else {
+        router.replace({ pathname: '/(auth)/verify-email', params: { email: form.email } })
+      }
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
       Alert.alert('Kayıt Başarısız', result.error ?? 'Bir hata oluştu')

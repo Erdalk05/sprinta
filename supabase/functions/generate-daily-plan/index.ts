@@ -99,6 +99,24 @@ serve(async (req: Request) => {
       })
     }
 
+    // ── Rate limit: 3 istek / kullanıcı / gün ────────────────────
+    const { data: isAllowed, error: rlErr } = await serviceClient
+      .rpc('check_and_increment_ai_rate_limit', {
+        p_user_id:       user.id,
+        p_function_name: 'generate-daily-plan',
+        p_daily_limit:   3,
+      })
+    if (rlErr || isAllowed === false) {
+      return new Response(
+        JSON.stringify({
+          error:      'Günlük plan oluşturma limiti doldu (3/gün).',
+          error_code: 'rate_limited',
+        }),
+        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+    // ─────────────────────────────────────────────────────────────
+
     // 1. analysis_cache'den oku (30 dk TTL — generate-daily-plan için daha geniş)
     let analysis: AnalysisResult | null = null
     const { data: cache } = await serviceClient

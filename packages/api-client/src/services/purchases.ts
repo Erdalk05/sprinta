@@ -7,11 +7,15 @@ import Purchases, {
 import { Platform } from 'react-native';
 
 const API_KEY = Platform.OS === 'ios'
-  ? process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS!
-  : process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID!;
+  ? process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS ?? ''
+  : process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID ?? '';
+
+// Key gerçek bir RevenueCat key'i mi? (placeholder veya boş değilse)
+const isValidKey = (k: string) => k.length > 10 && !k.startsWith('appl_') && !k.startsWith('goog_')
 
 export const PurchasesService = {
   async initialize(userId: string) {
+    if (!isValidKey(API_KEY)) return   // placeholder key — sessizce geç
     await Purchases.configure({ apiKey: API_KEY });
     await Purchases.logIn(userId);
   },

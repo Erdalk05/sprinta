@@ -34,6 +34,28 @@ serve(async (req: Request) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser()
     if (authErr || !user) throw new Error('Unauthorized')
 
+    // ── Rate limit: 5 istek / kullanıcı / gün ────────────────────
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    )
+    const { data: isAllowed, error: rlErr } = await serviceClient
+      .rpc('check_and_increment_ai_rate_limit', {
+        p_user_id:       user.id,
+        p_function_name: 'generate-mentor-feedback',
+        p_daily_limit:   5,
+      })
+    if (rlErr || isAllowed === false) {
+      return new Response(
+        JSON.stringify({
+          error:      'Günlük mentor geri bildirim limiti doldu (5/gün).',
+          error_code: 'rate_limited',
+        }),
+        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+    // ─────────────────────────────────────────────────────────────
+
     // ── 2. Kullanıcı verilerini paralel çek ───────────────────────
     const [examRes, diffRes, sessRes] = await Promise.all([
       userClient.from('user_exam_profile')

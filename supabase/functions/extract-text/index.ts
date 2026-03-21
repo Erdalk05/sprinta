@@ -33,6 +33,28 @@ serve(async (req: Request) => {
   }
   // ───────────────────────────────────────────────────────────────
 
+  // ── Rate limit: 15 istek / kullanıcı / gün ───────────────────
+  const serviceClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+  const { data: isAllowed, error: rlErr } = await serviceClient
+    .rpc('check_and_increment_ai_rate_limit', {
+      p_user_id:       user.id,
+      p_function_name: 'extract-text',
+      p_daily_limit:   15,
+    })
+  if (rlErr || isAllowed === false) {
+    return new Response(
+      JSON.stringify({
+        error:      'Günlük metin çıkarma limiti doldu (15/gün).',
+        error_code: 'rate_limited',
+      }),
+      { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    )
+  }
+  // ─────────────────────────────────────────────────────────────
+
   try {
     const body = await req.json() as {
       fileBase64?: string

@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useEffect, useRef, useMemo, useState } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView, FlatList,
-  Animated, StyleSheet,
+  Animated, StyleSheet, ActivityIndicator,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useRouter } from 'expo-router'
@@ -143,7 +143,7 @@ export default function GameHomeScreen() {
   const { isDark, toggleTheme } = useThemeToggle()
   const { student } = useAuthStore()
   const { earnedBadges } = useGamificationStore()
-  const { lastSessionWPMs, deltaPercent, fetchHomeData } = useHomeStore()
+  const { lastSessionWPMs, deltaPercent, fetchHomeData, isLoading: homeLoading } = useHomeStore()
   const [badgeToast, setBadgeToast] = useState<string | null>(null)
 
   const name       = student?.fullName?.split(' ')[0] ?? 'Öğrenci'
@@ -176,6 +176,18 @@ export default function GameHomeScreen() {
   const handleStart = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     router.push('/exercise/daily-training' as any)
+  }
+
+  // İlk yükleme: student henüz yok veya veri çekiliyor
+  if (!student || homeLoading) {
+    return (
+      <SafeAreaView style={g.root}>
+        <View style={g.loadingContainer}>
+          <ActivityIndicator size="large" color={NAVY} />
+          <Text style={g.loadingText}>Yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -336,6 +348,14 @@ export default function GameHomeScreen() {
 // ─── Stiller ─────────────────────────────────────────────────────
 const g = StyleSheet.create({
   root:  { flex: 1, backgroundColor: BODY },
+
+  // Loading state
+  loadingContainer: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12,
+  },
+  loadingText: {
+    fontSize: 14, color: NAVY, fontWeight: '500',
+  },
 
   // Toast
   toast: {
