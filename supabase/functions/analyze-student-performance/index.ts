@@ -199,7 +199,22 @@ serve(async (req: Request) => {
       })
     }
 
-    // Son 10 seans
+    // 1. Cache kontrol — 5 dakika içinde hesaplanmış sonuç varsa kullan
+    const { data: cache } = await serviceClient
+      .from('analysis_cache')
+      .select('result, created_at')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (cache && Date.now() - new Date(cache.created_at).getTime() < 5 * 60 * 1000) {
+      return new Response(JSON.stringify(cache.result), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 2. Son 10 seans
     const { data: sessions, error: sessErr } = await serviceClient
       .from('reading_mode_sessions')
       .select('arp_score, comprehension_score, avg_wpm, completion_ratio, module_key, created_at')
@@ -209,6 +224,12 @@ serve(async (req: Request) => {
     if (sessErr) throw sessErr
 
     const result = analyzePerformance((sessions ?? []) as Session[])
+
+    // 3. Cache'e kaydet (best-effort)
+    await serviceClient
+      .from('analysis_cache')
+      .insert({ student_id: studentId, result })
+      .catch(() => { /* silent */ })
 
     return new Response(JSON.stringify(result), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
